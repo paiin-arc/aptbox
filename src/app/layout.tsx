@@ -17,6 +17,25 @@ export const metadata: Metadata = {
   title: "aptbox · decentralized file vault on Shelby + Aptos",
   description:
     "Upload, share, and monetize files with cryptographic provenance. Built on Shelby and Aptos.",
+  icons: {
+    icon: [
+      { url: "/brand/favicon.svg", type: "image/svg+xml" },
+    ],
+    apple: "/brand/logo-icon.svg",
+  },
+  openGraph: {
+    title: "aptbox · decentralized file vault",
+    description:
+      "Upload, share, and monetize files with cryptographic provenance. Built on Shelby and Aptos.",
+    images: ["/brand/logo.svg"],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "aptbox",
+    description:
+      "Upload, share, and monetize files with cryptographic provenance. Built on Shelby and Aptos.",
+    images: ["/brand/logo.svg"],
+  },
 };
 
 export default function RootLayout({
