@@ -22,7 +22,8 @@ import { isUserRejection, waitForTx } from "@/lib/tx";
 import { useNetwork } from "@/lib/networkContext";
 import {
   MAX_FILE_SIZE_MB,
-  uploadFileToShelby,
+  prepareAndRegisterShelby,
+  uploadShelbyBytes,
   validateFile,
   type UploadProgress,
 } from "@/services/uploadService";
@@ -259,8 +260,8 @@ export default function UploadPage() {
       const blobName = blobNameFor(hex, displayName);
       const uploaderAddress = account.address.toString();
 
-      // 3. Manual Shelby flow (handles Shelby register tx + RPC putBlob)
-      const shelbyResult = await uploadFileToShelby({
+      // 3. Erasure-code + sign Shelby register tx (popup 1)
+      const shelbyResult = await prepareAndRegisterShelby({
         network,
         uploaderAddress,
         blobData,
@@ -270,13 +271,11 @@ export default function UploadPage() {
         onProgress: handleProgress,
       });
 
-      // 4. Register on our aptbox registry.
-      //
-      // No need to wait for the Shelby register tx to be indexed first — our
-      // register_file Move call lives in a different module and only depends on
-      // the user's wallet sequence_number, which the wallet bumps locally as
-      // soon as it submits the previous tx. Waiting here previously blocked
-      // the second wallet popup for up to 60s on a slow indexer.
+      // 4. Sign aptbox register tx (popup 2) — fires IMMEDIATELY after the
+      //    Shelby register so the user is done with all wallet interaction
+      //    before the slow byte upload begins. If the byte upload eventually
+      //    fails, the on-chain records are already there and the orphan blob
+      //    can be cleaned up via /cleanup.
       setStage("registering");
       const payload = buildRegisterFilePayload(network, {
         contentHash: hashBytes,
@@ -286,15 +285,26 @@ export default function UploadPage() {
         accessType: accessTypeNum,
         priceOctas,
         whitelist,
-        // displayName flows into shelbyCid (via blobName) so the rename
-        // is what shows up in dashboard/explore/share pages.
       });
-
       const submitted = await signAndSubmitTransaction({ data: payload });
-      const hash = (submitted as { hash: string }).hash;
-      setTxHash(hash);
+      const aptboxHash = (submitted as { hash: string }).hash;
+      setTxHash(aptboxHash);
 
-      const tx = await waitForTx(hash, { network });
+      // 5. Run byte upload AND aptbox tx confirmation in parallel.
+      //    Bytes upload can take 5+ min on testnet; the aptbox tx
+      //    confirmation usually lands in seconds. Both must succeed before
+      //    we mark "done".
+      const [, tx] = await Promise.all([
+        uploadShelbyBytes({
+          network,
+          uploaderAddress,
+          blobData,
+          blobName,
+          onProgress: handleProgress,
+        }),
+        waitForTx(aptboxHash, { network }),
+      ]);
+
       const events = (tx as { events?: { type: string; data: any }[] }).events ?? [];
       const id = extractFileIdFromTx(events);
       setFileId(id);
@@ -304,7 +314,7 @@ export default function UploadPage() {
         trackUploadRecord(uploaderAddress, {
           fileId: id.toString(),
           shelbyTxHash: shelbyResult.registerTxHash,
-          aptboxTxHash: hash,
+          aptboxTxHash: aptboxHash,
           blobName,
           fileName: displayName,
           uploadedAt: Date.now(),
@@ -653,8 +663,8 @@ const STEP_ORDER = [
   "hashing",
   "encoding",
   "shelby-sign",
-  "shelby-put",
   "registering",
+  "shelby-put",
 ] as const;
 
 const STEP_LABEL: Record<(typeof STEP_ORDER)[number], string> = {

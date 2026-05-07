@@ -7,8 +7,13 @@
  * check entirely — the user pays once if they re-upload, but that's a fair
  * trade for reliable testnet uploads.
  *
- * Pattern lifted from blob-alpha (zzzHMz/blob-alpha) which proved this works
- * on Shelby Testnet.
+ * The flow is split into two phases so the upload page can sign the aptbox
+ * register tx in parallel with the (slow on testnet) byte upload:
+ *
+ *   prepareAndRegisterShelby — sync erasure-code + sign register tx
+ *   uploadShelbyBytes        — putBlob with retry (no wallet signature)
+ *
+ * `uploadFileToShelby` is the convenience wrapper that does both back-to-back.
  */
 
 import {
@@ -16,6 +21,7 @@ import {
   ShelbyRPCClient,
   createDefaultErasureCodingProvider,
   generateCommitments,
+  type BlobCommitments,
 } from "@shelby-protocol/sdk/browser";
 import { AccountAddress } from "@aptos-labs/ts-sdk";
 import type { WalletContextState } from "@aptos-labs/wallet-adapter-react";
@@ -43,7 +49,6 @@ const MAX_PUT_RETRIES = 1;
 
 function isTransientGatewayError(e: unknown): boolean {
   const msg = (e as { message?: string })?.message ?? String(e);
-  // "status: 408" or "status: 502/503/504" all indicate transient gateway issues
   if (/status:\s*408/.test(msg)) return true;
   if (/status:\s*5\d\d/.test(msg)) return true;
   if (/Request Timed Out/i.test(msg)) return true;
@@ -69,7 +74,7 @@ export type UploadProgress = {
 
 type SignAndSubmitFn = WalletContextState["signAndSubmitTransaction"];
 
-export type UploadShelbyArgs = {
+export type PrepareAndRegisterArgs = {
   network: SupportedNetwork;
   uploaderAddress: string;
   blobData: Uint8Array;
@@ -78,6 +83,14 @@ export type UploadShelbyArgs = {
   expirationMicros?: number;
   onProgress?: (p: UploadProgress) => void;
 };
+
+export type PrepareAndRegisterResult = {
+  blobName: string;
+  commitments: BlobCommitments;
+  registerTxHash: string;
+};
+
+export type UploadShelbyArgs = PrepareAndRegisterArgs;
 
 export type UploadShelbyResult = {
   blobName: string;
@@ -96,19 +109,13 @@ export function validateFile(file: File): void {
 }
 
 /**
- * Manually orchestrates the Shelby upload:
- *   1. Erasure-code → commitments
- *   2. registerBlob Move tx (signed by user wallet)
- *   3. RPC putBlob (no signature)
- *
- * Caller is responsible for follow-up app-level on-chain registration
- * (e.g. our own aptbox::registry::register_file).
+ * Phase 1: erasure-code the data + submit the Shelby `register_blob` Move tx.
+ * Returns the commitments needed for the bytes upload phase.
  */
-export async function uploadFileToShelby(
-  args: UploadShelbyArgs
-): Promise<UploadShelbyResult> {
+export async function prepareAndRegisterShelby(
+  args: PrepareAndRegisterArgs
+): Promise<PrepareAndRegisterResult> {
   const {
-    network,
     uploaderAddress,
     blobData,
     blobName,
@@ -116,15 +123,7 @@ export async function uploadFileToShelby(
     onProgress,
   } = args;
 
-  const apiKey = shelbyApiKeyFor(network);
-  if (!apiKey) {
-    throw new Error(
-      `No Shelby API key configured for ${network}. Set NEXT_PUBLIC_SHELBY_API_KEY (or NEXT_PUBLIC_SHELBY_API_KEY_${network.toUpperCase()}) in .env.local.`
-    );
-  }
-
-  // 1. Erasure-code → commitments (default scheme — only one supported by
-  // testnet storage providers as of writing)
+  // 1. Erasure-code → commitments
   onProgress?.({ stage: "encoding", message: "Erasure-coding file…" });
   const ecProvider = await createDefaultErasureCodingProvider();
   const encoding = ecProvider.config.enumIndex;
@@ -138,7 +137,7 @@ export async function uploadFileToShelby(
   // 2. Build + sign registerBlob Move payload
   onProgress?.({
     stage: "registering",
-    message: "Approve registration in wallet…",
+    message: "Approve Shelby register in wallet…",
   });
   const expirationMicros = args.expirationMicros ?? defaultExpirationMicros();
   const registerPayload = ShelbyBlobClient.createRegisterBlobPayload({
@@ -148,23 +147,46 @@ export async function uploadFileToShelby(
     blobMerkleRoot: commitments.blob_merkle_root,
     expirationMicros,
     numChunksets: commitments.chunkset_commitments.length,
-    encoding, // matches the provider's config
+    encoding,
   });
 
   const { hash: registerTxHash } = await signAndSubmitTransaction({
     data: registerPayload,
   });
 
-  // 3. Upload bytes to Shelby RPC (no wallet signature)
+  return { blobName, commitments, registerTxHash };
+}
+
+export type UploadShelbyBytesArgs = {
+  network: SupportedNetwork;
+  uploaderAddress: string;
+  blobData: Uint8Array;
+  blobName: string;
+  onProgress?: (p: UploadProgress) => void;
+};
+
+/**
+ * Phase 2: upload bytes via the Shelby RPC. No wallet interaction.
+ * Includes one transient-error retry (408 / 5xx).
+ */
+export async function uploadShelbyBytes(
+  args: UploadShelbyBytesArgs
+): Promise<void> {
+  const { network, uploaderAddress, blobData, blobName, onProgress } = args;
+
+  const apiKey = shelbyApiKeyFor(network);
+  if (!apiKey) {
+    throw new Error(
+      `No Shelby API key configured for ${network}. Set NEXT_PUBLIC_SHELBY_API_KEY (or NEXT_PUBLIC_SHELBY_API_KEY_${network.toUpperCase()}) in .env.local.`
+    );
+  }
+
   onProgress?.({
     stage: "putting",
     pct: 0,
     message: "Uploading bytes to Shelby…",
   });
-  const rpc = new ShelbyRPCClient({
-    network,
-    apiKey,
-  });
+  const rpc = new ShelbyRPCClient({ network, apiKey });
 
   const putParams = {
     account: uploaderAddress,
@@ -178,7 +200,6 @@ export async function uploadFileToShelby(
       uploadedBytes: number;
       totalBytes: number;
     }) => {
-      // p = { phase, partIdx, totalParts, partBytes, uploadedBytes, totalBytes }
       const pct =
         p.totalBytes > 0
           ? Math.min(100, (p.uploadedBytes / p.totalBytes) * 100)
@@ -232,9 +253,26 @@ export async function uploadFileToShelby(
   if (lastPutErr) throw lastPutErr;
 
   onProgress?.({ stage: "done", message: "Upload complete." });
+}
 
+/**
+ * Convenience wrapper: phase 1 then phase 2, sequentially.
+ * Use the two split functions directly when you want to interleave the aptbox
+ * register tx between the Shelby register and the byte upload.
+ */
+export async function uploadFileToShelby(
+  args: UploadShelbyArgs
+): Promise<UploadShelbyResult> {
+  const { commitments, registerTxHash } = await prepareAndRegisterShelby(args);
+  await uploadShelbyBytes({
+    network: args.network,
+    uploaderAddress: args.uploaderAddress,
+    blobData: args.blobData,
+    blobName: args.blobName,
+    onProgress: args.onProgress,
+  });
   return {
-    blobName,
+    blobName: args.blobName,
     blobMerkleRoot: commitments.blob_merkle_root,
     registerTxHash,
   };
