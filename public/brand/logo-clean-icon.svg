@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="aptbox">
+  <title>aptbox</title>
+  <rect width="256" height="256" fill="#ffffff"/>
+
+  <!-- Outer box (rounded) -->
+  <rect x="24" y="24" width="208" height="208" rx="28" ry="28"
+        fill="none" stroke="#000000" stroke-width="14"/>
+
+  <!-- Top "lid line" -->
+  <line x1="24" y1="76" x2="232" y2="76" stroke="#000000" stroke-width="6"/>
+
+  <!-- Lid handle dot -->
+  <circle cx="128" cy="50" r="5" fill="#000000"/>
+
+  <!-- Stacked file bars inside (storage cue, no Shelby symbol) -->
+  <g stroke="#000000" stroke-width="14" stroke-linecap="round">
+    <line x1="64" y1="124" x2="192" y2="124"/>
+    <line x1="64" y1="156" x2="172" y2="156"/>
+    <line x1="64" y1="188" x2="148" y2="188"/>
+  </g>
+</svg>

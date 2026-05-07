@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-label="aptbox · decentralized file vault">
+  <title>aptbox · decentralized file vault</title>
+  <rect width="1200" height="630" fill="#ffffff"/>
+
+  <!-- Border accent -->
+  <rect x="0" y="0" width="1200" height="630" fill="none" stroke="#000000" stroke-width="0"/>
+  <line x1="0" y1="20" x2="1200" y2="20" stroke="#000000" stroke-width="2" opacity="0.1"/>
+  <line x1="0" y1="610" x2="1200" y2="610" stroke="#000000" stroke-width="2" opacity="0.1"/>
+
+  <!-- Icon (left, larger) -->
+  <g transform="translate(80 130)">
+    <rect x="0" y="0" width="320" height="320" rx="42" ry="42"
+          fill="none" stroke="#000000" stroke-width="20"/>
+    <line x1="0" y1="80" x2="320" y2="80" stroke="#000000" stroke-width="9"/>
+    <circle cx="160" cy="40" r="7" fill="#000000"/>
+    <g stroke="#000000" stroke-width="20" stroke-linecap="round">
+      <line x1="56" y1="156" x2="264" y2="156"/>
+      <line x1="56" y1="206" x2="234" y2="206"/>
+      <line x1="56" y1="256" x2="200" y2="256"/>
+    </g>
+  </g>
+
+  <!-- Wordmark + tagline -->
+  <g>
+    <text x="460" y="280" font-family="Inter, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif"
+          font-size="180" font-weight="900" fill="#000000" letter-spacing="-9">aptbox</text>
+    <text x="464" y="328" font-family="Inter, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif"
+          font-size="26" font-weight="600" fill="#000000" letter-spacing="6">DECENTRALIZED FILE VAULT</text>
+    <text x="464" y="392" font-family="Inter, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif"
+          font-size="22" font-weight="400" fill="#000000" opacity="0.7">Upload, share, and monetize files with</text>
+    <text x="464" y="424" font-family="Inter, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif"
+          font-size="22" font-weight="400" fill="#000000" opacity="0.7">cryptographic provenance.</text>
+  </g>
+
+  <!-- Powered by Shelby (bottom right) -->
+  <g transform="translate(880 540)">
+    <g transform="translate(0 0) scale(0.045)" fill="#000000">
+      <path d="M170.41,224.87c8.43-14.59,18.31-27.8,29.35-39.58l-51.86-89.81c-5.49-9.51-19.21-9.51-24.7,0L11.47,289.05c-15.29,26.47-15.29,59.1,0,85.57l111.75,193.56c5.49,9.51,19.21,9.51,24.7,0l51.86-89.81c-62.99-66.97-77.7-169.77-29.35-253.5h-.01Z"/>
+      <path d="M512.14,0h-223.5c-10.98,0-17.84,11.88-12.35,21.39l51.87,89.85c51.14-12.02,106.79-5.36,155.88,22.98,49.09,28.34,82.69,73.2,97.85,123.51h103.75c10.98,0,17.84-11.88,12.35-21.39l-111.75-193.54c-15.29-26.47-43.53-42.78-74.1-42.78Z"/>
+      <path d="M328.15,552.49l-51.86,89.8c-5.49,9.51,1.37,21.39,12.35,21.39h223.5c30.57,0,58.81-16.32,74.1-42.78l111.75-193.56c5.49-9.51-1.37-21.39-12.35-21.39h-103.7c-4.68,15.46-11.18,30.62-19.6,45.21-48.33,83.72-144.71,122.39-234.22,101.33h.01Z"/>
+      <path d="M321.03,123.6c-40.26,9.47-77.73,30.52-106.99,61.71l59.9,103.75c15.29,26.47,15.29,59.1,0,85.57l-59.9,103.75c13.99,14.87,30.35,28,48.95,38.72,18.6,10.74,38.14,18.35,58.02,23.03l59.9-103.75c15.29-26.47,43.54-42.78,74.1-42.78h119.8c12.38-40.95,11.88-83.92-.06-123.51h-119.74c-30.58,0-58.82-16.32-74.1-42.78l-59.87-103.71Z"/>
+    </g>
+    <text x="50" y="22" font-family="Inter, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif"
+          font-size="20" font-weight="500" fill="#000000" letter-spacing="2.5">POWERED BY SHELBY</text>
+  </g>
+
+  <!-- "+ Aptos" tag (bottom left) -->
+  <text x="80" y="566" font-family="Inter, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif"
+        font-size="20" font-weight="500" fill="#000000" letter-spacing="2.5" opacity="0.7">BUILT ON APTOS</text>
+</svg>
