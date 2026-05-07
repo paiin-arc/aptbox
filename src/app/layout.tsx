@@ -14,6 +14,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL ?? "https://aptbox.vercel.app"
+  ),
   title: "aptbox · decentralized file vault on Shelby + Aptos",
   description:
     "Upload, share, and monetize files with cryptographic provenance. Built on Shelby and Aptos.",

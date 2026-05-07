@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ConnectWalletButton } from "./ConnectWalletButton";
 import { NetworkSwitcher } from "./NetworkSwitcher";
 import { BalancePills } from "./BalancePills";
+import { AptboxIcon } from "./AptboxIcon";
 
 type TopbarProps = {
   search: string;
@@ -32,7 +33,7 @@ export function Topbar({ search, onSearchChange, onMenuClick }: TopbarProps) {
         className="flex items-center gap-1.5 md:hidden"
         aria-label="aptbox home"
       >
-        <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-indigo-500 via-violet-500 to-purple-600" />
+        <AptboxIcon className="h-7 w-7 text-zinc-900 dark:text-zinc-100" />
         <span className="text-base font-bold tracking-tight">aptbox</span>
       </Link>
 

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { CATEGORIES, type Category } from "@/lib/files";
 import { ShelbyLogo } from "./ShelbyLogo";
 import { RecentUploads } from "./RecentUploads";
+import { AptboxIcon } from "./AptboxIcon";
 
 type SidebarProps = {
   active: Category;
@@ -64,7 +65,7 @@ export function Sidebar({
             onClick={onDrawerClose}
             className="flex items-center gap-2"
           >
-            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-indigo-500 via-violet-500 to-purple-600 shadow-sm" />
+            <AptboxIcon className="h-8 w-8 text-zinc-900 dark:text-zinc-100" />
             <span className="text-lg font-bold tracking-tight">aptbox</span>
           </Link>
           <button

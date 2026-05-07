@@ -7,6 +7,7 @@ import { Dashboard } from "@/components/Dashboard";
 import { isShelbyConfigured } from "@/lib/shelby";
 import { useNetwork } from "@/lib/networkContext";
 import { ShelbyLogo } from "@/components/ShelbyLogo";
+import { AptboxIcon } from "@/components/AptboxIcon";
 
 export default function Home() {
   const { connected } = useWallet();
@@ -39,7 +40,7 @@ export default function Home() {
 
       <header className="relative z-10 flex w-full items-center justify-between border-b border-zinc-200/70 bg-white/60 px-4 py-3 backdrop-blur-md dark:border-zinc-800/70 dark:bg-zinc-950/60 sm:px-6 sm:py-4">
         <Link href="/" className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-indigo-500 via-violet-500 to-purple-600 shadow-sm" />
+          <AptboxIcon className="h-8 w-8 text-zinc-900 dark:text-zinc-100" />
           <span className="text-lg font-semibold tracking-tight">aptbox</span>
         </Link>
         <ConnectWalletButton />

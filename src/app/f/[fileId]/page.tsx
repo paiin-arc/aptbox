@@ -7,6 +7,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { useShelbyClient } from "@shelby-protocol/react";
 import { ConnectWalletButton } from "@/components/ConnectWalletButton";
+import { AptboxIcon } from "@/components/AptboxIcon";
 import {
   accessLabel,
   aptFromOctas,
@@ -493,7 +494,7 @@ function Shell({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-screen flex-col bg-zinc-50 dark:bg-black">
       <header className="sticky top-0 z-10 flex w-full items-center justify-between border-b border-zinc-200 bg-white/80 px-4 py-3 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/80 sm:px-6 sm:py-4">
         <Link href="/" className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-indigo-500 via-violet-500 to-purple-600 shadow-sm" />
+          <AptboxIcon className="h-8 w-8 text-zinc-900 dark:text-zinc-100" />
           <span className="text-lg font-semibold tracking-tight">aptbox</span>
         </Link>
         <ConnectWalletButton />
