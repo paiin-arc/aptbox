@@ -8,6 +8,8 @@ import { Topbar } from "./Topbar";
 import { FileGrid } from "./FileGrid";
 import { CATEGORIES, categoryFor, fetchFilesByUploader, type Category } from "@/lib/files";
 import { useNetwork } from "@/lib/networkContext";
+import { fetchAccountBlobLifecycles } from "@/lib/blobLifecycle";
+import { getShelbyClient } from "@/lib/shelby";
 
 export function Dashboard() {
   const { account } = useWallet();
@@ -16,6 +18,7 @@ export function Dashboard() {
 
   const [activeCat, setActiveCat] = useState<Category>("all");
   const [search, setSearch] = useState("");
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const { data: files = [], isLoading } = useQuery({
     queryKey: ["myFiles", network, addr],
@@ -24,8 +27,36 @@ export function Dashboard() {
     staleTime: 15_000,
   });
 
+  // Parallel: pull Shelby indexer lifecycle data so we can render
+  // expiration / written badges on each card.
+  const { data: lifecycles } = useQuery({
+    queryKey: ["lifecycles", network, addr],
+    queryFn: async () => {
+      const client = getShelbyClient(network);
+      if (!client) return null;
+      return fetchAccountBlobLifecycles(client, addr);
+    },
+    enabled: Boolean(addr),
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  });
+
+  const enriched = useMemo(() => {
+    if (!lifecycles) return files;
+    return files.map((f) => {
+      const lc = lifecycles.get(f.shelbyCid);
+      if (!lc) return f;
+      return {
+        ...f,
+        expirationMicros: lc.expirationMicros,
+        isWritten: lc.isWritten,
+        isDeleted: lc.isDeleted,
+      };
+    });
+  }, [files, lifecycles]);
+
   const filtered = useMemo(() => {
-    let list = files;
+    let list = enriched;
     if (activeCat !== "all") {
       list = list.filter((f) => categoryFor(f.mimeType) === activeCat);
     }
@@ -34,9 +65,9 @@ export function Dashboard() {
       list = list.filter((f) => f.shelbyCid.toLowerCase().includes(q));
     }
     return list;
-  }, [files, activeCat, search]);
+  }, [enriched, activeCat, search]);
 
-  const totalBytes = files.reduce((sum, f) => sum + f.sizeBytes, 0);
+  const totalBytes = enriched.reduce((sum, f) => sum + f.sizeBytes, 0);
   const activeLabel =
     CATEGORIES.find((c) => c.id === activeCat)?.label ?? "My files";
 
@@ -44,16 +75,25 @@ export function Dashboard() {
     <div className="flex h-screen overflow-hidden bg-zinc-50 dark:bg-black">
       <Sidebar
         active={activeCat}
-        onChange={setActiveCat}
-        totalFiles={files.length}
+        onChange={(c) => {
+          setActiveCat(c);
+          setDrawerOpen(false);
+        }}
+        totalFiles={enriched.length}
         totalBytes={totalBytes}
+        drawerOpen={drawerOpen}
+        onDrawerClose={() => setDrawerOpen(false)}
       />
       <div className="flex flex-1 flex-col overflow-hidden">
-        <Topbar search={search} onSearchChange={setSearch} />
-        <main className="flex-1 overflow-y-auto px-6 py-6">
+        <Topbar
+          search={search}
+          onSearchChange={setSearch}
+          onMenuClick={() => setDrawerOpen(true)}
+        />
+        <main className="flex-1 overflow-y-auto px-4 py-5 sm:px-6 sm:py-6">
           <div className="mb-4 flex items-baseline gap-3">
-            <h1 className="text-xl font-semibold">{activeLabel}</h1>
-            <span className="text-sm text-zinc-500">
+            <h1 className="text-lg font-semibold sm:text-xl">{activeLabel}</h1>
+            <span className="text-xs text-zinc-500 sm:text-sm">
               {filtered.length} item{filtered.length === 1 ? "" : "s"}
             </span>
           </div>

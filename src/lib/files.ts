@@ -47,6 +47,11 @@ export type FileMeta = {
   whitelist: string[];
   flagCount: number;
   createdAt: number;
+  /** Populated by Dashboard / detail page from a parallel Shelby indexer
+   *  query. Optional so contexts without lifecycle data still typecheck. */
+  expirationMicros?: number;
+  isWritten?: boolean;
+  isDeleted?: boolean;
 };
 
 function hexFromU8Array(arr: number[] | string): string {
@@ -54,6 +59,16 @@ function hexFromU8Array(arr: number[] | string): string {
     return arr.startsWith("0x") ? arr.slice(2) : arr;
   }
   return arr.map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/**
+ * `get_file(id)` aborts with E_FILE_NOT_FOUND for IDs that were deleted (or
+ * never existed). That's expected behavior when iterating 0..next_id, since
+ * deletions create gaps. This predicate lets callers swallow it silently.
+ */
+function isFileNotFoundAbort(e: unknown): boolean {
+  const msg = (e as { message?: string })?.message ?? String(e);
+  return /E_FILE_NOT_FOUND/.test(msg);
 }
 
 export async function fetchFileMeta(
@@ -86,7 +101,9 @@ export async function fetchFileMeta(
       createdAt: Number(r.created_at),
     };
   } catch (e) {
-    console.warn(`[fetchFileMeta] ${network}/${fileId} failed`, e);
+    if (!isFileNotFoundAbort(e)) {
+      console.warn(`[fetchFileMeta] ${network}/${fileId} failed`, e);
+    }
     return null;
   }
 }

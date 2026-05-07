@@ -57,15 +57,15 @@ export default function ExplorePage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-zinc-50 dark:bg-black">
-      <header className="flex w-full items-center justify-between border-b border-zinc-200 px-6 py-4 dark:border-zinc-800">
+      <header className="sticky top-0 z-10 flex w-full items-center justify-between border-b border-zinc-200 bg-white/80 px-4 py-3 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/80 sm:px-6 sm:py-4">
         <Link href="/" className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600" />
+          <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-indigo-500 via-violet-500 to-purple-600 shadow-sm" />
           <span className="text-lg font-semibold tracking-tight">aptbox</span>
         </Link>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-3">
           <Link
             href="/"
-            className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-sm hover:bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:bg-zinc-800"
+            className="rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-medium hover:bg-zinc-100 sm:px-3 sm:text-sm dark:border-zinc-800 dark:bg-zinc-900 dark:hover:bg-zinc-800"
           >
             My vault
           </Link>
@@ -73,44 +73,47 @@ export default function ExplorePage() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-8">
-        <div className="mb-6 flex items-baseline justify-between gap-4">
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
+        <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Explore</h1>
-            <p className="mt-1 text-sm text-zinc-500">
-              Every file uploaded to aptbox. Public files download for free, paid
-              files unlock on purchase, whitelisted files require an allow-listed
-              wallet.
+            <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Explore</h1>
+            <p className="mt-1 text-xs text-zinc-500 sm:text-sm">
+              Every file uploaded to aptbox. Public files download for free,
+              paid files unlock on purchase.
             </p>
           </div>
           <button
             onClick={() => refetch()}
             disabled={isFetching}
-            className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-sm hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-800 dark:bg-zinc-900"
+            className="self-start rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium hover:bg-zinc-100 active:scale-95 disabled:opacity-50 sm:self-auto sm:text-sm dark:border-zinc-800 dark:bg-zinc-900"
           >
-            {isFetching ? "Refreshing…" : "Refresh"}
+            {isFetching ? "Refreshing…" : "↻ Refresh"}
           </button>
         </div>
 
-        <div className="mb-4 flex flex-wrap items-center gap-3">
-          <div className="flex flex-wrap gap-1.5">
-            {CATEGORIES.map((c) => (
-              <button
-                key={c.id}
-                onClick={() => setActiveCat(c.id)}
-                className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
-                  activeCat === c.id
-                    ? "bg-indigo-600 text-white"
-                    : "bg-white text-zinc-700 hover:bg-zinc-100 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                }`}
-              >
-                <span className="mr-1">{c.icon}</span>
-                {c.label === "My files" ? "All types" : c.label}
-              </button>
-            ))}
+        <div className="mb-4 flex flex-col gap-3">
+          {/* Category pills - horizontal scroll on mobile to avoid wrap mess */}
+          <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+            <div className="flex gap-1.5 pb-1 sm:flex-wrap">
+              {CATEGORIES.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => setActiveCat(c.id)}
+                  className={`whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium transition active:scale-95 ${
+                    activeCat === c.id
+                      ? "bg-gradient-to-br from-indigo-600 to-violet-600 text-white shadow-sm"
+                      : "bg-white text-zinc-700 hover:bg-zinc-100 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                  }`}
+                >
+                  <span className="mr-1">{c.icon}</span>
+                  {c.label === "My files" ? "All types" : c.label}
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="ml-auto flex items-center gap-2">
-            <div className="flex gap-1 rounded-lg bg-white p-1 dark:bg-zinc-900">
+
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex gap-1 self-start rounded-lg bg-white p-1 ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-800">
               {ACCESS_FILTERS.map((f) => (
                 <button
                   key={f.id}
@@ -130,7 +133,7 @@ export default function ExplorePage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search id, cid, uploader"
-              className="w-56 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-sm placeholder:text-zinc-400 focus:border-indigo-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-900"
+              className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-sm placeholder:text-zinc-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 sm:w-64 dark:border-zinc-800 dark:bg-zinc-900"
             />
           </div>
         </div>
