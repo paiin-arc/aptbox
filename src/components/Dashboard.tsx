@@ -6,10 +6,12 @@ import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
 import { FileGrid } from "./FileGrid";
-import { CATEGORIES, categoryFor, fetchFilesByUploader, type Category } from "@/lib/files";
+import { CATEGORIES, categoryFor, fetchFilesByUploader, type Category, type FileMeta } from "@/lib/files";
 import { useNetwork } from "@/lib/networkContext";
 import { fetchAccountBlobLifecycles } from "@/lib/blobLifecycle";
 import { getShelbyClient } from "@/lib/shelby";
+import { AI_FEATURES_ENABLED } from "@/lib/aiFlags";
+import { fetchAiBatch } from "@/lib/aiClient";
 
 export function Dashboard() {
   const { account } = useWallet();
@@ -41,19 +43,40 @@ export function Dashboard() {
     refetchInterval: 60_000,
   });
 
+  // Parallel: AI batch status (only when feature flag is on)
+  const fileIdsKey = files.map((f) => f.fileId).join(",");
+  const { data: aiMap } = useQuery({
+    queryKey: ["aiBatch", network, fileIdsKey],
+    queryFn: () =>
+      fetchAiBatch(
+        network,
+        files.map((f) => f.fileId)
+      ),
+    enabled: AI_FEATURES_ENABLED && files.length > 0,
+    refetchInterval: 30_000,
+    staleTime: 15_000,
+  });
+
   const enriched = useMemo(() => {
-    if (!lifecycles) return files;
     return files.map((f) => {
-      const lc = lifecycles.get(f.shelbyCid);
-      if (!lc) return f;
+      const lc = lifecycles?.get(f.shelbyCid);
+      const ai = aiMap?.[f.fileId];
+      if (!lc && !ai) return f;
       return {
         ...f,
-        expirationMicros: lc.expirationMicros,
-        isWritten: lc.isWritten,
-        isDeleted: lc.isDeleted,
+        ...(lc && {
+          expirationMicros: lc.expirationMicros,
+          isWritten: lc.isWritten,
+          isDeleted: lc.isDeleted,
+        }),
+        ...(ai && {
+          aiStatus: ai.status as FileMeta["aiStatus"],
+          aiTags: ai.tags ?? undefined,
+          aiSummary: ai.summary,
+        }),
       };
     });
-  }, [files, lifecycles]);
+  }, [files, lifecycles, aiMap]);
 
   const filtered = useMemo(() => {
     let list = enriched;

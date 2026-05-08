@@ -111,6 +111,18 @@ export function FileCard({ file }: { file: FileMeta }) {
         <div className="text-xs text-zinc-500">
           {formatBytes(file.sizeBytes)} · {file.mimeType || "unknown"}
         </div>
+        {file.aiTags && file.aiTags.length > 0 && (
+          <div className="mt-1 flex flex-wrap gap-1">
+            {file.aiTags.slice(0, 3).map((t) => (
+              <span
+                key={t}
+                className="inline-flex rounded bg-violet-50 px-1 py-0.5 text-[9px] font-medium text-violet-700 dark:bg-violet-950/40 dark:text-violet-300"
+              >
+                {t}
+              </span>
+            ))}
+          </div>
+        )}
         <div className="mt-1 flex items-center gap-1.5">
           <span
             className={`inline-flex rounded-md px-1.5 py-0.5 text-[10px] font-medium ${
@@ -127,6 +139,23 @@ export function FileCard({ file }: { file: FileMeta }) {
           {file.flagCount > 0 && (
             <span className="inline-flex rounded-md bg-red-50 px-1.5 py-0.5 text-[10px] font-medium text-red-700 dark:bg-red-950/40 dark:text-red-300">
               🚩 {file.flagCount}
+            </span>
+          )}
+          {file.aiStatus === "ready" && (
+            <span
+              className="inline-flex rounded-md bg-violet-50 px-1.5 py-0.5 text-[10px] font-medium text-violet-700 dark:bg-violet-950/40 dark:text-violet-300"
+              title={file.aiSummary ?? "AI ready — chat & search supported"}
+            >
+              🧠 AI
+            </span>
+          )}
+          {(file.aiStatus === "pending" ||
+            file.aiStatus === "processing") && (
+            <span
+              className="inline-flex rounded-md bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
+              title="AI is processing this file"
+            >
+              ⌛ AI
             </span>
           )}
           {typeof file.expirationMicros === "number" && (() => {

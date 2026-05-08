@@ -52,6 +52,16 @@ export type FileMeta = {
   expirationMicros?: number;
   isWritten?: boolean;
   isDeleted?: boolean;
+  /** AI overlay status — populated when AI features are enabled. */
+  aiStatus?:
+    | "pending"
+    | "processing"
+    | "ready"
+    | "failed"
+    | "unsupported"
+    | "skipped";
+  aiTags?: string[];
+  aiSummary?: string | null;
 };
 
 function hexFromU8Array(arr: number[] | string): string {

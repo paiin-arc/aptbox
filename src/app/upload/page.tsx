@@ -19,6 +19,8 @@ import {
   extractFileIdFromTx,
 } from "@/lib/registry";
 import { trackUpload, trackUploadRecord } from "@/lib/storage";
+import { triggerAiProcess } from "@/lib/aiClient";
+import { AI_FEATURES_ENABLED } from "@/lib/aiFlags";
 import { isUserRejection, waitForTx } from "@/lib/tx";
 import { useNetwork } from "@/lib/networkContext";
 import {
