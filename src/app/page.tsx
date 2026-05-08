@@ -19,55 +19,125 @@ export default function Home() {
   }
 
   return (
-    <div className="relative flex min-h-screen flex-col overflow-hidden bg-zinc-50 dark:bg-black">
-      {/* Decorative gradient blobs */}
+    <div
+      className="relative flex min-h-screen flex-col overflow-hidden text-zinc-100"
+      style={{ backgroundColor: "#0a0a0a" }}
+    >
+      {/* Dotted texture overlay (Shelby brand pattern) */}
       <div
         aria-hidden
-        className="pointer-events-none absolute -top-40 -left-32 h-96 w-96 rounded-full bg-gradient-to-br from-indigo-300/40 via-violet-300/30 to-purple-300/20 blur-3xl dark:from-indigo-700/20 dark:via-violet-700/10 dark:to-purple-700/10"
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -bottom-40 -right-32 h-96 w-96 rounded-full bg-gradient-to-tl from-pink-300/30 via-rose-300/20 to-amber-300/20 blur-3xl dark:from-pink-700/15 dark:via-rose-700/10 dark:to-amber-700/10"
+        className="pointer-events-none absolute inset-0 opacity-50"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle at 1.5px 1.5px, rgba(255, 110, 20, 0.18) 1px, transparent 0)",
+          backgroundSize: "22px 22px",
+        }}
       />
 
+      {/* Soft orange glow (blurred backdrop) */}
+      <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+        <svg
+          viewBox="0 0 700 664"
+          className="absolute -right-[20%] top-[-15%] h-[140vmin] w-[140vmin] opacity-60 blur-3xl"
+          preserveAspectRatio="xMidYMid meet"
+        >
+          <defs>
+            <linearGradient id="shelby-glow" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#ffae42" />
+              <stop offset="40%" stopColor="#ff6a14" />
+              <stop offset="80%" stopColor="#3b1500" />
+              <stop offset="100%" stopColor="#0a0a0a" />
+            </linearGradient>
+          </defs>
+          <g fill="url(#shelby-glow)">
+            <path d="M170.41,224.87c8.43-14.59,18.31-27.8,29.35-39.58l-51.86-89.81c-5.49-9.51-19.21-9.51-24.7,0L11.47,289.05c-15.29,26.47-15.29,59.1,0,85.57l111.75,193.56c5.49,9.51,19.21,9.51,24.7,0l51.86-89.81c-62.99-66.97-77.7-169.77-29.35-253.5h-.01Z" />
+            <path d="M512.14,0h-223.5c-10.98,0-17.84,11.88-12.35,21.39l51.87,89.85c51.14-12.02,106.79-5.36,155.88,22.98,49.09,28.34,82.69,73.2,97.85,123.51h103.75c10.98,0,17.84-11.88,12.35-21.39l-111.75-193.54c-15.29-26.47-43.53-42.78-74.1-42.78Z" />
+            <path d="M328.15,552.49l-51.86,89.8c-5.49,9.51,1.37,21.39,12.35,21.39h223.5c30.57,0,58.81-16.32,74.1-42.78l111.75-193.56c5.49-9.51-1.37-21.39-12.35-21.39h-103.7c-4.68,15.46-11.18,30.62-19.6,45.21-48.33,83.72-144.71,122.39-234.22,101.33h.01Z" />
+            <path d="M321.03,123.6c-40.26,9.47-77.73,30.52-106.99,61.71l59.9,103.75c15.29,26.47,15.29,59.1,0,85.57l-59.9,103.75c13.99,14.87,30.35,28,48.95,38.72,18.6,10.74,38.14,18.35,58.02,23.03l59.9-103.75c15.29-26.47,43.54-42.78,74.1-42.78h119.8c12.38-40.95,11.88-83.92-.06-123.51h-119.74c-30.58,0-58.82-16.32-74.1-42.78l-59.87-103.71Z" />
+          </g>
+        </svg>
+
+        {/* Sharper Shelby curves on top with edge highlight */}
+        <svg
+          viewBox="0 0 700 664"
+          className="absolute -right-[18%] top-[-12%] h-[130vmin] w-[130vmin] opacity-90"
+          preserveAspectRatio="xMidYMid meet"
+        >
+          <defs>
+            <linearGradient id="shelby-sharp" x1="10%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#ffd479" />
+              <stop offset="25%" stopColor="#ff7a14" />
+              <stop offset="65%" stopColor="#a83400" />
+              <stop offset="100%" stopColor="#1a0500" />
+            </linearGradient>
+          </defs>
+          <g fill="url(#shelby-sharp)">
+            <path d="M170.41,224.87c8.43-14.59,18.31-27.8,29.35-39.58l-51.86-89.81c-5.49-9.51-19.21-9.51-24.7,0L11.47,289.05c-15.29,26.47-15.29,59.1,0,85.57l111.75,193.56c5.49,9.51,19.21,9.51,24.7,0l51.86-89.81c-62.99-66.97-77.7-169.77-29.35-253.5h-.01Z" />
+            <path d="M512.14,0h-223.5c-10.98,0-17.84,11.88-12.35,21.39l51.87,89.85c51.14-12.02,106.79-5.36,155.88,22.98,49.09,28.34,82.69,73.2,97.85,123.51h103.75c10.98,0,17.84-11.88,12.35-21.39l-111.75-193.54c-15.29-26.47-43.53-42.78-74.1-42.78Z" />
+            <path d="M328.15,552.49l-51.86,89.8c-5.49,9.51,1.37,21.39,12.35,21.39h223.5c30.57,0,58.81-16.32,74.1-42.78l111.75-193.56c5.49-9.51-1.37-21.39-12.35-21.39h-103.7c-4.68,15.46-11.18,30.62-19.6,45.21-48.33,83.72-144.71,122.39-234.22,101.33h.01Z" />
+            <path d="M321.03,123.6c-40.26,9.47-77.73,30.52-106.99,61.71l59.9,103.75c15.29,26.47,15.29,59.1,0,85.57l-59.9,103.75c13.99,14.87,30.35,28,48.95,38.72,18.6,10.74,38.14,18.35,58.02,23.03l59.9-103.75c15.29-26.47,43.54-42.78,74.1-42.78h119.8c12.38-40.95,11.88-83.92-.06-123.51h-119.74c-30.58,0-58.82-16.32-74.1-42.78l-59.87-103.71Z" />
+          </g>
+        </svg>
+
+        {/* Bottom-left small accent blob */}
+        <div className="absolute -bottom-32 -left-32 h-96 w-96 rounded-full bg-orange-600/10 blur-3xl" />
+
+        {/* Vignette to focus content */}
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(ellipse at center, transparent 30%, rgba(10, 10, 10, 0.6) 90%)",
+          }}
+        />
+      </div>
+
       {!shelbyReady && (
-        <div className="relative z-10 bg-amber-100 px-4 py-2 text-center text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
-          Heads up: <code>NEXT_PUBLIC_SHELBY_API_KEY</code> isn&apos;t set. Copy{" "}
-          <code>.env.local.example</code> → <code>.env.local</code> and paste your
-          Geomi key, then restart <code>npm run dev</code>.
+        <div className="relative z-10 bg-amber-500/20 px-4 py-2 text-center text-xs text-amber-300 ring-1 ring-amber-500/30">
+          Heads up: <code className="font-mono">NEXT_PUBLIC_SHELBY_API_KEY</code> isn&apos;t set. Copy{" "}
+          <code className="font-mono">.env.local.example</code> → <code className="font-mono">.env.local</code> and paste your
+          Geomi key, then restart <code className="font-mono">npm run dev</code>.
         </div>
       )}
 
-      <header className="relative z-10 flex w-full items-center justify-between border-b border-zinc-200/70 bg-white/60 px-4 py-3 backdrop-blur-md dark:border-zinc-800/70 dark:bg-zinc-950/60 sm:px-6 sm:py-4">
+      <header className="relative z-10 flex w-full items-center justify-between border-b border-white/5 bg-black/30 px-4 py-3 backdrop-blur-md sm:px-6 sm:py-4">
         <Link href="/" className="flex items-center gap-2">
-          <AptboxIcon className="h-8 w-8 text-zinc-900 dark:text-zinc-100" />
+          <AptboxIcon className="h-8 w-8 text-zinc-100" />
           <span className="text-lg font-semibold tracking-tight">aptbox</span>
         </Link>
         <ConnectWalletButton />
       </header>
 
-      <main className="relative z-10 mx-auto flex w-full max-w-5xl flex-1 flex-col items-center justify-center gap-8 px-4 py-12 text-center sm:gap-10 sm:px-6 sm:py-16">
-        <div className="space-y-4 sm:space-y-5">
+      <main className="relative z-10 mx-auto flex w-full max-w-5xl flex-1 flex-col items-center justify-center gap-8 px-4 py-12 text-center sm:gap-10 sm:px-6 sm:py-20">
+        <div className="space-y-5 sm:space-y-6">
           <a
             href="https://shelby.xyz"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-full border border-indigo-200 bg-white/70 px-3 py-1.5 text-xs font-medium text-indigo-700 backdrop-blur transition hover:border-indigo-300 hover:bg-white dark:border-indigo-900 dark:bg-indigo-950/40 dark:text-indigo-300 dark:hover:border-indigo-800"
+            className="inline-flex items-center gap-1.5 rounded-full border border-orange-500/40 bg-orange-500/10 px-3 py-1.5 text-xs font-medium text-orange-300 backdrop-blur transition hover:border-orange-500/70 hover:bg-orange-500/20"
           >
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-orange-400 shadow-[0_0_8px_rgba(255,140,40,0.8)]" />
             <span>Powered by</span>
             <ShelbyLogo className="h-3.5 w-3.5" />
             <span className="font-bold">Shelby</span>
-            <span className="text-indigo-400">+</span>
+            <span className="text-orange-400/60">+</span>
             <span className="font-bold">Aptos</span>
           </a>
-          <h1 className="text-4xl font-bold leading-tight tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-6xl md:text-7xl">
+
+          <h1 className="text-5xl font-bold leading-[0.95] tracking-tight text-white sm:text-7xl md:text-8xl">
             Your files,
             <br />
-            <span className="bg-gradient-to-r from-indigo-500 via-violet-500 to-purple-600 bg-clip-text text-transparent">
+            <span
+              className="bg-clip-text text-transparent"
+              style={{
+                backgroundImage:
+                  "linear-gradient(135deg, #ffd479 0%, #ff7a14 35%, #ff5500 70%, #c33000 100%)",
+              }}
+            >
               decentralized.
             </span>
           </h1>
-          <p className="mx-auto max-w-2xl text-base text-zinc-600 dark:text-zinc-400 sm:text-lg">
+          <p className="mx-auto max-w-2xl text-base text-zinc-300/90 sm:text-lg">
             Upload, share, and monetize any file with cryptographic provenance.
             No takedowns, no middlemen — just you and the chain.
           </p>
@@ -77,54 +147,72 @@ export default function Home() {
           <ConnectWalletButton />
           <Link
             href="/explore"
-            className="rounded-full border border-zinc-300 bg-white/70 px-5 py-2.5 text-center text-sm font-medium text-zinc-800 backdrop-blur transition hover:bg-white hover:shadow-sm active:scale-[0.98] dark:border-zinc-700 dark:bg-zinc-900/70 dark:text-zinc-200 dark:hover:bg-zinc-900"
+            className="rounded-full border border-white/15 bg-white/5 px-5 py-2.5 text-center text-sm font-medium text-zinc-200 backdrop-blur transition hover:border-orange-500/50 hover:bg-orange-500/10 hover:text-orange-200 active:scale-[0.98]"
           >
             Browse public files →
           </Link>
         </div>
 
+        {/* Feature cards */}
         <div className="grid w-full max-w-3xl grid-cols-1 gap-3 text-left sm:grid-cols-3 sm:gap-4">
           {[
             {
               title: "Tamper-proof",
               desc: "Every file's hash is recorded on Aptos.",
               emoji: "🔐",
-              cls: "from-indigo-50 to-violet-50 ring-indigo-100 dark:from-indigo-950/30 dark:to-violet-950/30 dark:ring-indigo-900/50",
             },
             {
               title: "Free or paid",
               desc: "Public links, paid unlocks, or whitelist gating.",
               emoji: "💰",
-              cls: "from-emerald-50 to-teal-50 ring-emerald-100 dark:from-emerald-950/30 dark:to-teal-950/30 dark:ring-emerald-900/50",
             },
             {
               title: "No takedowns",
               desc: "Decentralized storage you actually own.",
               emoji: "🌐",
-              cls: "from-pink-50 to-rose-50 ring-pink-100 dark:from-pink-950/30 dark:to-rose-950/30 dark:ring-pink-900/50",
             },
-          ].map(({ title, desc, emoji, cls }) => (
+          ].map(({ title, desc, emoji }) => (
             <div
               key={title}
-              className={`rounded-2xl bg-gradient-to-br p-4 ring-1 transition hover:scale-[1.02] hover:shadow-md ${cls}`}
+              className="group rounded-2xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-sm transition hover:border-orange-500/40 hover:bg-orange-500/[0.06]"
             >
-              <div className="text-2xl">{emoji}</div>
-              <div className="mt-2 text-sm font-semibold">{title}</div>
-              <div className="mt-1 text-xs text-zinc-600 dark:text-zinc-400 sm:text-sm">
+              <div className="text-2xl drop-shadow-[0_0_8px_rgba(255,140,40,0.3)]">
+                {emoji}
+              </div>
+              <div className="mt-2 text-sm font-semibold text-white">
+                {title}
+              </div>
+              <div className="mt-1 text-xs text-zinc-400 sm:text-sm">
                 {desc}
               </div>
             </div>
           ))}
         </div>
+
+        {/* Stats / proof row */}
+        <div className="mt-2 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-xs text-zinc-400">
+          <div className="flex items-center gap-1.5">
+            <span className="h-1 w-1 rounded-full bg-orange-400" />
+            <span>Sub-second reads</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="h-1 w-1 rounded-full bg-orange-400" />
+            <span>On-chain provenance</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="h-1 w-1 rounded-full bg-orange-400" />
+            <span>APT &amp; ShelbyUSD payments</span>
+          </div>
+        </div>
       </main>
 
-      <footer className="relative z-10 flex items-center justify-center gap-1.5 border-t border-zinc-200/70 bg-white/60 px-4 py-3 text-xs text-zinc-500 backdrop-blur dark:border-zinc-800/70 dark:bg-zinc-950/60 sm:py-4">
+      <footer className="relative z-10 flex items-center justify-center gap-1.5 border-t border-white/5 bg-black/30 px-4 py-3 text-xs text-zinc-500 backdrop-blur sm:py-4">
         <span>aptbox · TeraBox-style file vault built on</span>
         <a
           href="https://shelby.xyz"
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 font-semibold text-zinc-700 transition hover:text-indigo-600 dark:text-zinc-300 dark:hover:text-indigo-400"
+          className="inline-flex items-center gap-1 font-semibold text-zinc-300 transition hover:text-orange-400"
         >
           <ShelbyLogo className="h-3 w-3" />
           Shelby
