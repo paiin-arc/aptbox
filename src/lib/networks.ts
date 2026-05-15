@@ -49,6 +49,27 @@ export function aptosApiKeyFor(network: SupportedNetwork): string | undefined {
   return undefined;
 }
 
+/**
+ * Faucet URLs for funding an empty wallet. Sites users land on in a new tab —
+ * no in-app faucet call because testnet's Aptos faucet is Cloudflare-gated
+ * and won't work from the browser.
+ */
+export function faucetUrlsFor(network: SupportedNetwork): {
+  apt: string;
+  susd: string;
+} {
+  if (network === Network.TESTNET) {
+    return {
+      apt: "https://aptos.dev/en/network/faucet",
+      susd: "https://docs.shelby.xyz/apis/faucet/shelbyusd",
+    };
+  }
+  return {
+    apt: "https://docs.shelby.xyz/tools/cli",
+    susd: "https://docs.shelby.xyz/apis/faucet/shelbyusd",
+  };
+}
+
 export function registryAddressFor(network: SupportedNetwork): string {
   if (network === Network.TESTNET) {
     return (

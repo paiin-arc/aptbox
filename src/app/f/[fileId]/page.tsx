@@ -7,6 +7,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { useShelbyClient } from "@shelby-protocol/react";
 import { ConnectWalletButton } from "@/components/ConnectWalletButton";
+import { NetworkSwitcher } from "@/components/NetworkSwitcher";
+import { RegisterIpPanel } from "@/components/RegisterIpPanel";
 import { AptboxIcon } from "@/components/AptboxIcon";
 import {
   accessLabel,
@@ -412,6 +414,9 @@ export default function FilePage({ params }: Props) {
         </div>
       )}
 
+      {/* Programmable IP — owner only */}
+      {isOwner && <RegisterIpPanel file={file} />}
+
       {/* Owner controls */}
       {isOwner && (
         <div className="mt-8 border-t border-zinc-200 pt-6 dark:border-zinc-800">
@@ -497,7 +502,10 @@ function Shell({ children }: { children: React.ReactNode }) {
           <AptboxIcon className="h-8 w-8 text-zinc-900 dark:text-zinc-100" />
           <span className="text-lg font-semibold tracking-tight">aptbox</span>
         </Link>
-        <ConnectWalletButton />
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <NetworkSwitcher />
+          <ConnectWalletButton />
+        </div>
       </header>
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-6 sm:px-6 sm:py-10">{children}</main>
     </div>

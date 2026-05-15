@@ -18,6 +18,19 @@ export const CATEGORIES: { id: Category; label: string; icon: string }[] = [
   { id: "other", label: "Other", icon: "📦" },
 ];
 
+const CATEGORY_IDS = new Set<Category>([
+  "all",
+  "picture",
+  "video",
+  "audio",
+  "document",
+  "other",
+]);
+
+export function isSupportedCategory(v: string | null | undefined): v is Category {
+  return Boolean(v) && CATEGORY_IDS.has(v as Category);
+}
+
 export function categoryFor(mime: string): Category {
   if (!mime) return "other";
   if (mime.startsWith("image/")) return "picture";

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { ConnectWalletButton } from "@/components/ConnectWalletButton";
 import { AptboxIcon } from "@/components/AptboxIcon";
+import { NetworkSwitcher } from "@/components/NetworkSwitcher";
 import {
   sha256File,
   fileToUint8Array,
@@ -108,6 +109,7 @@ export default function UploadPage() {
   const [putPct, setPutPct] = useState<number | null>(null);
   const [putDetail, setPutDetail] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [errorIsOrphaned, setErrorIsOrphaned] = useState(false);
   const [fileId, setFileId] = useState<bigint | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
 
@@ -195,6 +197,7 @@ export default function UploadPage() {
     setCustomName(null);
     setEditingName(false);
     setError(null);
+    setErrorIsOrphaned(false);
     setFileId(null);
     setTxHash(null);
     setStage("idle");
@@ -245,6 +248,7 @@ export default function UploadPage() {
   async function handleUpload() {
     if (!file || !connected || !account) return;
     setError(null);
+    setErrorIsOrphaned(false);
     setFileId(null);
     setTxHash(null);
     setPutPct(null);
@@ -330,11 +334,20 @@ export default function UploadPage() {
       if (isUserRejection(e)) {
         setStage("cancelled");
         setError(null);
+        setErrorIsOrphaned(false);
         return;
       }
       console.error(e);
       setStage("error");
-      setError((e as Error).message ?? String(e));
+      const msg = (e as Error).message ?? String(e);
+      setError(msg);
+      // Detect the "register tx landed but bytes upload timed out" case so we
+      // can route the user to /cleanup to reclaim their sUSD + slot.
+      setErrorIsOrphaned(
+        /Shelby storage timed out/i.test(msg) ||
+          /status:\s*408/.test(msg) ||
+          /Request Timed Out/i.test(msg)
+      );
     }
   }
 
@@ -353,7 +366,10 @@ export default function UploadPage() {
           <AptboxIcon className="h-8 w-8 text-zinc-900 dark:text-zinc-100" />
           <span className="text-lg font-semibold tracking-tight">aptbox</span>
         </Link>
-        <ConnectWalletButton />
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <NetworkSwitcher />
+          <ConnectWalletButton />
+        </div>
       </header>
 
       <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-5 px-4 py-6 sm:gap-6 sm:px-6 sm:py-12">
@@ -631,8 +647,21 @@ export default function UploadPage() {
 
         {/* Status */}
         {error && (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-900 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
-            {error}
+          <div className="space-y-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-900 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
+            <div>{error}</div>
+            {errorIsOrphaned && (
+              <div className="flex flex-wrap items-center gap-2 border-t border-red-200 pt-2 dark:border-red-900">
+                <span className="text-xs text-red-800 dark:text-red-300">
+                  Recover the locked ShelbyUSD + free your account slot:
+                </span>
+                <Link
+                  href="/cleanup"
+                  className="rounded-md bg-red-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-red-700"
+                >
+                  Open Cleanup →
+                </Link>
+              </div>
+            )}
           </div>
         )}
 
