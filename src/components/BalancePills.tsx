@@ -10,6 +10,7 @@ import {
   getSusdBalance,
 } from "@/lib/balances";
 import { useNetwork } from "@/lib/networkContext";
+import { faucetUrlsFor } from "@/lib/networks";
 
 export function BalancePills() {
   const { account, connected } = useWallet();
@@ -40,33 +41,46 @@ export function BalancePills() {
   const susdStr = formatTokenAmount(susd, SUSD_DECIMALS, 2);
   const lowApt = apt < BigInt(1_000_000); // <0.01 APT
   const noSusd = susd === 0n;
+  const faucet = faucetUrlsFor(network);
 
   return (
     <div className="hidden items-center gap-1.5 sm:flex">
-      <span
-        className={`rounded-md px-2 py-1 text-[11px] font-medium ${
-          lowApt
-            ? "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300"
-            : "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
-        }`}
-        title={lowApt ? "Low APT — get gas from the Aptos faucet" : "APT balance"}
-      >
-        {aptStr} APT
-      </span>
-      <span
-        className={`rounded-md px-2 py-1 text-[11px] font-medium ${
-          noSusd
-            ? "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
-            : "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
-        }`}
-        title={
-          noSusd
-            ? "No ShelbyUSD — get some at https://docs.shelby.xyz/apis/faucet/shelbyusd"
-            : "ShelbyUSD balance"
-        }
-      >
-        {susdStr} sUSD
-      </span>
+      {lowApt ? (
+        <a
+          href={faucet.apt}
+          target="_blank"
+          rel="noopener noreferrer"
+          title="APT balance is low — open the faucet docs"
+          className="rounded-md bg-red-50 px-2 py-1 text-[11px] font-medium text-red-700 ring-1 ring-red-200 transition hover:bg-red-100 dark:bg-red-950/40 dark:text-red-300 dark:ring-red-900 dark:hover:bg-red-900/40"
+        >
+          {aptStr} APT · Get more ↗
+        </a>
+      ) : (
+        <span
+          className="rounded-md bg-zinc-100 px-2 py-1 text-[11px] font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+          title="APT balance"
+        >
+          {aptStr} APT
+        </span>
+      )}
+      {noSusd ? (
+        <a
+          href={faucet.susd}
+          target="_blank"
+          rel="noopener noreferrer"
+          title="No ShelbyUSD — open the faucet docs"
+          className="rounded-md bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-700 ring-1 ring-amber-200 transition hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-900 dark:hover:bg-amber-900/40"
+        >
+          {susdStr} sUSD · Get some ↗
+        </a>
+      ) : (
+        <span
+          className="rounded-md bg-zinc-100 px-2 py-1 text-[11px] font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+          title="ShelbyUSD balance"
+        >
+          {susdStr} sUSD
+        </span>
+      )}
     </div>
   );
 }

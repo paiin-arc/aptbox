@@ -10,6 +10,12 @@ import { explorerTxUrl, shelbyAccountBlobsUrl } from "@/lib/explorerUrls";
 import { fetchPendingBlobs } from "@/services/cleanupService";
 import { getShelbyClient } from "@/lib/shelby";
 import { ShelbyLogo } from "./ShelbyLogo";
+import {
+  CategoryIcon,
+  ChainLinkIcon,
+  UploadArrowIcon,
+  WarningTriangleIcon,
+} from "./CategoryIcon";
 
 const VISIBLE_LIMIT = 5;
 
@@ -37,15 +43,14 @@ function shortHash(hash: string): string {
   return `${clean.slice(0, 6)}…${clean.slice(-4)}`;
 }
 
-function fileEmoji(name: string): string {
+function fileCategory(name: string): import("@/lib/files").Category {
   const ext = name.split(".").pop()?.toLowerCase() ?? "";
-  if (["png", "jpg", "jpeg", "gif", "webp", "svg", "avif"].includes(ext)) return "🖼️";
-  if (["mp4", "mov", "webm", "mkv", "avi"].includes(ext)) return "🎬";
-  if (["mp3", "wav", "flac", "ogg", "m4a"].includes(ext)) return "🎵";
-  if (["pdf"].includes(ext)) return "📄";
-  if (["zip", "tar", "gz", "rar", "7z"].includes(ext)) return "📦";
-  if (["txt", "md", "json", "yaml", "yml"].includes(ext)) return "📝";
-  return "📁";
+  if (["png", "jpg", "jpeg", "gif", "webp", "svg", "avif"].includes(ext)) return "picture";
+  if (["mp4", "mov", "webm", "mkv", "avi"].includes(ext)) return "video";
+  if (["mp3", "wav", "flac", "ogg", "m4a"].includes(ext)) return "audio";
+  if (["pdf", "txt", "md", "json", "yaml", "yml"].includes(ext)) return "document";
+  if (["zip", "tar", "gz", "rar", "7z"].includes(ext)) return "other";
+  return "all";
 }
 
 type Props = {
@@ -121,7 +126,7 @@ export function RecentUploads({ onNavigate }: Props) {
           title="Pending blobs that registered on chain but storage providers never confirmed"
         >
           <span className="flex items-center gap-1.5">
-            <span>⚠</span>
+            <WarningTriangleIcon className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
             {pendingCount} pending blob{pendingCount === 1 ? "" : "s"}
           </span>
           <span className="text-[10px] opacity-70">Clean up →</span>
@@ -134,7 +139,7 @@ export function RecentUploads({ onNavigate }: Props) {
           onClick={onNavigate}
           className="flex items-center justify-center gap-2 rounded-lg border border-dashed border-zinc-300 bg-white/40 px-3 py-3 text-xs text-zinc-500 transition hover:border-indigo-400 hover:bg-indigo-50/40 active:scale-[0.98] dark:border-zinc-700 dark:bg-zinc-900/40 dark:hover:border-indigo-500 dark:hover:bg-indigo-950/20"
         >
-          <span>📤</span>
+          <UploadArrowIcon className="h-3.5 w-3.5" animate />
           Upload your first file
         </Link>
       ) : (
@@ -149,9 +154,10 @@ export function RecentUploads({ onNavigate }: Props) {
                 onClick={onNavigate}
                 className="flex items-center gap-2 px-2 pt-2"
               >
-                <span className="text-base shrink-0">
-                  {fileEmoji(r.fileName)}
-                </span>
+                <CategoryIcon
+                  id={fileCategory(r.fileName)}
+                  className="h-4 w-4 shrink-0 text-zinc-600 dark:text-zinc-400"
+                />
                 <div className="min-w-0 flex-1">
                   <div
                     className="truncate text-xs font-medium text-zinc-900 dark:text-zinc-100"
@@ -185,7 +191,7 @@ export function RecentUploads({ onNavigate }: Props) {
                     title={`aptbox register_file tx · opens Aptos explorer · ${r.aptboxTxHash}`}
                     className="inline-flex items-center gap-1 rounded bg-zinc-100 px-1.5 py-0.5 font-mono text-[9px] font-medium text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
                   >
-                    <span>⛓</span>
+                    <ChainLinkIcon className="h-2.5 w-2.5" />
                     {shortHash(r.aptboxTxHash)}
                   </a>
                 )}

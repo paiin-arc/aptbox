@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { ConnectWalletButton } from "@/components/ConnectWalletButton";
+import { NetworkSwitcher } from "@/components/NetworkSwitcher";
 import { ShelbyLogo } from "@/components/ShelbyLogo";
 import { AptboxIcon } from "@/components/AptboxIcon";
 import { useNetwork, useNetworkController } from "@/lib/networkContext";
@@ -18,8 +19,17 @@ import {
 import { isUserRejection, waitForTx } from "@/lib/tx";
 import { formatBytes } from "@/lib/crypto";
 import { fileNameFromCid } from "@/lib/download";
+import { buildDeleteFilePayload, getRegistryAddress } from "@/lib/registry";
+import { fetchFilesByUploader } from "@/lib/files";
 
-type DeleteStage = "idle" | "signing" | "confirming" | "done" | "error";
+type DeleteStage =
+  | "idle"
+  | "signing"
+  | "confirming"
+  | "aptbox-signing"
+  | "aptbox-confirming"
+  | "done"
+  | "error";
 
 const BATCH_SIZE = 25;
 
@@ -54,8 +64,36 @@ export default function CleanupPage() {
     staleTime: 15_000,
   });
 
+  // Map each shelbyCid the user owns to its aptbox file_id (if any). When
+  // we delete pending Shelby blobs, we also want to delete the matching
+  // aptbox registry entries so they don't show as broken cards.
+  const { data: cidToFileId } = useQuery({
+    queryKey: ["aptboxCidMap", network, addr],
+    queryFn: async () => {
+      if (!addr) return new Map<string, string>();
+      const files = await fetchFilesByUploader(network, addr);
+      const map = new Map<string, string>();
+      for (const f of files) map.set(f.shelbyCid, f.fileId);
+      return map;
+    },
+    enabled: Boolean(addr),
+    staleTime: 15_000,
+  });
+
   // Track selection by shelbyCid (keys we pass to delete_multiple)
   const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  const orphanFileIds = useMemo(() => {
+    if (!cidToFileId || cidToFileId.size === 0) return [] as string[];
+    const out: string[] = [];
+    for (const cid of selected) {
+      const id = cidToFileId.get(cid);
+      if (id) out.push(id);
+    }
+    return out;
+  }, [selected, cidToFileId]);
+
+  const registryConfigured = Boolean(getRegistryAddress(network));
 
   // When the pending list changes, prune selections that no longer exist
   useEffect(() => {
@@ -99,22 +137,26 @@ export default function CleanupPage() {
   const [stage, setStage] = useState<DeleteStage>("idle");
   const [error, setError] = useState<string | null>(null);
   const [deletedCount, setDeletedCount] = useState(0);
+  const [orphanDeletedCount, setOrphanDeletedCount] = useState(0);
   const [txHash, setTxHash] = useState<string | null>(null);
 
   async function handleDelete() {
     if (!connected || selected.size === 0) return;
     setError(null);
     setDeletedCount(0);
+    setOrphanDeletedCount(0);
     setTxHash(null);
 
     const blobNames = Array.from(selected);
-    // Process in chunks to avoid hitting tx size limits on huge lists
+    // Snapshot the matching aptbox file_ids before we mutate selection state
+    const aptboxIdsToDelete = [...orphanFileIds];
     const batches: string[][] = [];
     for (let i = 0; i < blobNames.length; i += BATCH_SIZE) {
       batches.push(blobNames.slice(i, i + BATCH_SIZE));
     }
 
     try {
+      // 1) Shelby batches — one signature per BATCH_SIZE blobs
       let runningTotal = 0;
       let lastHash = "";
       for (const batch of batches) {
@@ -131,12 +173,42 @@ export default function CleanupPage() {
         runningTotal += batch.length;
         setDeletedCount(runningTotal);
       }
+
+      // 2) aptbox orphan cleanup — one signature per file (Move contract has
+      //    only single delete_file; redeploy with a batch entry later if this
+      //    becomes a pain). Skipped silently if registry isn't configured.
+      if (registryConfigured && aptboxIdsToDelete.length > 0) {
+        for (const fileId of aptboxIdsToDelete) {
+          setStage("aptbox-signing");
+          try {
+            const submitted = await signAndSubmitTransaction({
+              data: buildDeleteFilePayload(network, fileId),
+            });
+            const hash = (submitted as { hash: string }).hash;
+            lastHash = hash;
+            setTxHash(hash);
+            setStage("aptbox-confirming");
+            await waitForTx(hash, { network });
+            setOrphanDeletedCount((n) => n + 1);
+          } catch (e) {
+            if (isUserRejection(e)) {
+              // User bailed mid-orphan-cleanup. Stop, leave the rest for next run.
+              break;
+            }
+            // Per-file failure: surface it but keep going — partial cleanup
+            // is still useful, and an old entry already gone is harmless.
+            console.warn(`[cleanup] aptbox delete_file ${fileId} failed`, e);
+          }
+        }
+      }
+
       setTxHash(lastHash);
       setStage("done");
       setSelected(new Set());
       qc.invalidateQueries({ queryKey: ["pendingBlobs"] });
       qc.invalidateQueries({ queryKey: ["lifecycles"] });
       qc.invalidateQueries({ queryKey: ["myFiles"] });
+      qc.invalidateQueries({ queryKey: ["aptboxCidMap"] });
     } catch (e) {
       if (isUserRejection(e)) {
         setStage("idle");
@@ -149,7 +221,11 @@ export default function CleanupPage() {
     }
   }
 
-  const busy = stage === "signing" || stage === "confirming";
+  const busy =
+    stage === "signing" ||
+    stage === "confirming" ||
+    stage === "aptbox-signing" ||
+    stage === "aptbox-confirming";
 
   return (
     <div className="flex min-h-screen flex-col bg-zinc-50 dark:bg-black">
@@ -158,7 +234,10 @@ export default function CleanupPage() {
           <AptboxIcon className="h-8 w-8 text-zinc-900 dark:text-zinc-100" />
           <span className="text-lg font-semibold tracking-tight">aptbox</span>
         </Link>
-        <ConnectWalletButton />
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <NetworkSwitcher />
+          <ConnectWalletButton />
+        </div>
       </header>
 
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-6 sm:px-6 sm:py-10">
@@ -296,6 +375,13 @@ export default function CleanupPage() {
                         Deleting <strong>{selected.size}</strong> blob
                         {selected.size === 1 ? "" : "s"} ·{" "}
                         {formatBytes(totalReclaimable)} of registered storage
+                        {orphanFileIds.length > 0 && (
+                          <span className="ml-1 text-amber-700 dark:text-amber-300">
+                            (+{orphanFileIds.length} aptbox entr
+                            {orphanFileIds.length === 1 ? "y" : "ies"} —
+                            extra signatures)
+                          </span>
+                        )}
                       </>
                     ) : (
                       <>Select pending blobs to delete</>
@@ -309,6 +395,9 @@ export default function CleanupPage() {
                     {stage === "idle" && "Delete selected"}
                     {stage === "signing" && "Awaiting signature…"}
                     {stage === "confirming" && `Confirming… (${deletedCount}/${selected.size})`}
+                    {stage === "aptbox-signing" && "Sign aptbox cleanup…"}
+                    {stage === "aptbox-confirming" &&
+                      `Cleaning aptbox… (${orphanDeletedCount}/${orphanFileIds.length})`}
                     {stage === "done" && "Done ✓"}
                     {stage === "error" && "Try again"}
                   </button>
@@ -322,7 +411,13 @@ export default function CleanupPage() {
 
                 {stage === "done" && (
                   <div className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50 p-2 text-xs text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200">
-                    Deleted {deletedCount} blob{deletedCount === 1 ? "" : "s"}.
+                    Deleted {deletedCount} Shelby blob
+                    {deletedCount === 1 ? "" : "s"}
+                    {orphanDeletedCount > 0 &&
+                      ` + ${orphanDeletedCount} aptbox entr${
+                        orphanDeletedCount === 1 ? "y" : "ies"
+                      }`}
+                    .
                     {txHash && (
                       <span className="ml-1 break-all font-mono text-[10px] opacity-75">
                         last tx {txHash.slice(0, 10)}…

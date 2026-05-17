@@ -24,3 +24,192 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* ---------- AptBox brand tokens (Phase 1: owned-intelligence shift) ---------- */
+
+:root {
+  /* Primary purple — used for active state, focus, primary CTAs */
+  --ax-primary-50:  #f5f3ff;
+  --ax-primary-100: #ede9fe;
+  --ax-primary-200: #ddd6fe;
+  --ax-primary-300: #c4b5fd;
+  --ax-primary-400: #a78bfa;
+  --ax-primary-500: #8b5cf6;
+  --ax-primary-600: #7c3aed;
+  --ax-primary-700: #6d28d9;
+  --ax-primary-800: #5b21b6;
+  --ax-primary-900: #4c1d95;
+  /* Status accents for IP/monetization/verification badges */
+  --ax-accent-verified: #34d399; /* emerald */
+  --ax-accent-licensed: #a78bfa; /* purple */
+  --ax-accent-ai:       #22d3ee; /* cyan */
+  --ax-accent-royalty:  #fbbf24; /* gold */
+  --ax-accent-expiring: #fb923c; /* orange */
+}
+
+/* Premium glass card — used across new pages */
+.ax-card {
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 1rem;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.ax-card-hover { transition: border-color 200ms, background 200ms; }
+.ax-card-hover:hover {
+  border-color: rgba(167,139,250,0.35);
+  background: linear-gradient(180deg, rgba(139,92,246,0.05), rgba(139,92,246,0.02));
+}
+
+/* Subtle purple glow used for active sidebar items */
+.ax-glow-purple {
+  box-shadow: 0 0 0 1px rgba(167,139,250,0.25), 0 4px 18px -6px rgba(124,58,237,0.45);
+}
+
+/* Status badge baseline */
+.ax-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.45rem;
+  border-radius: 0.375rem;
+  font-size: 10px;
+  line-height: 1.35;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+/* ---------- Brand animations (landing feature icons) ---------- */
+
+@keyframes ax-glow-breathe {
+  0%, 100% {
+    filter: drop-shadow(0 0 6px rgba(255, 140, 40, 0.35))
+      drop-shadow(0 0 16px rgba(255, 140, 40, 0.18));
+  }
+  50% {
+    filter: drop-shadow(0 0 14px rgba(255, 170, 70, 0.65))
+      drop-shadow(0 0 28px rgba(255, 140, 40, 0.4));
+  }
+}
+
+@keyframes ax-rotate-slow {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes ax-orbit-tilt {
+  0%, 100% { transform: rotate(-8deg); }
+  50%      { transform: rotate(8deg); }
+}
+
+@keyframes ax-ring-pulse {
+  0%, 100% { transform: scale(1);   opacity: 0.55; }
+  50%      { transform: scale(1.18); opacity: 0;    }
+}
+
+@keyframes ax-stack-shimmer {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.55; }
+}
+
+@keyframes ax-check-draw {
+  from { stroke-dashoffset: 28; }
+  to   { stroke-dashoffset: 0;  }
+}
+
+.ax-anim-breathe   { animation: ax-glow-breathe 3.6s ease-in-out infinite; }
+.ax-anim-tilt      { animation: ax-orbit-tilt 6s ease-in-out infinite; }
+.ax-anim-spin-slow { animation: ax-rotate-slow 22s linear infinite; }
+.ax-anim-ring      { animation: ax-ring-pulse 2.6s ease-out infinite; }
+.ax-anim-check     {
+  stroke-dasharray: 28;
+  stroke-dashoffset: 28;
+  animation: ax-check-draw 1.2s ease-out 0.4s forwards;
+}
+.ax-anim-stack-1   { animation: ax-stack-shimmer 4s ease-in-out infinite; }
+.ax-anim-stack-2   { animation: ax-stack-shimmer 4s ease-in-out 0.6s infinite; }
+.ax-anim-stack-3   { animation: ax-stack-shimmer 4s ease-in-out 1.2s infinite; }
+
+@keyframes ax-drift-slow {
+  0%, 100% { transform: rotate(0deg) scale(1); }
+  50%      { transform: rotate(4deg)  scale(1.04); }
+}
+@keyframes ax-blob-breathe {
+  0%, 100% { transform: scale(1);   opacity: 0.5; }
+  50%      { transform: scale(1.18); opacity: 0.7; }
+}
+@keyframes ax-dot-pulse {
+  0%, 100% { transform: scale(1);   opacity: 0.7; }
+  50%      { transform: scale(1.6); opacity: 1;   }
+}
+
+.ax-anim-drift   { animation: ax-drift-slow 28s ease-in-out infinite; transform-origin: center; }
+.ax-anim-blob    { animation: ax-blob-breathe 6s ease-in-out infinite; transform-origin: center; }
+.ax-anim-dot-1   { animation: ax-dot-pulse 2.4s ease-in-out infinite; }
+.ax-anim-dot-2   { animation: ax-dot-pulse 2.4s ease-in-out 0.8s infinite; }
+.ax-anim-dot-3   { animation: ax-dot-pulse 2.4s ease-in-out 1.6s infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ax-anim-drift,
+  .ax-anim-blob,
+  .ax-anim-dot-1,
+  .ax-anim-dot-2,
+  .ax-anim-dot-3 {
+    animation: none !important;
+  }
+}
+
+/* ---------- Category icon animations (sidebar) ---------- */
+
+@keyframes ax-eq-bar-a {
+  0%, 100% { transform: scaleY(0.45); }
+  50%      { transform: scaleY(1);    }
+}
+@keyframes ax-eq-bar-b {
+  0%, 100% { transform: scaleY(0.85); }
+  50%      { transform: scaleY(0.35); }
+}
+@keyframes ax-eq-bar-c {
+  0%, 100% { transform: scaleY(0.6);  }
+  50%      { transform: scaleY(1);    }
+}
+@keyframes ax-warn-pulse {
+  0%, 100% { transform: scale(1);   opacity: 0.85; }
+  50%      { transform: scale(1.12); opacity: 1;   }
+}
+@keyframes ax-arrow-bob {
+  0%, 100% { transform: translateY(0);    }
+  50%      { transform: translateY(-2px); }
+}
+
+.ax-eq-a { transform-origin: 50% 100%; animation: ax-eq-bar-a 1s ease-in-out infinite; }
+.ax-eq-b { transform-origin: 50% 100%; animation: ax-eq-bar-b 1s ease-in-out infinite; }
+.ax-eq-c { transform-origin: 50% 100%; animation: ax-eq-bar-c 1s ease-in-out infinite; }
+.ax-anim-warn  { animation: ax-warn-pulse 2s ease-in-out infinite; transform-origin: center; }
+.ax-anim-bob   { animation: ax-arrow-bob 1.8s ease-in-out infinite; }
+.ax-anim-globe { animation: ax-rotate-slow 18s linear infinite; transform-origin: center; }
+
+/* Only animate on hover or when active — keeps the sidebar calm by default. */
+.group:hover .ax-eq-hover,
+.ax-active .ax-eq-hover { animation-play-state: running; }
+.ax-eq-hover { animation-play-state: paused; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ax-eq-a, .ax-eq-b, .ax-eq-c,
+  .ax-anim-warn, .ax-anim-bob, .ax-anim-globe {
+    animation: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ax-anim-breathe,
+  .ax-anim-tilt,
+  .ax-anim-spin-slow,
+  .ax-anim-ring,
+  .ax-anim-stack-1,
+  .ax-anim-stack-2,
+  .ax-anim-stack-3 {
+    animation: none !important;
+  }
+  .ax-anim-check { stroke-dashoffset: 0; animation: none !important; }
+}

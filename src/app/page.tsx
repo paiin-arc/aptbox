@@ -38,7 +38,7 @@ export default function Home() {
       <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
         <svg
           viewBox="0 0 700 664"
-          className="absolute -right-[20%] top-[-15%] h-[140vmin] w-[140vmin] opacity-60 blur-3xl"
+          className="ax-anim-drift absolute -right-[20%] top-[-15%] h-[140vmin] w-[140vmin] opacity-60 blur-3xl"
           preserveAspectRatio="xMidYMid meet"
         >
           <defs>
@@ -60,8 +60,9 @@ export default function Home() {
         {/* Sharper Shelby curves on top with edge highlight */}
         <svg
           viewBox="0 0 700 664"
-          className="absolute -right-[18%] top-[-12%] h-[130vmin] w-[130vmin] opacity-90"
+          className="ax-anim-drift absolute -right-[18%] top-[-12%] h-[130vmin] w-[130vmin] opacity-90"
           preserveAspectRatio="xMidYMid meet"
+          style={{ animationDuration: "36s", animationDirection: "reverse" }}
         >
           <defs>
             <linearGradient id="shelby-sharp" x1="10%" y1="0%" x2="100%" y2="100%">
@@ -80,7 +81,7 @@ export default function Home() {
         </svg>
 
         {/* Bottom-left small accent blob */}
-        <div className="absolute -bottom-32 -left-32 h-96 w-96 rounded-full bg-orange-600/10 blur-3xl" />
+        <div className="ax-anim-blob absolute -bottom-32 -left-32 h-96 w-96 rounded-full bg-orange-600/10 blur-3xl" />
 
         {/* Vignette to focus content */}
         <div
@@ -146,7 +147,7 @@ export default function Home() {
         <div className="flex w-full max-w-md flex-col items-stretch gap-3 sm:max-w-none sm:flex-row sm:items-center sm:justify-center">
           <ConnectWalletButton />
           <Link
-            href="/explore"
+            href="/marketplace"
             className="rounded-full border border-white/15 bg-white/5 px-5 py-2.5 text-center text-sm font-medium text-zinc-200 backdrop-blur transition hover:border-orange-500/50 hover:bg-orange-500/10 hover:text-orange-200 active:scale-[0.98]"
           >
             Browse public files →
@@ -159,27 +160,25 @@ export default function Home() {
             {
               title: "Tamper-proof",
               desc: "Every file's hash is recorded on Aptos.",
-              emoji: "🔐",
+              icon: <AptboxSealMark />,
             },
             {
               title: "Free or paid",
               desc: "Public links, paid unlocks, or whitelist gating.",
-              emoji: "💰",
+              icon: <CoinKeyMark />,
             },
             {
               title: "No takedowns",
               desc: "Decentralized storage you actually own.",
-              emoji: "🌐",
+              icon: <ShelbyOrbitMark />,
             },
-          ].map(({ title, desc, emoji }) => (
+          ].map(({ title, desc, icon }) => (
             <div
               key={title}
-              className="group rounded-2xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-sm transition hover:border-orange-500/40 hover:bg-orange-500/[0.06]"
+              className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-sm transition hover:border-orange-500/50 hover:bg-orange-500/[0.07]"
             >
-              <div className="text-2xl drop-shadow-[0_0_8px_rgba(255,140,40,0.3)]">
-                {emoji}
-              </div>
-              <div className="mt-2 text-sm font-semibold text-white">
+              <div className="ax-anim-breathe">{icon}</div>
+              <div className="mt-3 text-sm font-semibold text-white">
                 {title}
               </div>
               <div className="mt-1 text-xs text-zinc-400 sm:text-sm">
@@ -192,15 +191,15 @@ export default function Home() {
         {/* Stats / proof row */}
         <div className="mt-2 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-xs text-zinc-400">
           <div className="flex items-center gap-1.5">
-            <span className="h-1 w-1 rounded-full bg-orange-400" />
+            <span className="ax-anim-dot-1 h-1 w-1 rounded-full bg-orange-400 shadow-[0_0_6px_rgba(255,140,40,0.7)]" />
             <span>Sub-second reads</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="h-1 w-1 rounded-full bg-orange-400" />
+            <span className="ax-anim-dot-2 h-1 w-1 rounded-full bg-orange-400 shadow-[0_0_6px_rgba(255,140,40,0.7)]" />
             <span>On-chain provenance</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="h-1 w-1 rounded-full bg-orange-400" />
+            <span className="ax-anim-dot-3 h-1 w-1 rounded-full bg-orange-400 shadow-[0_0_6px_rgba(255,140,40,0.7)]" />
             <span>APT &amp; ShelbyUSD payments</span>
           </div>
         </div>
@@ -219,5 +218,141 @@ export default function Home() {
         </a>
       </footer>
     </div>
+  );
+}
+
+/* ---------- Brand-aligned animated feature marks ---------- */
+
+/**
+ * Shared 12×12 disc container with orange brand gradient + pulsing ring.
+ * Children render inside the disc as the foreground glyph.
+ */
+function BrandDisc({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="relative h-12 w-12">
+      <div
+        aria-hidden
+        className="ax-anim-ring absolute inset-0 rounded-2xl"
+        style={{
+          background:
+            "radial-gradient(circle at 50% 50%, rgba(255,140,40,0.55), rgba(255,140,40,0) 70%)",
+        }}
+      />
+      <div
+        className="absolute inset-0 flex items-center justify-center rounded-2xl ring-1 ring-orange-500/30"
+        style={{
+          backgroundImage:
+            "linear-gradient(135deg, rgba(255,140,40,0.18), rgba(195,48,0,0.18))",
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/** AptboxIcon-derived seal with animated checkmark drawn in on mount. */
+function AptboxSealMark() {
+  return (
+    <BrandDisc>
+      <svg
+        viewBox="0 0 256 256"
+        className="h-8 w-8"
+        aria-hidden
+      >
+        <defs>
+          <linearGradient id="ax-seal-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#ffd479" />
+            <stop offset="60%" stopColor="#ff7a14" />
+            <stop offset="100%" stopColor="#c33000" />
+          </linearGradient>
+        </defs>
+        {/* Outer rounded box, brand orange */}
+        <rect
+          x="24"
+          y="24"
+          width="208"
+          height="208"
+          rx="36"
+          ry="36"
+          fill="none"
+          stroke="url(#ax-seal-grad)"
+          strokeWidth="14"
+        />
+        {/* Animated check inside */}
+        <path
+          d="M78 132 L118 170 L186 96"
+          fill="none"
+          stroke="url(#ax-seal-grad)"
+          strokeWidth="18"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="ax-anim-check"
+        />
+      </svg>
+    </BrandDisc>
+  );
+}
+
+/** Coin with key-bit — gentle sway. */
+function CoinKeyMark() {
+  return (
+    <BrandDisc>
+      <div className="ax-anim-tilt origin-center">
+        <svg viewBox="0 0 64 64" className="h-8 w-8" aria-hidden>
+          <defs>
+            <linearGradient id="ax-coin-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#ffd479" />
+              <stop offset="60%" stopColor="#ff7a14" />
+              <stop offset="100%" stopColor="#c33000" />
+            </linearGradient>
+          </defs>
+          {/* Coin body */}
+          <circle
+            cx="24"
+            cy="32"
+            r="18"
+            fill="none"
+            stroke="url(#ax-coin-grad)"
+            strokeWidth="4"
+          />
+          <circle cx="24" cy="32" r="4" fill="url(#ax-coin-grad)" />
+          {/* Key shaft + teeth */}
+          <path
+            d="M42 32 H60 M52 32 V40 M58 32 V38"
+            fill="none"
+            stroke="url(#ax-coin-grad)"
+            strokeWidth="4"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </div>
+    </BrandDisc>
+  );
+}
+
+/** Shelby curves orbit — slow rotation echoes Shelby's identity. */
+function ShelbyOrbitMark() {
+  return (
+    <BrandDisc>
+      <div className="ax-anim-spin-slow origin-center">
+        <svg viewBox="0 0 699.93 663.68" className="h-7 w-7" aria-hidden>
+          <defs>
+            <linearGradient id="ax-shelby-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#ffd479" />
+              <stop offset="60%" stopColor="#ff7a14" />
+              <stop offset="100%" stopColor="#c33000" />
+            </linearGradient>
+          </defs>
+          <g fill="url(#ax-shelby-grad)">
+            <path d="M170.41,224.87c8.43-14.59,18.31-27.8,29.35-39.58l-51.86-89.81c-5.49-9.51-19.21-9.51-24.7,0L11.47,289.05c-15.29,26.47-15.29,59.1,0,85.57l111.75,193.56c5.49,9.51,19.21,9.51,24.7,0l51.86-89.81c-62.99-66.97-77.7-169.77-29.35-253.5h-.01Z" />
+            <path d="M512.14,0h-223.5c-10.98,0-17.84,11.88-12.35,21.39l51.87,89.85c51.14-12.02,106.79-5.36,155.88,22.98,49.09,28.34,82.69,73.2,97.85,123.51h103.75c10.98,0,17.84-11.88,12.35-21.39l-111.75-193.54c-15.29-26.47-43.53-42.78-74.1-42.78Z" />
+            <path d="M328.15,552.49l-51.86,89.8c-5.49,9.51,1.37,21.39,12.35,21.39h223.5c30.57,0,58.81-16.32,74.1-42.78l111.75-193.56c5.49-9.51-1.37-21.39-12.35-21.39h-103.7c-4.68,15.46-11.18,30.62-19.6,45.21-48.33,83.72-144.71,122.39-234.22,101.33h.01Z" />
+            <path d="M321.03,123.6c-40.26,9.47-77.73,30.52-106.99,61.71l59.9,103.75c15.29,26.47,15.29,59.1,0,85.57l-59.9,103.75c13.99,14.87,30.35,28,48.95,38.72,18.6,10.74,38.14,18.35,58.02,23.03l59.9-103.75c15.29-26.47,43.54-42.78,74.1-42.78h119.8c12.38-40.95,11.88-83.92-.06-123.51h-119.74c-30.58,0-58.82-16.32-74.1-42.78l-59.87-103.71Z" />
+          </g>
+        </svg>
+      </div>
+    </BrandDisc>
   );
 }

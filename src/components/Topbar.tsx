@@ -5,6 +5,7 @@ import { ConnectWalletButton } from "./ConnectWalletButton";
 import { NetworkSwitcher } from "./NetworkSwitcher";
 import { BalancePills } from "./BalancePills";
 import { AptboxIcon } from "./AptboxIcon";
+import { EvmConnectButton } from "./EvmConnectButton";
 
 type TopbarProps = {
   search: string;
@@ -79,6 +80,7 @@ export function Topbar({ search, onSearchChange, onMenuClick }: TopbarProps) {
         <BalancePills />
 
         <NetworkSwitcher />
+        <EvmConnectButton />
         <ConnectWalletButton />
       </div>
     </div>

@@ -12,14 +12,8 @@ import { formatBytes } from "@/lib/crypto";
 import { useNetwork } from "@/lib/networkContext";
 import { buildShelbyBlobUrl } from "@/lib/shelbyUrls";
 import { formatExpirationCountdown } from "@/lib/blobLifecycle";
-
-const CATEGORY_ICON: Record<string, string> = {
-  picture: "🖼️",
-  video: "🎬",
-  audio: "🎵",
-  document: "📄",
-  other: "📦",
-};
+import { readIpRegistration } from "@/lib/ipTracker";
+import { CategoryIcon } from "./CategoryIcon";
 
 const CATEGORY_BG: Record<string, string> = {
   picture: "from-pink-100 to-rose-100 dark:from-pink-950/40 dark:to-rose-950/40",
@@ -43,6 +37,7 @@ export function FileCard({ file }: { file: FileMeta }) {
 
   const network = useNetwork();
   const [previewFailed, setPreviewFailed] = useState(false);
+  const ipReg = readIpRegistration(network, file.fileId);
 
   // Only show real-content preview for public images/videos.
   // Paid + whitelist files keep the icon — gating the preview is part of the
@@ -100,7 +95,11 @@ export function FileCard({ file }: { file: FileMeta }) {
         )}
 
         {!previewUrl && (
-          <span className="text-5xl opacity-80">{CATEGORY_ICON[cat]}</span>
+          <CategoryIcon
+            id={cat}
+            className="h-12 w-12 text-zinc-700/70 dark:text-zinc-300/70"
+            animate
+          />
         )}
       </div>
 
@@ -123,19 +122,47 @@ export function FileCard({ file }: { file: FileMeta }) {
             ))}
           </div>
         )}
-        <div className="mt-1 flex items-center gap-1.5">
+        <div className="mt-1 flex flex-wrap items-center gap-1">
+          {/* Verified-storage badge — green check when Shelby reports written */}
+          {file.isWritten !== false && !file.isDeleted && (
+            <span
+              className="ax-badge bg-emerald-500/10 text-emerald-300 ring-1 ring-emerald-500/25"
+              title="Verified on Shelby storage"
+            >
+              <CheckGlyph /> Verified
+            </span>
+          )}
+          {/* IP Registered (Story Protocol) */}
+          {ipReg && (
+            <span
+              className="ax-badge bg-violet-500/10 text-violet-300 ring-1 ring-violet-500/25"
+              title={`Story IP · ${ipReg.ipId}`}
+            >
+              IP Registered
+            </span>
+          )}
+          {/* Access mode pill */}
           <span
-            className={`inline-flex rounded-md px-1.5 py-0.5 text-[10px] font-medium ${
+            className={`ax-badge ring-1 ${
               isPublic
-                ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+                ? "bg-emerald-500/10 text-emerald-300 ring-emerald-500/25"
                 : isPaid
-                  ? "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
-                  : "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+                  ? "bg-amber-500/10 text-amber-300 ring-amber-500/25"
+                  : "bg-violet-500/10 text-violet-300 ring-violet-500/25"
             }`}
           >
             {access}
             {isPaid && ` · ${aptFromOctas(file.priceOctas)} APT`}
           </span>
+          {/* Encrypted: paid + whitelist files carry access control = effectively encrypted from public */}
+          {!isPublic && (
+            <span
+              className="ax-badge bg-zinc-500/10 text-zinc-300 ring-1 ring-zinc-500/25"
+              title="Access-controlled — bytes are gated by on-chain permission check"
+            >
+              <LockGlyph /> Encrypted
+            </span>
+          )}
           {file.flagCount > 0 && (
             <span className="inline-flex rounded-md bg-red-50 px-1.5 py-0.5 text-[10px] font-medium text-red-700 dark:bg-red-950/40 dark:text-red-300">
               🚩 {file.flagCount}
@@ -178,5 +205,40 @@ export function FileCard({ file }: { file: FileMeta }) {
         </div>
       </div>
     </Link>
+  );
+}
+
+function CheckGlyph() {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-2.5 w-2.5"
+      aria-hidden
+    >
+      <path d="M3 8.5l3 3 7-7" />
+    </svg>
+  );
+}
+
+function LockGlyph() {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-2.5 w-2.5"
+      aria-hidden
+    >
+      <rect x="3" y="7.5" width="10" height="6" rx="1.5" />
+      <path d="M5.5 7.5V5a2.5 2.5 0 0 1 5 0v2.5" />
+    </svg>
   );
 }
