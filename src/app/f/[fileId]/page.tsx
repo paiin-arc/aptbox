@@ -60,7 +60,7 @@ export default function FilePage({ params }: Props) {
   // Honor `?n=<network>` from share links — auto-switch active network
   // so chain queries hit the right registry. Banner shows once per nav.
   useEffect(() => {
-    const requested = searchParams.get("n");
+    const requested = searchParams?.get("n");
     if (!requested) return;
     if (!isSupported(requested)) return;
     if (requested === network) return;
