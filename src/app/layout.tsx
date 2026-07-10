@@ -55,6 +55,64 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
+      <head>
+        {/*
+          Filter EVM wallet-extension noise (Phantom, Coinbase, Rabby, MetaMask
+          fighting over window.ethereum). This script runs before any other JS,
+          including extension content scripts that race to define ethereum.
+          We can't stop the very first inject error (extension content scripts
+          run at document_start), but we suppress the spam thereafter.
+        */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function(){
+                if (window.__aptboxExtFilterInstalled) return;
+                window.__aptboxExtFilterInstalled = true;
+                var PATTERNS = [
+                  /Cannot redefine property:\\s*ethereum/i,
+                  /Cannot set property ethereum/i,
+                  /chrome-extension:\\/\\/[a-z]+\\/evmAsk\\.js/i,
+                  /chrome-extension:\\/\\/[a-z]+\\/inpage\\.js.*ethereum/i,
+                  /TypeError:\\s*Failed to fetch/i,
+                  /^Failed to fetch$/i,
+                  /WalletNotReadyError/i,
+                  /WalletNotSelectedError/i,
+                ];
+                function isNoise(v){
+                  if (v == null) return false;
+                  if (typeof v === 'object' && !(v instanceof Error)) {
+                    try { if (Object.keys(v).length === 0) return true; } catch(_){}
+                  }
+                  var s = (typeof v === 'string') ? v : (v && v.message) || String(v);
+                  if (!s || s === 'undefined' || s === '{}' || s === '[object Object]') return true;
+                  for (var i=0;i<PATTERNS.length;i++) if (PATTERNS[i].test(s)) return true;
+                  return false;
+                }
+                window.addEventListener('error', function(e){
+                  if (isNoise(e.message) || isNoise(e.error)) {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                    return false;
+                  }
+                }, true);
+                window.addEventListener('unhandledrejection', function(e){
+                  if (isNoise(e.reason)) {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                    return false;
+                  }
+                }, true);
+                var origError = console.error.bind(console);
+                console.error = function(){
+                  for (var i=0;i<arguments.length;i++) if (isNoise(arguments[i])) return;
+                  origError.apply(null, arguments);
+                };
+              })();
+            `,
+          }}
+        />
+      </head>
       <body className="min-h-full flex flex-col">
         <Providers>{children}</Providers>
       </body>

@@ -122,14 +122,16 @@ export function RecentUploads({ onNavigate }: Props) {
         <Link
           href="/cleanup"
           onClick={onNavigate}
-          className="flex items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2 text-xs font-medium text-amber-900 transition hover:border-amber-300 hover:bg-amber-100 active:scale-[0.98] dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-200 dark:hover:bg-amber-950/60"
+          className="flex min-w-0 items-center justify-between gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-2 text-xs font-medium text-amber-200 transition hover:border-amber-500/50 hover:bg-amber-500/15 active:scale-[0.98]"
           title="Pending blobs that registered on chain but storage providers never confirmed"
         >
-          <span className="flex items-center gap-1.5">
-            <WarningTriangleIcon className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
-            {pendingCount} pending blob{pendingCount === 1 ? "" : "s"}
+          <span className="flex min-w-0 items-center gap-1.5">
+            <WarningTriangleIcon className="h-3.5 w-3.5 shrink-0 text-amber-400" />
+            <span className="truncate">
+              {pendingCount} pending blob{pendingCount === 1 ? "" : "s"}
+            </span>
           </span>
-          <span className="text-[10px] opacity-70">Clean up →</span>
+          <span className="shrink-0 text-[10px] opacity-70">Clean up →</span>
         </Link>
       )}
 
@@ -137,7 +139,7 @@ export function RecentUploads({ onNavigate }: Props) {
         <Link
           href="/upload"
           onClick={onNavigate}
-          className="flex items-center justify-center gap-2 rounded-lg border border-dashed border-zinc-300 bg-white/40 px-3 py-3 text-xs text-zinc-500 transition hover:border-indigo-400 hover:bg-indigo-50/40 active:scale-[0.98] dark:border-zinc-700 dark:bg-zinc-900/40 dark:hover:border-indigo-500 dark:hover:bg-indigo-950/20"
+          className="flex items-center justify-center gap-2 rounded-lg border border-dashed border-white/10 bg-white/[0.02] px-3 py-3 text-xs text-zinc-500 transition hover:border-violet-500/40 hover:bg-violet-500/[0.05] hover:text-zinc-300 active:scale-[0.98]"
         >
           <UploadArrowIcon className="h-3.5 w-3.5" animate />
           Upload your first file
@@ -147,20 +149,20 @@ export function RecentUploads({ onNavigate }: Props) {
           {visible.map((r) => (
             <li
               key={`${r.fileId}-${r.network}`}
-              className="rounded-lg border border-zinc-200 bg-white/60 transition hover:border-indigo-300 hover:bg-white dark:border-zinc-800 dark:bg-zinc-900/60 dark:hover:border-indigo-700 dark:hover:bg-zinc-900"
+              className="rounded-lg border border-white/5 bg-white/[0.02] transition hover:border-violet-500/30 hover:bg-white/[0.04]"
             >
               <Link
                 href={`/f/${r.fileId}?n=${r.network}`}
                 onClick={onNavigate}
-                className="flex items-center gap-2 px-2 pt-2"
+                className="flex min-w-0 items-center gap-2 px-2 pt-2"
               >
                 <CategoryIcon
                   id={fileCategory(r.fileName)}
-                  className="h-4 w-4 shrink-0 text-zinc-600 dark:text-zinc-400"
+                  className="h-4 w-4 shrink-0 text-zinc-400"
                 />
                 <div className="min-w-0 flex-1">
                   <div
-                    className="truncate text-xs font-medium text-zinc-900 dark:text-zinc-100"
+                    className="truncate text-xs font-medium text-zinc-100"
                     title={r.fileName}
                   >
                     {r.fileName}
@@ -177,7 +179,7 @@ export function RecentUploads({ onNavigate }: Props) {
                     target="_blank"
                     rel="noopener noreferrer"
                     title={`Shelby register_blob tx · opens Aptos explorer · ${r.shelbyTxHash}`}
-                    className="inline-flex items-center gap-1 rounded bg-indigo-50 px-1.5 py-0.5 font-mono text-[9px] font-medium text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:text-indigo-300 dark:hover:bg-indigo-950/70"
+                    className="inline-flex items-center gap-1 rounded bg-violet-500/10 px-1.5 py-0.5 font-mono text-[9px] font-medium text-violet-300 ring-1 ring-violet-500/20 hover:bg-violet-500/20"
                   >
                     <ShelbyLogo className="h-2.5 w-2.5" />
                     {shortHash(r.shelbyTxHash)}
@@ -189,7 +191,7 @@ export function RecentUploads({ onNavigate }: Props) {
                     target="_blank"
                     rel="noopener noreferrer"
                     title={`aptbox register_file tx · opens Aptos explorer · ${r.aptboxTxHash}`}
-                    className="inline-flex items-center gap-1 rounded bg-zinc-100 px-1.5 py-0.5 font-mono text-[9px] font-medium text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                    className="inline-flex items-center gap-1 rounded bg-white/5 px-1.5 py-0.5 font-mono text-[9px] font-medium text-zinc-300 ring-1 ring-white/10 hover:bg-white/10"
                   >
                     <ChainLinkIcon className="h-2.5 w-2.5" />
                     {shortHash(r.aptboxTxHash)}
@@ -201,7 +203,7 @@ export function RecentUploads({ onNavigate }: Props) {
                     target="_blank"
                     rel="noopener noreferrer"
                     title="View all your blobs on Shelby explorer"
-                    className="inline-flex items-center gap-1 rounded bg-purple-50 px-1.5 py-0.5 font-mono text-[9px] font-medium text-purple-700 hover:bg-purple-100 dark:bg-purple-950/40 dark:text-purple-300 dark:hover:bg-purple-950/70"
+                    className="inline-flex items-center gap-1 rounded bg-purple-500/10 px-1.5 py-0.5 font-mono text-[9px] font-medium text-purple-300 ring-1 ring-purple-500/20 hover:bg-purple-500/20"
                   >
                     <ShelbyLogo className="h-2.5 w-2.5" />
                     blobs

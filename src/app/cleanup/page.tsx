@@ -33,6 +33,11 @@ type DeleteStage =
 
 const BATCH_SIZE = 25;
 
+// Module-level stable references — using inline `[]` defaults in destructuring
+// produces a fresh array every render, which makes any dependency tracking on
+// the value re-fire infinitely.
+const EMPTY_PENDING: PendingBlob[] = [];
+
 function timeAgo(ms: number): string {
   const diff = Date.now() - ms;
   const sec = Math.floor(diff / 1000);
@@ -53,16 +58,17 @@ export default function CleanupPage() {
   const qc = useQueryClient();
   const addr = account?.address.toString() ?? "";
 
-  const { data: pending = [], isLoading, refetch, isFetching } = useQuery({
+  const { data, isLoading, refetch, isFetching } = useQuery({
     queryKey: ["pendingBlobs", network, addr],
     queryFn: async () => {
       const client = getShelbyClient(network);
-      if (!client || !addr) return [] as PendingBlob[];
+      if (!client || !addr) return EMPTY_PENDING;
       return fetchPendingBlobs(client, addr);
     },
     enabled: Boolean(addr),
     staleTime: 15_000,
   });
+  const pending = data ?? EMPTY_PENDING;
 
   // Map each shelbyCid the user owns to its aptbox file_id (if any). When
   // we delete pending Shelby blobs, we also want to delete the matching
@@ -95,12 +101,24 @@ export default function CleanupPage() {
 
   const registryConfigured = Boolean(getRegistryAddress(network));
 
-  // When the pending list changes, prune selections that no longer exist
+  // When the pending list changes, prune selections that no longer exist.
+  // CRITICAL: return the SAME `prev` reference when no pruning is needed —
+  // otherwise React schedules another render and we loop indefinitely.
   useEffect(() => {
     setSelected((prev) => {
+      if (prev.size === 0) return prev;
+      const validCids = new Set(pending.map((p) => p.shelbyCid));
+      let hasInvalid = false;
+      for (const cid of prev) {
+        if (!validCids.has(cid)) {
+          hasInvalid = true;
+          break;
+        }
+      }
+      if (!hasInvalid) return prev;
       const next = new Set<string>();
       for (const cid of prev) {
-        if (pending.some((p) => p.shelbyCid === cid)) next.add(cid);
+        if (validCids.has(cid)) next.add(cid);
       }
       return next;
     });

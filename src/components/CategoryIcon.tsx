@@ -277,6 +277,16 @@ export function ActivityIcon({ className = "h-4 w-4" }: { className?: string }) 
   );
 }
 
+export function DocsIcon({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" {...COMMON} className={className} aria-hidden>
+      <path d="M6 3h8l4 4v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" />
+      <path d="M14 3v4h4" />
+      <path d="M8 12h8M8 16h6M8 8h3" opacity="0.85" />
+    </svg>
+  );
+}
+
 export function SettingsIcon({ className = "h-4 w-4" }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" {...COMMON} className={className} aria-hidden>

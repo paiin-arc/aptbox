@@ -160,7 +160,7 @@ export function RegisterIpPanel({ file }: { file: FileMeta }) {
             IP Registered
           </span>
           {existing.licenseType && (
-            <span className="ax-badge bg-cyan-500/10 text-cyan-300 ring-1 ring-cyan-500/25">
+            <span className="ax-badge bg-[#1380F5]/10 text-[#41B5FF] ring-1 ring-[#1380F5]/25">
               {existing.licenseType}
             </span>
           )}
