@@ -209,8 +209,9 @@ function WorkspaceOverview({
         />
         <QuickAction
           label="Create Dataset"
+          // routes to the two-tab Type / Upload composer
           desc="AI-readable bundle"
-          href="/ai-memory"
+          href="/ai-memory/new"
         />
         <QuickAction
           label="Share Secure Link"

@@ -22,7 +22,7 @@ import {
 import { trackUpload, trackUploadRecord } from "@/lib/storage";
 import { triggerAiProcess } from "@/lib/aiClient";
 import { AI_FEATURES_ENABLED } from "@/lib/aiFlags";
-import { isUserRejection, waitForTx } from "@/lib/tx";
+import { isUserRejection, logStage, signWithTimeout, waitForTx } from "@/lib/tx";
 import { useNetwork } from "@/lib/networkContext";
 import {
   MAX_FILE_SIZE_MB,
@@ -100,6 +100,12 @@ export default function UploadPage() {
   const [draftName, setDraftName] = useState("");
   const nameInputRef = useRef<HTMLInputElement>(null);
   const [accessMode, setAccessMode] = useState<AccessMode>("public");
+  /** Pre-loaded memory pack handed off from /ai-memory/new. */
+  const [memoryPackInfo, setMemoryPackInfo] = useState<{
+    name: string;
+    chunkCount: number;
+    sizeBytes: number;
+  } | null>(null);
   const [priceApt, setPriceApt] = useState("0.01");
   const [whitelistText, setWhitelistText] = useState("");
   const [durationPreset, setDurationPreset] = useState<DurationPreset>("30d");
@@ -172,6 +178,44 @@ export default function UploadPage() {
   useEffect(() => {
     if (!file) setEditingName(false);
   }, [file]);
+
+  // Consume the memory-pack hand-off from /ai-memory/new on mount.
+  // The stash key is set by the AI Memory create page after Save → Continue.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const raw = window.sessionStorage.getItem("aptbox:pendingMemoryUpload");
+    if (!raw) return;
+    try {
+      const stash = JSON.parse(raw) as {
+        name: string;
+        type: string;
+        size: number;
+        dataUrl: string;
+        pack: { manifest: { name: string; description?: string }; chunks: unknown[] };
+      };
+      // Convert the base64 data URL back into a real File we can hash + upload.
+      const comma = stash.dataUrl.indexOf(",");
+      const base64 = stash.dataUrl.slice(comma + 1);
+      const binary = atob(base64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      const file = new File([bytes], stash.name, {
+        type: stash.type || "application/json",
+      });
+      setFile(file);
+      setCustomName(stash.pack.manifest.name);
+      setMemoryPackInfo({
+        name: stash.pack.manifest.name,
+        chunkCount: stash.pack.chunks.length,
+        sizeBytes: stash.size,
+      });
+      // One-shot — clear so refreshes don't re-load
+      window.sessionStorage.removeItem("aptbox:pendingMemoryUpload");
+    } catch (e) {
+      console.warn("[upload] failed to consume memory pack hand-off", e);
+      window.sessionStorage.removeItem("aptbox:pendingMemoryUpload");
+    }
+  }, []);
 
   const durationHours = useMemo(() => {
     if (durationPreset === "custom") {
@@ -284,6 +328,7 @@ export default function UploadPage() {
       //    fails, the on-chain records are already there and the orphan blob
       //    can be cleaned up via /cleanup.
       setStage("registering");
+      logStage("upload", "→ aptbox::register_file sign requested");
       const payload = buildRegisterFilePayload(network, {
         contentHash: hashBytes,
         shelbyCid: blobName,
@@ -293,9 +338,13 @@ export default function UploadPage() {
         priceOctas,
         whitelist,
       });
-      const submitted = await signAndSubmitTransaction({ data: payload });
+      const submitted = await signWithTimeout(
+        signAndSubmitTransaction({ data: payload }),
+        "aptbox register_file"
+      );
       const aptboxHash = (submitted as { hash: string }).hash;
       setTxHash(aptboxHash);
+      logStage("upload", `← aptbox register tx submitted ${aptboxHash.slice(0, 10)}…`);
 
       // 5. Run byte upload AND aptbox tx confirmation in parallel.
       //    Bytes upload can take 5+ min on testnet; the aptbox tx
@@ -327,9 +376,25 @@ export default function UploadPage() {
           uploadedAt: Date.now(),
           network,
         });
+
+        // Phase 1A AI hook: enqueue server-side processing for public files
+        // (chunking, embeddings, summary). No-op when the feature flag is off
+        // or when the file isn't public — see `/api/files/process`.
+        if (AI_FEATURES_ENABLED && accessTypeNum === ACCESS_PUBLIC) {
+          triggerAiProcess({
+            network,
+            fileId: id.toString(),
+            uploader: uploaderAddress,
+            shelbyCid: blobName,
+            mimeType: file.type || "application/octet-stream",
+            sizeBytes: file.size,
+            accessType: accessTypeNum,
+          });
+        }
       }
 
       setStage("done");
+      logStage("upload", "✓ done");
     } catch (e) {
       if (isUserRejection(e)) {
         setStage("cancelled");
@@ -384,6 +449,38 @@ export default function UploadPage() {
         {!connected && (
           <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
             Connect your wallet first to upload.
+          </div>
+        )}
+
+        {/* Memory-pack hand-off banner — appears when /ai-memory/new pre-loaded a draft */}
+        {memoryPackInfo && (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-violet-500/30 bg-violet-500/[0.06] p-4">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 text-sm font-semibold text-violet-100">
+                <span className="ax-badge bg-violet-500/15 text-violet-200 ring-1 ring-violet-500/30">
+                  Memory pack
+                </span>
+                <span className="truncate" title={memoryPackInfo.name}>
+                  {memoryPackInfo.name}
+                </span>
+              </div>
+              <div className="mt-0.5 text-[11px] text-violet-200/80">
+                Pre-loaded from AI Memory Hub · {memoryPackInfo.chunkCount} chunk
+                {memoryPackInfo.chunkCount === 1 ? "" : "s"} ·{" "}
+                {(memoryPackInfo.sizeBytes / 1024).toFixed(1)} KB
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setFile(null);
+                setMemoryPackInfo(null);
+                setCustomName(null);
+              }}
+              className="rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] font-medium text-zinc-300 hover:bg-white/[0.08]"
+            >
+              Detach
+            </button>
           </div>
         )}
 

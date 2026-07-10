@@ -45,3 +45,5 @@ next-env.d.ts
 
 # Aptos CLI profiles (already gitignored at child level, belt+suspenders)
 **/.aptos/
+.vscode/
+.vscode/

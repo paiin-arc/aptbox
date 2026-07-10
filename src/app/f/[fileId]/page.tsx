@@ -104,9 +104,12 @@ export default function FilePage({ params }: Props) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
   const [downloadStage, setDownloadStage] = useState<
-    "idle" | "fetching" | "ready" | "error" | "missing"
+    "idle" | "fetching" | "ready" | "error" | "missing" | "propagating"
   >("idle");
   const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [propagationAttempts, setPropagationAttempts] = useState(0);
+  /** Cap auto-retries at ~2 min to avoid hammering a truly-dead blob. */
+  const MAX_PROPAGATION_ATTEMPTS = 20;
   const [purchaseStage, setPurchaseStage] = useState<
     "idle" | "signing" | "confirming" | "done" | "error"
   >("idle");
@@ -134,14 +137,33 @@ export default function FilePage({ params }: Props) {
     return accessGranted;
   }, [file, accessGranted, isOwner]);
 
-  async function loadBlob(file: FileMeta) {
+  /**
+   * A blob can be "missing" for two very different reasons:
+   *  1. It was JUST uploaded — storage providers haven't acknowledged yet,
+   *     so the gateway still 404s for a window of seconds-to-minutes.
+   *  2. It's genuinely gone — expired, evicted, or never finalized.
+   *
+   * Pick (1) when the on-chain entry is fresh (<10 min) or the indexer
+   * still reports `isWritten: false`. Otherwise treat as (2).
+   */
+  function isProbablyPropagating(file: FileMeta): boolean {
+    const ageSec = Math.floor(Date.now() / 1000) - file.createdAt;
+    if (lifecycle && lifecycle.isWritten === false) return true;
+    if (ageSec < 600) return true; // 10 min freshness window
+    return false;
+  }
+
+  async function loadBlob(file: FileMeta, opts?: { isRetry?: boolean }) {
     if (!shelby) {
       setDownloadError("Shelby client not configured.");
       setDownloadStage("error");
       return;
     }
-    setDownloadError(null);
-    setDownloadStage("fetching");
+    if (!opts?.isRetry) {
+      setDownloadError(null);
+      setDownloadStage("fetching");
+      setPropagationAttempts(0);
+    }
     try {
       const { blob } = await fetchShelbyBlob(shelby, {
         uploader: file.uploader,
@@ -152,17 +174,44 @@ export default function FilePage({ params }: Props) {
       setPreviewBlob(blob);
       setPreviewUrl(url);
       setDownloadStage("ready");
+      setPropagationAttempts(0);
     } catch (e) {
-      console.error(e);
       if (e instanceof ShelbyBlobNotFoundError) {
+        // Quiet log — this isn't a bug, it's an expected propagation race.
+        if (isProbablyPropagating(file)) {
+          setDownloadError(null);
+          setDownloadStage("propagating");
+          return;
+        }
+        // Genuinely missing — fall through to the alarmist UI.
+        console.warn("[loadBlob] blob truly missing", e);
         setDownloadError((e as Error).message);
         setDownloadStage("missing");
         return;
       }
+      console.error(e);
       setDownloadError((e as Error).message ?? String(e));
       setDownloadStage("error");
     }
   }
+
+  // Auto-retry the load while we're in the "propagating" state. The lifecycle
+  // query also refetches in parallel, so once the indexer reports `is_written`
+  // we exit propagation regardless of the blob attempt.
+  useEffect(() => {
+    if (downloadStage !== "propagating" || !file) return;
+    if (propagationAttempts >= MAX_PROPAGATION_ATTEMPTS) return;
+    const id = window.setTimeout(() => {
+      // Bust the lifecycle cache so we re-poll the indexer too.
+      qc.invalidateQueries({
+        queryKey: ["lifecycle", network, file.uploader, file.shelbyCid],
+      });
+      setPropagationAttempts((n) => n + 1);
+      loadBlob(file, { isRetry: true });
+    }, 6_000);
+    return () => window.clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [downloadStage, propagationAttempts]);
 
   function handleDownload() {
     if (!file || !previewBlob) return;
@@ -363,6 +412,47 @@ export default function FilePage({ params }: Props) {
               >
                 Retry
               </button>
+            </div>
+          )}
+
+          {downloadStage === "propagating" && (
+            <div className="space-y-2 rounded-xl border border-violet-500/30 bg-violet-500/[0.06] p-4 text-sm">
+              <div className="flex items-center gap-2 font-semibold text-violet-200">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-violet-500/60" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-violet-400" />
+                </span>
+                Storage providers finalizing…
+              </div>
+              <div className="text-xs text-violet-200/80">
+                Your file is uploaded — the gateway just needs a moment to
+                replicate it across providers. We&apos;re auto-checking every
+                6 seconds.
+              </div>
+              <div className="flex items-center justify-between text-[11px] text-violet-300/70">
+                <span>
+                  Attempt {propagationAttempts + 1} of {MAX_PROPAGATION_ATTEMPTS}
+                </span>
+                <button
+                  onClick={() => loadBlob(file)}
+                  className="rounded-md border border-violet-500/30 bg-violet-500/10 px-2.5 py-1 text-[11px] font-medium text-violet-200 hover:bg-violet-500/20"
+                >
+                  Check now
+                </button>
+              </div>
+              {propagationAttempts + 1 >= MAX_PROPAGATION_ATTEMPTS && (
+                <div className="rounded-md bg-amber-500/10 p-2 text-[11px] text-amber-200 ring-1 ring-amber-500/30">
+                  Still not available after 2 minutes. Storage providers may be
+                  slow today — try again later or use{" "}
+                  <Link
+                    href="/cleanup"
+                    className="underline hover:text-amber-100"
+                  >
+                    /cleanup
+                  </Link>{" "}
+                  if you&apos;re sure the upload failed.
+                </div>
+              )}
             </div>
           )}
 

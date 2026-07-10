@@ -7,6 +7,7 @@ import { Dashboard } from "@/components/Dashboard";
 import { isShelbyConfigured } from "@/lib/shelby";
 import { useNetwork } from "@/lib/networkContext";
 import { ShelbyLogo } from "@/components/ShelbyLogo";
+import { StoryLogo } from "@/components/StoryLogo";
 import { AptboxIcon } from "@/components/AptboxIcon";
 
 export default function Home() {
@@ -80,8 +81,26 @@ export default function Home() {
           </g>
         </svg>
 
-        {/* Bottom-left small accent blob */}
+        {/* Bottom-left orange accent blob (Shelby) */}
         <div className="ax-anim-blob absolute -bottom-32 -left-32 h-96 w-96 rounded-full bg-orange-600/10 blur-3xl" />
+
+        {/* Top-left Story True-Blue accent — balances the right-side orange */}
+        <div
+          aria-hidden
+          className="ax-anim-blob absolute -top-32 -left-24 h-[28rem] w-[28rem] rounded-full blur-3xl"
+          style={{
+            backgroundColor: "rgba(19, 128, 245, 0.08)",
+            animationDelay: "1.5s",
+            animationDuration: "9s",
+          }}
+        />
+
+        {/* Bottom-right violet accent (aptbox) */}
+        <div
+          aria-hidden
+          className="ax-anim-blob absolute -bottom-40 right-[-10%] h-[26rem] w-[26rem] rounded-full bg-violet-600/[0.08] blur-3xl"
+          style={{ animationDelay: "3s", animationDuration: "11s" }}
+        />
 
         {/* Vignette to focus content */}
         <div
@@ -111,19 +130,41 @@ export default function Home() {
 
       <main className="relative z-10 mx-auto flex w-full max-w-5xl flex-1 flex-col items-center justify-center gap-8 px-4 py-12 text-center sm:gap-10 sm:px-6 sm:py-20">
         <div className="space-y-5 sm:space-y-6">
-          <a
-            href="https://shelby.xyz"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-full border border-orange-500/40 bg-orange-500/10 px-3 py-1.5 text-xs font-medium text-orange-300 backdrop-blur transition hover:border-orange-500/70 hover:bg-orange-500/20"
-          >
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-orange-400 shadow-[0_0_8px_rgba(255,140,40,0.8)]" />
-            <span>Powered by</span>
-            <ShelbyLogo className="h-3.5 w-3.5" />
-            <span className="font-bold">Shelby</span>
-            <span className="text-orange-400/60">+</span>
-            <span className="font-bold">Aptos</span>
-          </a>
+          <div className="inline-flex flex-wrap items-center justify-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-zinc-200 backdrop-blur">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-violet-400 shadow-[0_0_8px_rgba(167,139,250,0.8)]" />
+            <span className="text-zinc-400">Powered by</span>
+            <a
+              href="https://shelby.xyz"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 transition hover:text-orange-300"
+              title="Verified storage by Shelby"
+            >
+              <ShelbyLogo className="h-3.5 w-3.5 text-orange-400" />
+              <span className="font-semibold">Shelby</span>
+            </a>
+            <span className="text-zinc-600">·</span>
+            <a
+              href="https://www.story.foundation"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 transition hover:text-[#81CEFF]"
+              title="Programmable IP by Story Protocol"
+            >
+              <StoryLogo className="h-3.5 w-3.5 text-[#41B5FF]" />
+              <span className="font-semibold">Story</span>
+            </a>
+            <span className="text-zinc-600">·</span>
+            <a
+              href="https://aptosfoundation.org"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 transition hover:text-violet-300"
+              title="Anchored on Aptos"
+            >
+              <span className="font-semibold">Aptos</span>
+            </a>
+          </div>
 
           <h1 className="text-5xl font-bold leading-[0.95] tracking-tight text-white sm:text-7xl md:text-8xl">
             Your files,
@@ -132,15 +173,20 @@ export default function Home() {
               className="bg-clip-text text-transparent"
               style={{
                 backgroundImage:
-                  "linear-gradient(135deg, #ffd479 0%, #ff7a14 35%, #ff5500 70%, #c33000 100%)",
+                  // Trinity gradient: aptbox violet → Shelby orange → Story True Blue
+                  "linear-gradient(120deg, #a78bfa 0%, #ff9333 38%, #ff5500 62%, #1380F5 100%)",
               }}
             >
               decentralized.
             </span>
           </h1>
           <p className="mx-auto max-w-2xl text-base text-zinc-300/90 sm:text-lg">
-            Upload, share, and monetize any file with cryptographic provenance.
-            No takedowns, no middlemen — just you and the chain.
+            Files on <span className="font-semibold text-orange-300">Shelby</span>{" "}
+            verified storage. Ownership and licensing on{" "}
+            <span className="font-semibold text-[#81CEFF]">Story Protocol</span>.
+            Provenance anchored on{" "}
+            <span className="font-semibold text-violet-300">Aptos</span>. You
+            keep the keys.
           </p>
         </div>
 
@@ -155,27 +201,40 @@ export default function Home() {
         </div>
 
         {/* Feature cards */}
-        <div className="grid w-full max-w-3xl grid-cols-1 gap-3 text-left sm:grid-cols-3 sm:gap-4">
+        <div className="grid w-full max-w-5xl grid-cols-1 gap-3 text-left sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
           {[
             {
               title: "Tamper-proof",
               desc: "Every file's hash is recorded on Aptos.",
               icon: <AptboxSealMark />,
+              accent: "orange" as const,
             },
             {
               title: "Free or paid",
               desc: "Public links, paid unlocks, or whitelist gating.",
               icon: <CoinKeyMark />,
+              accent: "orange" as const,
             },
             {
               title: "No takedowns",
               desc: "Decentralized storage you actually own.",
               icon: <ShelbyOrbitMark />,
+              accent: "orange" as const,
             },
-          ].map(({ title, desc, icon }) => (
+            {
+              title: "Programmable IP",
+              desc: "Register every file with Story Protocol — license, royalties, derivatives.",
+              icon: <StoryMark />,
+              accent: "cyan" as const,
+            },
+          ].map(({ title, desc, icon, accent }) => (
             <div
               key={title}
-              className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-sm transition hover:border-orange-500/50 hover:bg-orange-500/[0.07]"
+              className={`group relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-sm transition ${
+                accent === "cyan"
+                  ? "hover:border-[#1380F5]/50 hover:bg-[#1380F5]/[0.07]"
+                  : "hover:border-orange-500/50 hover:bg-orange-500/[0.07]"
+              }`}
             >
               <div className="ax-anim-breathe">{icon}</div>
               <div className="mt-3 text-sm font-semibold text-white">
@@ -189,7 +248,7 @@ export default function Home() {
         </div>
 
         {/* Stats / proof row */}
-        <div className="mt-2 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-xs text-zinc-400">
+        <div className="mt-2 flex flex-wrap items-center justify-center gap-x-5 gap-y-3 text-xs text-zinc-400 sm:gap-x-6">
           <div className="flex items-center gap-1.5">
             <span className="ax-anim-dot-1 h-1 w-1 rounded-full bg-orange-400 shadow-[0_0_6px_rgba(255,140,40,0.7)]" />
             <span>Sub-second reads</span>
@@ -202,19 +261,55 @@ export default function Home() {
             <span className="ax-anim-dot-3 h-1 w-1 rounded-full bg-orange-400 shadow-[0_0_6px_rgba(255,140,40,0.7)]" />
             <span>APT &amp; ShelbyUSD payments</span>
           </div>
+          <div className="flex items-center gap-1.5">
+            <span
+              className="ax-anim-dot-2 h-1 w-1 rounded-full"
+              style={{
+                backgroundColor: "#41B5FF",
+                boxShadow: "0 0 6px rgba(65,181,255,0.8)",
+              }}
+            />
+            <span>Licensable IP via Story</span>
+          </div>
         </div>
       </main>
 
-      <footer className="relative z-10 flex items-center justify-center gap-1.5 border-t border-white/5 bg-black/30 px-4 py-3 text-xs text-zinc-500 backdrop-blur sm:py-4">
-        <span>aptbox · TeraBox-style file vault built on</span>
+      <footer className="relative z-10 flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1 border-t border-white/5 bg-black/30 px-4 py-3 text-xs text-zinc-500 backdrop-blur sm:py-4">
+        <Link
+          href="/docs"
+          className="font-semibold text-zinc-300 transition hover:text-violet-400"
+        >
+          Docs
+        </Link>
+        <span className="text-zinc-600">·</span>
+        <span>aptbox · creator IP infrastructure built on</span>
         <a
           href="https://shelby.xyz"
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-1 font-semibold text-zinc-300 transition hover:text-orange-400"
         >
-          <ShelbyLogo className="h-3 w-3" />
+          <ShelbyLogo className="h-3 w-3 text-orange-400" />
           Shelby
+        </a>
+        <span className="text-zinc-600">·</span>
+        <a
+          href="https://www.story.foundation"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 font-semibold text-zinc-300 transition hover:text-[#41B5FF]"
+        >
+          <StoryLogo className="h-3 w-3" />
+          Story
+        </a>
+        <span className="text-zinc-600">·</span>
+        <a
+          href="https://aptosfoundation.org"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-semibold text-zinc-300 transition hover:text-violet-400"
+        >
+          Aptos
         </a>
       </footer>
     </div>
@@ -227,22 +322,38 @@ export default function Home() {
  * Shared 12×12 disc container with orange brand gradient + pulsing ring.
  * Children render inside the disc as the foreground glyph.
  */
-function BrandDisc({ children }: { children: React.ReactNode }) {
+function BrandDisc({
+  children,
+  accent = "orange",
+}: {
+  children: React.ReactNode;
+  /** "orange" = Shelby, "cyan" = Story True Blue (#1380F5). Kept named for source compat. */
+  accent?: "orange" | "cyan";
+}) {
+  // Story True Blue #1380F5 = rgb(19,128,245); Sky Blue #41B5FF = rgb(65,181,255)
+  const ringColor =
+    accent === "cyan" ? "rgba(65,181,255,0.55)" : "rgba(255,140,40,0.55)";
+  const ringFade =
+    accent === "cyan" ? "rgba(65,181,255,0)" : "rgba(255,140,40,0)";
+  const gradientFrom =
+    accent === "cyan" ? "rgba(65,181,255,0.18)" : "rgba(255,140,40,0.18)";
+  const gradientTo =
+    accent === "cyan" ? "rgba(19,128,245,0.18)" : "rgba(195,48,0,0.18)";
+  const ringClass =
+    accent === "cyan" ? "ring-[#1380F5]/30" : "ring-orange-500/30";
   return (
     <div className="relative h-12 w-12">
       <div
         aria-hidden
         className="ax-anim-ring absolute inset-0 rounded-2xl"
         style={{
-          background:
-            "radial-gradient(circle at 50% 50%, rgba(255,140,40,0.55), rgba(255,140,40,0) 70%)",
+          background: `radial-gradient(circle at 50% 50%, ${ringColor}, ${ringFade} 70%)`,
         }}
       />
       <div
-        className="absolute inset-0 flex items-center justify-center rounded-2xl ring-1 ring-orange-500/30"
+        className={`absolute inset-0 flex items-center justify-center rounded-2xl ring-1 ${ringClass}`}
         style={{
-          backgroundImage:
-            "linear-gradient(135deg, rgba(255,140,40,0.18), rgba(195,48,0,0.18))",
+          backgroundImage: `linear-gradient(135deg, ${gradientFrom}, ${gradientTo})`,
         }}
       >
         {children}
@@ -352,6 +463,17 @@ function ShelbyOrbitMark() {
             <path d="M321.03,123.6c-40.26,9.47-77.73,30.52-106.99,61.71l59.9,103.75c15.29,26.47,15.29,59.1,0,85.57l-59.9,103.75c13.99,14.87,30.35,28,48.95,38.72,18.6,10.74,38.14,18.35,58.02,23.03l59.9-103.75c15.29-26.47,43.54-42.78,74.1-42.78h119.8c12.38-40.95,11.88-83.92-.06-123.51h-119.74c-30.58,0-58.82-16.32-74.1-42.78l-59.87-103.71Z" />
           </g>
         </svg>
+      </div>
+    </BrandDisc>
+  );
+}
+
+/** Story Protocol mark — uses the official icon, gentle breath animation. */
+function StoryMark() {
+  return (
+    <BrandDisc accent="cyan">
+      <div className="ax-anim-breathe">
+        <StoryLogo className="h-7 w-7" />
       </div>
     </BrandDisc>
   );

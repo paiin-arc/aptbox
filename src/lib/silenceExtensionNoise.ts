@@ -17,14 +17,31 @@ const PATTERNS: RegExp[] = [
   /Cannot set property ethereum/i,
   /chrome-extension:\/\/[a-z]+\/evmAsk\.js/i,
   /chrome-extension:\/\/[a-z]+\/inpage\.js.*ethereum/i,
+  // Wallet-adapter autoConnect transient: extension not ready / iframe blocked
+  /TypeError:\s*Failed to fetch/i,
+  /^Failed to fetch$/i,
+  // Aptos wallet adapter "no wallet detected" path during cold load
+  /WalletNotReadyError/i,
+  /WalletNotSelectedError/i,
 ];
 
 function isNoise(input: unknown): boolean {
   if (input == null) return false;
+  // Empty objects / errors with no useful message are noise on their own
+  if (
+    typeof input === "object" &&
+    !(input instanceof Error) &&
+    Object.keys(input as object).length === 0
+  ) {
+    return true;
+  }
   const s =
     typeof input === "string"
       ? input
       : ((input as { message?: string }).message ?? String(input));
+  if (!s || s === "undefined" || s === "{}" || s === "[object Object]") {
+    return true;
+  }
   return PATTERNS.some((re) => re.test(s));
 }
 

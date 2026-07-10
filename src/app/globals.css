@@ -201,6 +201,79 @@ body {
   }
 }
 
+/* ---------- Docs page animations ---------- */
+
+/* Scroll-revealed elements: start slightly down + faded, snap to final on reveal. */
+.ax-reveal {
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 700ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 700ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: var(--ax-reveal-delay, 0ms);
+}
+.ax-reveal[data-revealed="true"] {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* SVG line draw — used by the trinity flow + architecture diagram. */
+@keyframes ax-draw-line {
+  to { stroke-dashoffset: 0; }
+}
+.ax-draw {
+  stroke-dasharray: 600;
+  stroke-dashoffset: 600;
+}
+[data-revealed="true"] .ax-draw {
+  animation: ax-draw-line 1400ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  animation-delay: 300ms;
+}
+[data-revealed="true"] .ax-draw-delay-1 { animation-delay: 600ms; }
+[data-revealed="true"] .ax-draw-delay-2 { animation-delay: 900ms; }
+[data-revealed="true"] .ax-draw-delay-3 { animation-delay: 1200ms; }
+
+/* Glowing pulse for diagram nodes once they've revealed. */
+@keyframes ax-node-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 currentColor; opacity: 0.85; }
+  50%      { box-shadow: 0 0 24px 2px currentColor; opacity: 1;    }
+}
+.ax-node-pulse {
+  animation: ax-node-pulse 3.4s ease-in-out infinite;
+}
+
+/* Underline sweep (text accent). */
+@keyframes ax-underline {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+[data-revealed="true"] .ax-underline {
+  transform-origin: left;
+  animation: ax-underline 900ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation-delay: 500ms;
+}
+.ax-underline { transform: scaleX(0); transform-origin: left; }
+
+/* Per-word stagger on a heading. Apply `.ax-word` to each word span. */
+.ax-word {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 600ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 600ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: calc(var(--ax-word-index, 0) * 60ms);
+}
+[data-revealed="true"] .ax-word {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ax-reveal, .ax-word { transition: none !important; }
+  .ax-draw { stroke-dashoffset: 0 !important; animation: none !important; }
+  .ax-underline { transform: scaleX(1) !important; animation: none !important; }
+  .ax-node-pulse { animation: none !important; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .ax-anim-breathe,
   .ax-anim-tilt,
