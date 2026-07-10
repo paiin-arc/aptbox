@@ -26,6 +26,7 @@ import {
 import { AccountAddress } from "@aptos-labs/ts-sdk";
 import type { WalletContextState } from "@aptos-labs/wallet-adapter-react";
 import { shelbyApiKeyFor, type SupportedNetwork } from "@/lib/networks";
+import { logStage, signWithTimeout } from "@/lib/tx";
 
 export const MAX_FILE_SIZE_MB = 25;
 export const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
@@ -150,9 +151,15 @@ export async function prepareAndRegisterShelby(
     encoding,
   });
 
-  const { hash: registerTxHash } = await signAndSubmitTransaction({
-    data: registerPayload,
-  });
+  logStage("uploadService", "→ Shelby register_blob sign requested");
+  const { hash: registerTxHash } = await signWithTimeout(
+    signAndSubmitTransaction({ data: registerPayload }),
+    "Shelby register_blob"
+  );
+  logStage(
+    "uploadService",
+    `← Shelby register tx submitted ${registerTxHash.slice(0, 10)}…`
+  );
 
   return { blobName, commitments, registerTxHash };
 }

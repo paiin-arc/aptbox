@@ -16,19 +16,10 @@ import {
 import { isStoryConfigured } from "@/lib/story";
 import { hasEvmWallet } from "@/lib/evmWallet";
 import { SpgSetupPanel } from "@/components/SpgSetupPanel";
-
-function timeAgo(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  if (diff < 60_000) return "just now";
-  const min = Math.floor(diff / 60_000);
-  if (min < 60) return `${min}m ago`;
-  const hr = Math.floor(min / 60);
-  if (hr < 24) return `${hr}h ago`;
-  const day = Math.floor(hr / 24);
-  if (day < 30) return `${day}d ago`;
-  const mo = Math.floor(day / 30);
-  return `${mo}mo ago`;
-}
+import { IpVaultCard } from "@/components/IpVaultCard";
+import { CollectionHeader } from "@/components/CollectionHeader";
+import { getEffectiveSpgContract } from "@/lib/story";
+import { useMemo } from "react";
 
 export default function IpVaultPage() {
   const { connected: aptosConnected } = useWallet();
@@ -75,21 +66,17 @@ export default function IpVaultPage() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-10 sm:px-6 sm:py-14">
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-wider text-violet-300">
-            <IpVaultIcon className="h-4 w-4" />
-            <span>IP Vault</span>
-          </div>
-          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-            Programmable IP, owned by you.
-          </h1>
-          <p className="max-w-2xl pt-2 text-sm leading-relaxed text-zinc-400 sm:text-base">
-            Each registered file is minted into Story Protocol as an
-            owned IP asset — provenance, licensing, and royalty terms anchored
-            on chain. Files stay on Shelby; the IP layer lives on Story.
-          </p>
-        </div>
+      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6 sm:py-10">
+        <CollectionHeaderForVault
+          registrationCount={registrations.length}
+          aptosConnected={aptosConnected}
+        />
+
+        <p className="mt-3 max-w-3xl text-xs leading-relaxed text-zinc-500 sm:text-sm">
+          Each registered file is minted into Story Protocol as an owned IP
+          asset — provenance, licensing, and royalty terms anchored on chain.
+          Files stay on Shelby; the IP layer lives on Story.
+        </p>
 
         {/* Status row */}
         <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -142,52 +129,17 @@ export default function IpVaultPage() {
               </Link>
             </div>
           ) : (
-            <ul className="space-y-2">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
               {registrations.map(({ fileId, reg }) => (
-                <li
+                <IpVaultCard
                   key={`${reg.storyChain}-${reg.ipId}`}
-                  className="ax-card ax-card-hover flex flex-wrap items-start justify-between gap-4 p-4"
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <Link
-                        href={`/f/${fileId}?n=${network}`}
-                        className="text-sm font-semibold text-zinc-100 hover:text-violet-200"
-                      >
-                        File #{fileId}
-                      </Link>
-                      <span className="ax-badge bg-violet-500/10 text-violet-300 ring-1 ring-violet-500/25">
-                        IP Registered
-                      </span>
-                      {reg.licenseType && (
-                        <span className="ax-badge bg-cyan-500/10 text-cyan-300 ring-1 ring-cyan-500/25">
-                          {reg.licenseType}
-                        </span>
-                      )}
-                      {reg.royaltyBps !== undefined && (
-                        <span className="ax-badge bg-amber-500/10 text-amber-300 ring-1 ring-amber-500/25">
-                          {(reg.royaltyBps / 100).toFixed(1)}% royalty
-                        </span>
-                      )}
-                    </div>
-                    <div className="mt-1 truncate font-mono text-[11px] text-zinc-500">
-                      {reg.ipId}
-                    </div>
-                    <div className="mt-1 text-xs text-zinc-500">
-                      Minted on {reg.storyChain} · {timeAgo(reg.registeredAt)}
-                    </div>
-                  </div>
-                  <a
-                    href={`https://aeneid.storyscan.xyz/tx/${reg.txHash}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="rounded-lg border border-white/10 px-2.5 py-1.5 text-[11px] font-medium text-zinc-300 hover:border-violet-500/40 hover:text-violet-200"
-                  >
-                    View on Story ↗
-                  </a>
-                </li>
+                  network={network}
+                  fileId={fileId}
+                  reg={reg}
+                  collectionLabel="aptbox IP Vault"
+                />
               ))}
-            </ul>
+            </div>
           )}
         </div>
       </main>
@@ -222,5 +174,141 @@ function StatusTile({
         {value}
       </div>
     </div>
+  );
+}
+
+/* ---------- Numo-style header for the vault ---------- */
+
+function CollectionHeaderForVault({
+  registrationCount,
+  aptosConnected,
+}: {
+  registrationCount: number;
+  aptosConnected: boolean;
+}) {
+  // SPG address is the canonical IP collection identifier on Aeneid.
+  const spg = useMemo(() => getEffectiveSpgContract("aeneid"), []);
+
+  const todayLabel = useMemo(() => {
+    // Static "Today" placeholder — once we record the deployment date for the
+    // SPG we'll surface it here. For now use a stable string so SSR matches.
+    return new Date().toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  }, []);
+
+  const pills = [
+    {
+      icon: (
+        <span className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-white">
+          <span className="text-[8px] font-bold text-black">S</span>
+        </span>
+      ),
+      label: "Story",
+      title: "Anchored on Story Protocol (Aeneid)",
+    },
+    ...(spg
+      ? [
+          {
+            label: `${spg.slice(0, 6)}…${spg.slice(-4)}`,
+            copyValue: spg,
+            title: spg,
+          },
+        ]
+      : []),
+    { label: todayLabel },
+    { label: "More Info", href: "/docs", title: "Open aptbox docs" },
+  ];
+
+  const stats = [
+    {
+      icon: <DiamondGlyph />,
+      value: registrationCount.toLocaleString(),
+      label: "Assets",
+      accent: "story" as const,
+    },
+    {
+      icon: <ShieldGlyph />,
+      value: "0",
+      label: "Licenses",
+      accent: "violet" as const,
+    },
+    {
+      icon: <DisputeGlyph />,
+      value: "0",
+      label: "Disputes",
+      accent: "amber" as const,
+    },
+  ];
+
+  return (
+    <CollectionHeader
+      avatar={
+        <div className="flex h-full w-full items-center justify-center">
+          <IpVaultIcon className="h-10 w-10 text-violet-300" />
+        </div>
+      }
+      eyebrow={aptosConnected ? "COLLECTION" : "COLLECTION · DISCONNECTED"}
+      title="Your IP Vault"
+      pills={pills}
+      stats={stats}
+    />
+  );
+}
+
+function DiamondGlyph() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-4 w-4"
+      aria-hidden
+    >
+      <path d="M12 3l9 6-9 12L3 9l9-6z" />
+      <path d="M3 9h18M9 9l3 12 3-12" opacity="0.7" />
+    </svg>
+  );
+}
+
+function ShieldGlyph() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-4 w-4"
+      aria-hidden
+    >
+      <path d="M12 2.5L4 6v6c0 4.5 3.4 8.3 8 9.5 4.6-1.2 8-5 8-9.5V6l-8-3.5z" />
+      <path d="M9 12l2 2 4-4" />
+    </svg>
+  );
+}
+
+function DisputeGlyph() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-4 w-4"
+      aria-hidden
+    >
+      <path d="M12 2.5L4 6v6c0 4.5 3.4 8.3 8 9.5 4.6-1.2 8-5 8-9.5V6l-8-3.5z" />
+      <path d="M12 8v5" />
+      <circle cx="12" cy="16" r="0.9" fill="currentColor" />
+    </svg>
   );
 }
