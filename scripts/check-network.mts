@@ -54,14 +54,19 @@ const res = await fetch(`${NODE_API[net]}/view`, {
 
 const body = await res.json();
 if (!res.ok) {
+  // The failure this script exists to catch: the module isn't there at all,
+  // usually because the network was wiped or the address is stale. The app
+  // shows an empty dashboard in that case rather than an error, so it is easy
+  // to miss without checking.
   console.log("\nFAIL: registry not reachable —", body.message ?? res.status);
+  console.log("      redeploy with the steps in README > Move contract");
   process.exit(1);
 }
 
+// An empty registry is a normal state for a freshly deployed or freshly wiped
+// network, so it is not a failure. Answering at all is the signal.
 const total = Number(body[0]);
 console.log("datasets in registry:", total);
 console.log(
-  total > 0
-    ? "\nOK: default network has a live registry with data"
-    : "\nWARN: registry is live but empty"
+  `\nOK: registry is live${total === 0 ? " (empty — nothing uploaded yet)" : ""}`
 );
