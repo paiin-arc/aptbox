@@ -2,18 +2,12 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import {
-  type FileMeta,
-  accessLabel,
-  aptFromOctas,
-  categoryFor,
-} from "@/lib/files";
+import { type FileMeta, accessLabel, categoryFor } from "@/lib/files";
 import { formatBytes } from "@/lib/crypto";
 import { useNetwork } from "@/lib/networkContext";
 import { buildShelbyBlobUrl } from "@/lib/shelbyUrls";
 import { formatExpirationCountdown } from "@/lib/blobLifecycle";
-import { readIpRegistration } from "@/lib/ipTracker";
-import { CategoryIcon } from "./CategoryIcon";
+import { CategoryIcon, ClockIcon, FlagIcon, PlayIcon } from "./CategoryIcon";
 
 const CATEGORY_BG: Record<string, string> = {
   picture: "from-pink-100 to-rose-100 dark:from-pink-950/40 dark:to-rose-950/40",
@@ -32,16 +26,13 @@ export function FileCard({ file }: { file: FileMeta }) {
   const cat = categoryFor(file.mimeType);
   const display = file.shelbyCid.split("/").pop() ?? file.shelbyCid;
   const access = accessLabel(file.accessType);
-  const isPaid = file.accessType === 1;
   const isPublic = file.accessType === 0;
 
   const network = useNetwork();
   const [previewFailed, setPreviewFailed] = useState(false);
-  const ipReg = readIpRegistration(network, file.fileId);
 
-  // Only show real-content preview for public images/videos.
-  // Paid + whitelist files keep the icon — gating the preview is part of the
-  // payment / access incentive.
+  // Only show real-content preview for public datasets. Restricted ones keep
+  // the icon — gating the preview is part of the access control.
   const canPreview =
     isPublic && (cat === "picture" || cat === "video") && !previewFailed;
   const previewUrl = canPreview
@@ -85,8 +76,9 @@ export function FileCard({ file }: { file: FileMeta }) {
               className="h-full w-full object-cover object-top"
             />
             <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-            <span className="pointer-events-none absolute left-2 top-2 rounded-md bg-black/70 px-1.5 py-0.5 text-[10px] font-medium text-white">
-              ▶ Video
+            <span className="pointer-events-none absolute left-2 top-2 inline-flex items-center gap-1 rounded-md bg-black/70 px-1.5 py-0.5 text-[10px] font-medium text-white">
+              <PlayIcon className="h-2.5 w-2.5" />
+              Video
             </span>
             <span className="pointer-events-none absolute right-2 top-2 rounded-md bg-white/85 px-1.5 py-0.5 text-[10px] font-medium text-zinc-800 backdrop-blur dark:bg-black/60 dark:text-zinc-100">
               Preview
@@ -110,18 +102,6 @@ export function FileCard({ file }: { file: FileMeta }) {
         <div className="text-xs text-zinc-500">
           {formatBytes(file.sizeBytes)} · {file.mimeType || "unknown"}
         </div>
-        {file.aiTags && file.aiTags.length > 0 && (
-          <div className="mt-1 flex flex-wrap gap-1">
-            {file.aiTags.slice(0, 3).map((t) => (
-              <span
-                key={t}
-                className="inline-flex rounded bg-violet-50 px-1 py-0.5 text-[9px] font-medium text-violet-700 dark:bg-violet-950/40 dark:text-violet-300"
-              >
-                {t}
-              </span>
-            ))}
-          </div>
-        )}
         <div className="mt-1 flex flex-wrap items-center gap-1">
           {/* Verified-storage badge — green check when Shelby reports written */}
           {file.isWritten !== false && !file.isDeleted && (
@@ -132,57 +112,28 @@ export function FileCard({ file }: { file: FileMeta }) {
               <CheckGlyph /> Verified
             </span>
           )}
-          {/* IP Registered (Story Protocol) */}
-          {ipReg && (
-            <span
-              className="ax-badge bg-violet-500/10 text-violet-300 ring-1 ring-violet-500/25"
-              title={`Story IP · ${ipReg.ipId}`}
-            >
-              IP Registered
-            </span>
-          )}
           {/* Access mode pill */}
           <span
             className={`ax-badge ring-1 ${
               isPublic
                 ? "bg-emerald-500/10 text-emerald-300 ring-emerald-500/25"
-                : isPaid
-                  ? "bg-amber-500/10 text-amber-300 ring-amber-500/25"
-                  : "bg-violet-500/10 text-violet-300 ring-violet-500/25"
+                : "bg-violet-500/10 text-violet-300 ring-violet-500/25"
             }`}
           >
             {access}
-            {isPaid && ` · ${aptFromOctas(file.priceOctas)} APT`}
           </span>
-          {/* Encrypted: paid + whitelist files carry access control = effectively encrypted from public */}
           {!isPublic && (
             <span
               className="ax-badge bg-zinc-500/10 text-zinc-300 ring-1 ring-zinc-500/25"
-              title="Access-controlled — bytes are gated by on-chain permission check"
+              title="Access-controlled — bytes are gated by an on-chain permission check"
             >
-              <LockGlyph /> Encrypted
+              <LockGlyph /> Restricted
             </span>
           )}
           {file.flagCount > 0 && (
-            <span className="inline-flex rounded-md bg-red-50 px-1.5 py-0.5 text-[10px] font-medium text-red-700 dark:bg-red-950/40 dark:text-red-300">
-              🚩 {file.flagCount}
-            </span>
-          )}
-          {file.aiStatus === "ready" && (
-            <span
-              className="inline-flex rounded-md bg-violet-50 px-1.5 py-0.5 text-[10px] font-medium text-violet-700 dark:bg-violet-950/40 dark:text-violet-300"
-              title={file.aiSummary ?? "AI ready — chat & search supported"}
-            >
-              🧠 AI
-            </span>
-          )}
-          {(file.aiStatus === "pending" ||
-            file.aiStatus === "processing") && (
-            <span
-              className="inline-flex rounded-md bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
-              title="AI is processing this file"
-            >
-              ⌛ AI
+            <span className="inline-flex items-center gap-1 rounded-md bg-red-50 px-1.5 py-0.5 text-[10px] font-medium text-red-700 dark:bg-red-950/40 dark:text-red-300">
+              <FlagIcon className="h-2.5 w-2.5" />
+              {file.flagCount}
             </span>
           )}
           {typeof file.expirationMicros === "number" && (() => {
@@ -195,10 +146,11 @@ export function FileCard({ file }: { file: FileMeta }) {
                   : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400";
             return (
               <span
-                className={`inline-flex rounded-md px-1.5 py-0.5 text-[10px] font-medium ${cls}`}
+                className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium ${cls}`}
                 title={new Date(file.expirationMicros / 1000).toLocaleString()}
               >
-                ⏱ {exp.text}
+                <ClockIcon className="h-2.5 w-2.5" />
+                {exp.text}
               </span>
             );
           })()}

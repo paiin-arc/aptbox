@@ -109,10 +109,10 @@ export function buildDeleteFilePayload(
 }
 
 export function extractFileIdFromTx(
-  events: { type: string; data: any }[]
+  events: { type: string; data: Record<string, unknown> }[]
 ): bigint | null {
   const evt = events.find((e) => e.type.includes("::registry::FileRegistered"));
   if (!evt) return null;
-  const id = evt.data?.file_id;
+  const id = evt.data?.file_id as string | number | undefined;
   return id != null ? BigInt(id) : null;
 }

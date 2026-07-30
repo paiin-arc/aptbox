@@ -13,13 +13,10 @@ import {
   fetchFilesByUploader,
   isSupportedCategory,
   type Category,
-  type FileMeta,
 } from "@/lib/files";
 import { useNetwork } from "@/lib/networkContext";
 import { fetchAccountBlobLifecycles } from "@/lib/blobLifecycle";
 import { getShelbyClient } from "@/lib/shelby";
-import { AI_FEATURES_ENABLED } from "@/lib/aiFlags";
-import { fetchAiBatch } from "@/lib/aiClient";
 import { formatBytes } from "@/lib/crypto";
 
 export function Dashboard() {
@@ -64,39 +61,18 @@ export function Dashboard() {
     refetchInterval: 60_000,
   });
 
-  const fileIdsKey = files.map((f) => f.fileId).join(",");
-  const { data: aiMap } = useQuery({
-    queryKey: ["aiBatch", network, fileIdsKey],
-    queryFn: () =>
-      fetchAiBatch(
-        network,
-        files.map((f) => f.fileId)
-      ),
-    enabled: AI_FEATURES_ENABLED && files.length > 0,
-    refetchInterval: 30_000,
-    staleTime: 15_000,
-  });
-
   const enriched = useMemo(() => {
     return files.map((f) => {
       const lc = lifecycles?.get(f.shelbyCid);
-      const ai = aiMap?.[f.fileId];
-      if (!lc && !ai) return f;
+      if (!lc) return f;
       return {
         ...f,
-        ...(lc && {
-          expirationMicros: lc.expirationMicros,
-          isWritten: lc.isWritten,
-          isDeleted: lc.isDeleted,
-        }),
-        ...(ai && {
-          aiStatus: ai.status as FileMeta["aiStatus"],
-          aiTags: ai.tags ?? undefined,
-          aiSummary: ai.summary,
-        }),
+        expirationMicros: lc.expirationMicros,
+        isWritten: lc.isWritten,
+        isDeleted: lc.isDeleted,
       };
     });
-  }, [files, lifecycles, aiMap]);
+  }, [files, lifecycles]);
 
   const filtered = useMemo(() => {
     let list = enriched;
@@ -116,7 +92,7 @@ export function Dashboard() {
     (f) => f.isWritten !== false && !f.isDeleted
   ).length;
   const publicCount = enriched.filter((f) => f.accessType === 0).length;
-  const monetizedCount = enriched.filter((f) => f.accessType === 1).length;
+  const restrictedCount = enriched.length - publicCount;
 
   return (
     <div className="flex h-screen overflow-hidden bg-black text-zinc-100">
@@ -144,7 +120,7 @@ export function Dashboard() {
               totalBytes={totalBytes}
               verifiedCount={verifiedCount}
               publicCount={publicCount}
-              monetizedCount={monetizedCount}
+              restrictedCount={restrictedCount}
             />
           ) : (
             <MediaHeading
@@ -158,8 +134,8 @@ export function Dashboard() {
             loading={isLoading}
             emptyHint={
               activeCat === "all"
-                ? "Upload your first file to begin building your IP vault."
-                : "No media in this category yet."
+                ? "Upload your first dataset to lock in a verifiable hash."
+                : "No datasets of this type yet."
             }
           />
         </main>
@@ -175,79 +151,61 @@ function WorkspaceOverview({
   totalBytes,
   verifiedCount,
   publicCount,
-  monetizedCount,
+  restrictedCount,
 }: {
   totalFiles: number;
   totalBytes: number;
   verifiedCount: number;
   publicCount: number;
-  monetizedCount: number;
+  restrictedCount: number;
 }) {
   return (
     <div className="space-y-6">
       <header>
         <h1 className="text-2xl font-semibold tracking-tight text-zinc-100">
-          Workspace
+          My datasets
         </h1>
         <p className="mt-1 text-sm text-zinc-500">
-          Your owned, verified, programmable creative assets.
+          Stored on Shelby, each with its SHA-256 committed to Aptos so any
+          downloader can prove the bytes are unaltered.
         </p>
       </header>
 
       {/* Quick actions */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <QuickAction
-          label="Upload File"
-          desc="Verified storage"
+          label="Upload dataset"
+          desc="Store on Shelby + commit hash on-chain"
           href="/upload"
           tone="primary"
         />
         <QuickAction
-          label="Register IP"
-          desc="Make programmable"
-          href="/ip-vault"
-        />
-        <QuickAction
-          label="Create Dataset"
-          // routes to the two-tab Type / Upload composer
-          desc="AI-readable bundle"
-          href="/ai-memory/new"
-        />
-        <QuickAction
-          label="Share Secure Link"
-          desc="Permissioned access"
-          href="/permissions"
+          label="Recover a failed upload"
+          desc="Reclaim ShelbyUSD from orphaned blobs"
+          href="/cleanup"
         />
       </div>
 
       {/* Summary tiles */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <SummaryTile label="Total assets" value={totalFiles.toLocaleString()} />
+        <SummaryTile label="Datasets" value={totalFiles.toLocaleString()} />
         <SummaryTile label="Storage used" value={formatBytes(totalBytes)} />
         <SummaryTile
-          label="Verified"
+          label="Stored on Shelby"
           value={`${verifiedCount}/${totalFiles || "—"}`}
           accent="verified"
         />
         <SummaryTile
-          label="Monetized"
-          value={`${monetizedCount}`}
-          accent="royalty"
-          sub={`${publicCount} public`}
+          label="Public"
+          value={`${publicCount}`}
+          sub={`${restrictedCount} restricted`}
         />
       </div>
 
-      {/* Recent assets heading */}
       <div className="flex items-baseline justify-between">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-500">
-          Recent assets
+          Recent datasets
         </h2>
-        <Link
-          href="/ip-vault"
-          className="text-xs font-medium text-violet-300 hover:text-violet-200"
-        >
-          View IP Vault →
-        </Link>
       </div>
     </div>
   );

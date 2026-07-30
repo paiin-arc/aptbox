@@ -5,20 +5,10 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { CATEGORIES, type Category } from "@/lib/files";
 import { ShelbyLogo } from "./ShelbyLogo";
-import { StoryLogo } from "./StoryLogo";
-import { RecentUploads } from "./RecentUploads";
 import { AptboxIcon } from "./AptboxIcon";
 import {
-  ActivityIcon,
-  AiMemoryIcon,
   CategoryIcon,
   ChevronIcon,
-  DocsIcon,
-  IpVaultIcon,
-  MarketplaceIcon,
-  MonetizeIcon,
-  PermissionsIcon,
-  SettingsIcon,
   VerifiedStorageIcon,
   WorkspaceIcon,
 } from "./CategoryIcon";
@@ -43,35 +33,16 @@ type PrimaryItem = {
 };
 
 const PRIMARY_NAV: PrimaryItem[] = [
-  { label: "Workspace", href: "/", icon: <WorkspaceIcon className="h-4 w-4" /> },
-  { label: "IP Vault", href: "/ip-vault", icon: <IpVaultIcon className="h-4 w-4" /> },
   {
-    label: "Verified Storage",
-    href: "/verified-storage",
+    label: "My datasets",
+    href: "/",
+    icon: <WorkspaceIcon className="h-4 w-4" />,
+  },
+  {
+    label: "Upload dataset",
+    href: "/upload",
     icon: <VerifiedStorageIcon className="h-4 w-4" />,
   },
-  { label: "Monetize", href: "/monetize", icon: <MonetizeIcon className="h-4 w-4" /> },
-  {
-    label: "Permissions",
-    href: "/permissions",
-    icon: <PermissionsIcon className="h-4 w-4" />,
-  },
-  {
-    label: "AI Memory Hub",
-    href: "/ai-memory",
-    icon: <AiMemoryIcon className="h-4 w-4" />,
-  },
-  {
-    label: "Marketplace",
-    href: "/marketplace",
-    icon: <MarketplaceIcon className="h-4 w-4" />,
-  },
-];
-
-const SECONDARY_NAV: PrimaryItem[] = [
-  { label: "Docs", href: "/docs", icon: <DocsIcon className="h-4 w-4" /> },
-  { label: "Activity", href: "/activity", icon: <ActivityIcon className="h-4 w-4" /> },
-  { label: "Settings", href: "/settings", icon: <SettingsIcon className="h-4 w-4" /> },
 ];
 
 function formatTotalBytes(n: number): string {
@@ -163,7 +134,7 @@ export function Sidebar({
           >
             <AptboxIcon className="h-7 w-7 shrink-0 text-zinc-100 md:h-8 md:w-8" />
             <span className="truncate text-base font-bold tracking-tight text-zinc-100 md:text-lg">
-              aptbox
+              Dataset Locker
             </span>
           </Link>
           <button
@@ -230,7 +201,7 @@ export function Sidebar({
               className="flex w-full items-center justify-between rounded-md px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-zinc-500 transition hover:bg-white/5 hover:text-zinc-300"
               aria-expanded={mediaOpen}
             >
-              <span>Media</span>
+              <span>Dataset type</span>
               <ChevronIcon open={mediaOpen} />
             </button>
             <div
@@ -278,44 +249,6 @@ export function Sidebar({
             </div>
           </div>
 
-          {/* Secondary nav */}
-          <div className="mt-5 border-t border-white/5 pt-3">
-            <div className="flex flex-col gap-0.5">
-              {SECONDARY_NAV.map((item) => {
-                const isActive = pathname?.startsWith(item.href);
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={onDrawerClose}
-                    className={`${ROW_BASE} ${isActive ? ROW_ACTIVE : ROW_INACTIVE}`}
-                    aria-current={isActive ? "page" : undefined}
-                  >
-                    {isActive && (
-                      <span
-                        aria-hidden
-                        className="absolute left-0 top-1/2 h-5 -translate-y-1/2 rounded-r-full bg-violet-400"
-                        style={{ width: "2px" }}
-                      />
-                    )}
-                    <span
-                      className={`shrink-0 ${isActive ? "text-violet-300" : "text-zinc-500 group-hover:text-zinc-300"}`}
-                    >
-                      {item.icon}
-                    </span>
-                    <span className="min-w-0 flex-1 truncate" title={item.label}>
-                      {item.label}
-                    </span>
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Recent uploads */}
-          <div className="mt-5 border-t border-white/5 pt-3">
-            <RecentUploads onNavigate={onDrawerClose} />
-          </div>
         </nav>
 
         {/* Storage footer — fixed at bottom, doesn't scroll with nav */}
@@ -347,19 +280,6 @@ export function Sidebar({
                 <ShelbyLogo className="h-3 w-3 text-orange-400" />
                 <span className="font-semibold tracking-tight text-zinc-300">
                   Shelby
-                </span>
-              </a>
-              <a
-                href="https://www.story.foundation"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1 transition hover:text-[#41B5FF]"
-                title="Programmable IP by Story Protocol"
-              >
-                <span>IP layer by</span>
-                <StoryLogo className="h-3 w-3" />
-                <span className="font-semibold tracking-tight text-zinc-300">
-                  Story
                 </span>
               </a>
             </div>

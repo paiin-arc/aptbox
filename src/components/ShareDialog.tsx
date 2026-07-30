@@ -7,6 +7,7 @@ import { buildShelbyBlobUrl } from "@/lib/shelbyUrls";
 import { NETWORK_LABEL, type SupportedNetwork } from "@/lib/networks";
 import { fileNameFromCid } from "@/lib/download";
 import { formatBytes } from "@/lib/crypto";
+import { CheckIcon, CloseIcon, ExternalLinkIcon } from "./CategoryIcon";
 
 type Props = {
   file: FileMeta;
@@ -78,7 +79,7 @@ export function ShareDialog({ file, network, onClose }: Props) {
             className="rounded-lg p-1.5 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
             aria-label="Close"
           >
-            ✕
+            <CloseIcon className="h-4 w-4" />
           </button>
         </div>
 
@@ -108,7 +109,11 @@ export function ShareDialog({ file, network, onClose }: Props) {
                     : "bg-indigo-600 hover:bg-indigo-700"
                 }`}
               >
-                {appCopied ? "Copied ✓" : "Copy"}
+                {appCopied ? (
+                  <span className="inline-flex items-center gap-1"><CheckIcon className="h-3 w-3" />Copied</span>
+                ) : (
+                  "Copy"
+                )}
               </button>
             </div>
             <p className="mt-1 text-[11px] text-zinc-500">
@@ -141,7 +146,11 @@ export function ShareDialog({ file, network, onClose }: Props) {
                       : "bg-zinc-700 hover:bg-zinc-800"
                   }`}
                 >
-                  {directCopied ? "Copied ✓" : "Copy"}
+                  {directCopied ? (
+                    <span className="inline-flex items-center gap-1"><CheckIcon className="h-3 w-3" />Copied</span>
+                  ) : (
+                    "Copy"
+                  )}
                 </button>
               </div>
               <p className="mt-1 text-[11px] text-zinc-500">
@@ -168,7 +177,7 @@ export function ShareDialog({ file, network, onClose }: Props) {
               rel="noopener noreferrer"
               className="flex-1 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-center text-xs font-medium hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:bg-zinc-800"
             >
-              Share on Twitter ↗
+              <span className="inline-flex items-center justify-center gap-1">Share on Twitter <ExternalLinkIcon className="h-3 w-3" /></span>
             </a>
             {typeof navigator !== "undefined" &&
               "share" in navigator &&

@@ -6,10 +6,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { ConnectWalletButton } from "@/components/ConnectWalletButton";
 import { NetworkSwitcher } from "@/components/NetworkSwitcher";
-import { ShelbyLogo } from "@/components/ShelbyLogo";
 import { AptboxIcon } from "@/components/AptboxIcon";
 import { useNetwork, useNetworkController } from "@/lib/networkContext";
-import { NETWORK_LABEL } from "@/lib/networks";
 import { getShelbyClient } from "@/lib/shelby";
 import {
   buildDeleteMultiplePayload,
@@ -21,6 +19,7 @@ import { formatBytes } from "@/lib/crypto";
 import { fileNameFromCid } from "@/lib/download";
 import { buildDeleteFilePayload, getRegistryAddress } from "@/lib/registry";
 import { fetchFilesByUploader } from "@/lib/files";
+import { CheckIcon, RefreshIcon } from "@/components/CategoryIcon";
 
 type DeleteStage =
   | "idle"
@@ -295,7 +294,7 @@ export default function CleanupPage() {
 
         {connected && !isLoading && pending.length === 0 && (
           <div className="rounded-2xl border-2 border-dashed border-emerald-300 bg-emerald-50 p-8 text-center dark:border-emerald-900 dark:bg-emerald-950/30">
-            <div className="text-5xl">✨</div>
+            <CheckIcon className="h-10 w-10 text-emerald-500" />
             <div className="mt-2 text-base font-semibold text-emerald-900 dark:text-emerald-200">
               All clean
             </div>
@@ -332,7 +331,14 @@ export default function CleanupPage() {
                 disabled={isFetching || busy}
                 className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium hover:bg-zinc-50 active:scale-95 disabled:opacity-50 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:bg-zinc-800"
               >
-                {isFetching ? "Refreshing…" : "↻ Refresh"}
+                {isFetching ? (
+                  "Refreshing…"
+                ) : (
+                  <span className="inline-flex items-center gap-1.5">
+                    <RefreshIcon className="h-3 w-3" />
+                    Refresh
+                  </span>
+                )}
               </button>
             </div>
 
@@ -416,7 +422,12 @@ export default function CleanupPage() {
                     {stage === "aptbox-signing" && "Sign aptbox cleanup…"}
                     {stage === "aptbox-confirming" &&
                       `Cleaning aptbox… (${orphanDeletedCount}/${orphanFileIds.length})`}
-                    {stage === "done" && "Done ✓"}
+                    {stage === "done" && (
+                      <span className="inline-flex items-center gap-1">
+                        <CheckIcon className="h-3 w-3" />
+                        Done
+                      </span>
+                    )}
                     {stage === "error" && "Try again"}
                   </button>
                 </div>

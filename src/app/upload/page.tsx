@@ -12,16 +12,23 @@ import {
   formatBytes,
   blobNameFor,
 } from "@/lib/crypto";
+import { formatHashForDisplay } from "@/lib/verify";
+import {
+  ArrowRightIcon,
+  CheckIcon,
+  CloseIcon,
+  GlobeIcon,
+  LockIcon,
+  PencilIcon,
+  RefreshIcon,
+} from "@/components/CategoryIcon";
 import {
   ACCESS_PUBLIC,
-  ACCESS_PAID,
   ACCESS_WHITELIST,
   buildRegisterFilePayload,
   extractFileIdFromTx,
 } from "@/lib/registry";
 import { trackUpload, trackUploadRecord } from "@/lib/storage";
-import { triggerAiProcess } from "@/lib/aiClient";
-import { AI_FEATURES_ENABLED } from "@/lib/aiFlags";
 import { isUserRejection, logStage, signWithTimeout, waitForTx } from "@/lib/tx";
 import { useNetwork } from "@/lib/networkContext";
 import {
@@ -32,12 +39,11 @@ import {
   type UploadProgress,
 } from "@/services/uploadService";
 
-type AccessMode = "public" | "paid" | "whitelist";
+type AccessMode = "public" | "restricted";
 
-type DurationPreset = "1h" | "1d" | "7d" | "30d" | "90d" | "1y" | "custom";
+type DurationPreset = "1d" | "7d" | "30d" | "90d" | "1y" | "custom";
 
 const PRESET_HOURS: Record<Exclude<DurationPreset, "custom">, number> = {
-  "1h": 1,
   "1d": 24,
   "7d": 24 * 7,
   "30d": 24 * 30,
@@ -46,7 +52,6 @@ const PRESET_HOURS: Record<Exclude<DurationPreset, "custom">, number> = {
 };
 
 const PRESET_LABEL: Record<DurationPreset, string> = {
-  "1h": "1h",
   "1d": "1 day",
   "7d": "7 days",
   "30d": "30 days",
@@ -76,14 +81,14 @@ type UploadStage =
   | "error";
 
 const STAGE_LABEL: Record<UploadStage, string> = {
-  idle: "Upload",
+  idle: "Upload dataset",
   hashing: "Hashing…",
   encoding: "Erasure-coding…",
   "shelby-sign": "Sign Shelby register…",
   "shelby-put": "Uploading to Shelby…",
   "shelby-retry": "Retrying upload…",
-  registering: "Sign aptbox register…",
-  done: "Upload again",
+  registering: "Sign hash commitment…",
+  done: "Upload another",
   cancelled: "Cancelled — try again",
   error: "Try again",
 };
@@ -100,13 +105,6 @@ export default function UploadPage() {
   const [draftName, setDraftName] = useState("");
   const nameInputRef = useRef<HTMLInputElement>(null);
   const [accessMode, setAccessMode] = useState<AccessMode>("public");
-  /** Pre-loaded memory pack handed off from /ai-memory/new. */
-  const [memoryPackInfo, setMemoryPackInfo] = useState<{
-    name: string;
-    chunkCount: number;
-    sizeBytes: number;
-  } | null>(null);
-  const [priceApt, setPriceApt] = useState("0.01");
   const [whitelistText, setWhitelistText] = useState("");
   const [durationPreset, setDurationPreset] = useState<DurationPreset>("30d");
   const [customHours, setCustomHours] = useState("48");
@@ -119,21 +117,13 @@ export default function UploadPage() {
   const [fileId, setFileId] = useState<bigint | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
 
-  const accessTypeNum = useMemo(() => {
-    if (accessMode === "paid") return ACCESS_PAID;
-    if (accessMode === "whitelist") return ACCESS_WHITELIST;
-    return ACCESS_PUBLIC;
-  }, [accessMode]);
-
-  const priceOctas = useMemo(() => {
-    if (accessMode !== "paid") return 0n;
-    const apt = parseFloat(priceApt);
-    if (!Number.isFinite(apt) || apt < 0) return 0n;
-    return BigInt(Math.round(apt * 100_000_000));
-  }, [accessMode, priceApt]);
+  const accessTypeNum = useMemo(
+    () => (accessMode === "restricted" ? ACCESS_WHITELIST : ACCESS_PUBLIC),
+    [accessMode]
+  );
 
   const whitelist = useMemo(() => {
-    if (accessMode !== "whitelist") return [];
+    if (accessMode !== "restricted") return [];
     return whitelistText
       .split(/[\s,]+/)
       .map((s) => s.trim())
@@ -178,44 +168,6 @@ export default function UploadPage() {
   useEffect(() => {
     if (!file) setEditingName(false);
   }, [file]);
-
-  // Consume the memory-pack hand-off from /ai-memory/new on mount.
-  // The stash key is set by the AI Memory create page after Save → Continue.
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const raw = window.sessionStorage.getItem("aptbox:pendingMemoryUpload");
-    if (!raw) return;
-    try {
-      const stash = JSON.parse(raw) as {
-        name: string;
-        type: string;
-        size: number;
-        dataUrl: string;
-        pack: { manifest: { name: string; description?: string }; chunks: unknown[] };
-      };
-      // Convert the base64 data URL back into a real File we can hash + upload.
-      const comma = stash.dataUrl.indexOf(",");
-      const base64 = stash.dataUrl.slice(comma + 1);
-      const binary = atob(base64);
-      const bytes = new Uint8Array(binary.length);
-      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-      const file = new File([bytes], stash.name, {
-        type: stash.type || "application/json",
-      });
-      setFile(file);
-      setCustomName(stash.pack.manifest.name);
-      setMemoryPackInfo({
-        name: stash.pack.manifest.name,
-        chunkCount: stash.pack.chunks.length,
-        sizeBytes: stash.size,
-      });
-      // One-shot — clear so refreshes don't re-load
-      window.sessionStorage.removeItem("aptbox:pendingMemoryUpload");
-    } catch (e) {
-      console.warn("[upload] failed to consume memory pack hand-off", e);
-      window.sessionStorage.removeItem("aptbox:pendingMemoryUpload");
-    }
-  }, []);
 
   const durationHours = useMemo(() => {
     if (durationPreset === "custom") {
@@ -301,9 +253,10 @@ export default function UploadPage() {
     try {
       validateFile(file);
 
-      // 1. Hash
+      // 1. Hash — this digest is what gets committed on-chain, and what every
+      //    downloader later recomputes to prove the dataset is unaltered.
       setStage("hashing");
-      const { bytes: hashBytes, hex: hex } = await sha256File(file);
+      const { bytes: hashBytes, hex } = await sha256File(file);
       setHashHex(hex);
 
       // 2. Read bytes
@@ -322,34 +275,36 @@ export default function UploadPage() {
         onProgress: handleProgress,
       });
 
-      // 4. Sign aptbox register tx (popup 2) — fires IMMEDIATELY after the
+      // 4. Sign the hash-commitment tx (popup 2) — fires IMMEDIATELY after the
       //    Shelby register so the user is done with all wallet interaction
       //    before the slow byte upload begins. If the byte upload eventually
       //    fails, the on-chain records are already there and the orphan blob
       //    can be cleaned up via /cleanup.
       setStage("registering");
-      logStage("upload", "→ aptbox::register_file sign requested");
+      logStage("upload", "→ registry::register_file sign requested");
       const payload = buildRegisterFilePayload(network, {
         contentHash: hashBytes,
         shelbyCid: blobName,
         mimeType: file.type || "application/octet-stream",
         sizeBytes: file.size,
         accessType: accessTypeNum,
-        priceOctas,
+        priceOctas: 0n,
         whitelist,
       });
       const submitted = await signWithTimeout(
         signAndSubmitTransaction({ data: payload }),
-        "aptbox register_file"
+        "registry register_file"
       );
-      const aptboxHash = (submitted as { hash: string }).hash;
-      setTxHash(aptboxHash);
-      logStage("upload", `← aptbox register tx submitted ${aptboxHash.slice(0, 10)}…`);
+      const registryTxHash = (submitted as { hash: string }).hash;
+      setTxHash(registryTxHash);
+      logStage(
+        "upload",
+        `← registry tx submitted ${registryTxHash.slice(0, 10)}…`
+      );
 
-      // 5. Run byte upload AND aptbox tx confirmation in parallel.
-      //    Bytes upload can take 5+ min on testnet; the aptbox tx
-      //    confirmation usually lands in seconds. Both must succeed before
-      //    we mark "done".
+      // 5. Run byte upload AND tx confirmation in parallel. Bytes can take 5+
+      //    min on testnet; the tx confirmation usually lands in seconds. Both
+      //    must succeed before we mark "done".
       const [, tx] = await Promise.all([
         uploadShelbyBytes({
           network,
@@ -358,11 +313,14 @@ export default function UploadPage() {
           blobName,
           onProgress: handleProgress,
         }),
-        waitForTx(aptboxHash, { network }),
+        waitForTx(registryTxHash, { network }),
       ]);
 
-      const events = (tx as { events?: { type: string; data: any }[] }).events ?? [];
-      const id = extractFileIdFromTx(events);
+      const events =
+        (tx as { events?: { type: string; data: unknown }[] }).events ?? [];
+      const id = extractFileIdFromTx(
+        events as { type: string; data: Record<string, unknown> }[]
+      );
       setFileId(id);
 
       if (id !== null) {
@@ -370,27 +328,12 @@ export default function UploadPage() {
         trackUploadRecord(uploaderAddress, {
           fileId: id.toString(),
           shelbyTxHash: shelbyResult.registerTxHash,
-          aptboxTxHash: aptboxHash,
+          aptboxTxHash: registryTxHash,
           blobName,
           fileName: displayName,
           uploadedAt: Date.now(),
           network,
         });
-
-        // Phase 1A AI hook: enqueue server-side processing for public files
-        // (chunking, embeddings, summary). No-op when the feature flag is off
-        // or when the file isn't public — see `/api/files/process`.
-        if (AI_FEATURES_ENABLED && accessTypeNum === ACCESS_PUBLIC) {
-          triggerAiProcess({
-            network,
-            fileId: id.toString(),
-            uploader: uploaderAddress,
-            shelbyCid: blobName,
-            mimeType: file.type || "application/octet-stream",
-            sizeBytes: file.size,
-            accessType: accessTypeNum,
-          });
-        }
       }
 
       setStage("done");
@@ -429,7 +372,9 @@ export default function UploadPage() {
       <header className="sticky top-0 z-10 flex w-full items-center justify-between border-b border-zinc-200 bg-white/80 px-4 py-3 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/80 sm:px-6 sm:py-4">
         <Link href="/" className="flex items-center gap-2">
           <AptboxIcon className="h-8 w-8 text-zinc-900 dark:text-zinc-100" />
-          <span className="text-lg font-semibold tracking-tight">aptbox</span>
+          <span className="text-lg font-semibold tracking-tight">
+            Dataset Locker
+          </span>
         </Link>
         <div className="flex items-center gap-1.5 sm:gap-2">
           <NetworkSwitcher />
@@ -439,48 +384,19 @@ export default function UploadPage() {
 
       <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-5 px-4 py-6 sm:gap-6 sm:px-6 sm:py-12">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Upload a file</h1>
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+            Upload a dataset
+          </h1>
           <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400 sm:text-sm">
-            Stored on Shelby, recorded on Aptos. Tamper-proof from the moment
-            you sign. Files up to {MAX_FILE_SIZE_MB} MB.
+            Image sets, text corpora, audio data, or model files. Stored on
+            Shelby, with its SHA-256 committed to Aptos so anyone can prove the
+            bytes were never altered. Up to {MAX_FILE_SIZE_MB} MB.
           </p>
         </div>
 
         {!connected && (
           <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
             Connect your wallet first to upload.
-          </div>
-        )}
-
-        {/* Memory-pack hand-off banner — appears when /ai-memory/new pre-loaded a draft */}
-        {memoryPackInfo && (
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-violet-500/30 bg-violet-500/[0.06] p-4">
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 text-sm font-semibold text-violet-100">
-                <span className="ax-badge bg-violet-500/15 text-violet-200 ring-1 ring-violet-500/30">
-                  Memory pack
-                </span>
-                <span className="truncate" title={memoryPackInfo.name}>
-                  {memoryPackInfo.name}
-                </span>
-              </div>
-              <div className="mt-0.5 text-[11px] text-violet-200/80">
-                Pre-loaded from AI Memory Hub · {memoryPackInfo.chunkCount} chunk
-                {memoryPackInfo.chunkCount === 1 ? "" : "s"} ·{" "}
-                {(memoryPackInfo.sizeBytes / 1024).toFixed(1)} KB
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                setFile(null);
-                setMemoryPackInfo(null);
-                setCustomName(null);
-              }}
-              className="rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] font-medium text-zinc-300 hover:bg-white/[0.08]"
-            >
-              Detach
-            </button>
           </div>
         )}
 
@@ -498,25 +414,28 @@ export default function UploadPage() {
                 {displayName}
               </div>
               <div className="text-xs text-zinc-500">
-                {formatBytes(file.size)} · {file.type || "unknown type"} · click to replace
+                {formatBytes(file.size)} · {file.type || "unknown type"} · click
+                to replace
               </div>
             </div>
           ) : (
             <div className="space-y-1 text-zinc-500">
-              <div className="text-base font-medium">Click to choose a file</div>
+              <div className="text-base font-medium">
+                Click to choose a dataset
+              </div>
               <div className="text-xs">
-                Any type — image, video, audio, doc, archive · {MAX_FILE_SIZE_MB}{" "}
-                MB max
+                .zip, .tar, .csv, .jsonl, .parquet, .safetensors, images, audio ·{" "}
+                {MAX_FILE_SIZE_MB} MB max
               </div>
             </div>
           )}
         </label>
 
-        {/* Filename editor (outside the dropzone label so click doesn't reopen the picker) */}
+        {/* Dataset name editor (outside the dropzone label so click doesn't reopen the picker) */}
         {file && (
           <div className="space-y-1">
             <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
-              Filename
+              Dataset name
             </label>
             {editingName ? (
               <div className="flex items-center gap-1.5">
@@ -545,9 +464,9 @@ export default function UploadPage() {
                   disabled={busy}
                   className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
                   title="Save"
-                  aria-label="Save filename"
+                  aria-label="Save dataset name"
                 >
-                  ✓
+                  <CheckIcon className="h-3.5 w-3.5" />
                 </button>
                 <button
                   type="button"
@@ -557,7 +476,7 @@ export default function UploadPage() {
                   title="Cancel"
                   aria-label="Cancel rename"
                 >
-                  ✗
+                  <CloseIcon className="h-3.5 w-3.5" />
                 </button>
               </div>
             ) : (
@@ -575,20 +494,25 @@ export default function UploadPage() {
                   onClick={startEditingName}
                   disabled={busy}
                   className="rounded-md p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 disabled:opacity-50 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
-                  title="Rename file"
-                  aria-label="Rename file"
+                  title="Rename dataset"
+                  aria-label="Rename dataset"
                 >
-                  ✏️
+                  <PencilIcon className="h-3.5 w-3.5" />
                 </button>
               </div>
             )}
-            <div className="text-[11px] text-zinc-500">
-              Special characters get replaced with underscores. The hash is
-              computed from the file bytes — renaming doesn&apos;t affect it.
-            </div>
             {hashHex && (
-              <div className="mt-2 font-mono text-[10px] text-zinc-400">
-                sha256: {hashHex}
+              <div className="mt-2 rounded-lg border border-zinc-200 bg-white p-2.5 dark:border-zinc-800 dark:bg-zinc-900">
+                <div className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">
+                  SHA-256 to be committed on-chain
+                </div>
+                <div className="mt-0.5 break-all font-mono text-[11px] leading-relaxed text-zinc-600 dark:text-zinc-400">
+                  {formatHashForDisplay(hashHex)}
+                </div>
+                <div className="mt-1.5 text-[10px] text-zinc-500">
+                  Computed from the file bytes — renaming the dataset
+                  doesn&apos;t change it.
+                </div>
               </div>
             )}
           </div>
@@ -655,9 +579,9 @@ export default function UploadPage() {
 
         {/* Access mode */}
         <div className="space-y-3">
-          <div className="text-sm font-semibold">Access mode</div>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-            {(["public", "paid", "whitelist"] as AccessMode[]).map((mode) => (
+          <div className="text-sm font-semibold">Who can download it</div>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {(["public", "restricted"] as AccessMode[]).map((mode) => (
               <button
                 key={mode}
                 type="button"
@@ -670,43 +594,23 @@ export default function UploadPage() {
                 }`}
               >
                 <div className="flex items-center gap-2 sm:gap-1.5">
-                  <span className="text-base">
-                    {mode === "public" && "🌍"}
-                    {mode === "paid" && "💰"}
-                    {mode === "whitelist" && "🔒"}
-                  </span>
+                  {mode === "public" ? (
+                    <GlobeIcon className="h-4 w-4" />
+                  ) : (
+                    <LockIcon className="h-4 w-4" />
+                  )}
                   <div className="font-medium capitalize">{mode}</div>
                 </div>
                 <div className="ml-7 text-xs text-zinc-500 sm:ml-0">
-                  {mode === "public" && "Anyone with the link"}
-                  {mode === "paid" && "Pay to unlock"}
-                  {mode === "whitelist" && "Specific addresses"}
+                  {mode === "public"
+                    ? "Anyone with the link"
+                    : "Only wallets you list"}
                 </div>
               </button>
             ))}
           </div>
 
-          {accessMode === "paid" && (
-            <div>
-              <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
-                Price (APT)
-              </label>
-              <input
-                type="number"
-                step="0.001"
-                min="0"
-                value={priceApt}
-                onChange={(e) => setPriceApt(e.target.value)}
-                disabled={busy}
-                className="mt-1 w-40 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
-              />
-              <div className="mt-1 text-xs text-zinc-500">
-                = {priceOctas.toString()} octas
-              </div>
-            </div>
-          )}
-
-          {accessMode === "whitelist" && (
+          {accessMode === "restricted" && (
             <div>
               <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
                 Allowed addresses (space or comma separated)
@@ -755,7 +659,7 @@ export default function UploadPage() {
                   href="/cleanup"
                   className="rounded-md bg-red-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-red-700"
                 >
-                  Open Cleanup →
+                  <span className="inline-flex items-center gap-1">Open Cleanup <ArrowRightIcon className="h-3 w-3" /></span>
                 </Link>
               </div>
             )}
@@ -764,21 +668,29 @@ export default function UploadPage() {
 
         {stage === "done" && fileId !== null && (
           <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm dark:border-emerald-900 dark:bg-emerald-950/40">
-            <div className="font-semibold text-emerald-900 dark:text-emerald-200">
-              File registered ✓
+            <div className="flex items-center gap-1.5 font-semibold text-emerald-900 dark:text-emerald-200">
+              <CheckIcon className="h-4 w-4" />
+              Dataset locked
             </div>
             <div className="mt-2 space-y-1 text-emerald-800 dark:text-emerald-300">
               <div>
-                File ID: <span className="font-mono">{fileId.toString()}</span>
+                Dataset ID:{" "}
+                <span className="font-mono">{fileId.toString()}</span>
               </div>
               {txHash && (
                 <div className="break-all font-mono text-xs">tx: {txHash}</div>
               )}
+              <div className="pt-1 text-xs">
+                Its SHA-256 is now committed on-chain. Anyone opening the share
+                link will have the bytes verified against it automatically.
+              </div>
               <Link
                 href={`/f/${fileId.toString()}`}
                 className="mt-2 inline-block rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
               >
-                Open share page →
+                <span className="inline-flex items-center gap-1">
+                  Open share page <ArrowRightIcon className="h-3 w-3" />
+                </span>
               </Link>
             </div>
           </div>
@@ -797,11 +709,11 @@ const STEP_ORDER = [
 ] as const;
 
 const STEP_LABEL: Record<(typeof STEP_ORDER)[number], string> = {
-  hashing: "Hash file (SHA-256)",
+  hashing: "Hash dataset (SHA-256)",
   encoding: "Erasure-code",
   "shelby-sign": "Sign Shelby register tx (wallet popup)",
   "shelby-put": "Upload bytes to Shelby",
-  registering: "Sign aptbox register tx (wallet popup)",
+  registering: "Commit hash on-chain (wallet popup)",
 };
 
 function UploadSteps({
@@ -823,7 +735,17 @@ function UploadSteps({
         {STEP_ORDER.map((key, i) => {
           const active = idx === i;
           const done = idx > i;
-          const icon = done ? "✓" : active ? (isRetrying && key === "shelby-put" ? "↻" : "•") : "○";
+          const icon = done ? (
+            <CheckIcon className="h-3 w-3" />
+          ) : active ? (
+            isRetrying && key === "shelby-put" ? (
+              <RefreshIcon className="h-3 w-3" />
+            ) : (
+              <span className="block h-1.5 w-1.5 rounded-full bg-current" />
+            )
+          ) : (
+            <span className="block h-1.5 w-1.5 rounded-full border border-current opacity-50" />
+          );
           return (
             <li
               key={key}
@@ -835,7 +757,9 @@ function UploadSteps({
                     : "text-zinc-400 dark:text-zinc-600"
               }`}
             >
-              <span className="mt-0.5 w-3 shrink-0 text-center">{icon}</span>
+              <span className="mt-0.5 flex w-3 shrink-0 items-center justify-center">
+                {icon}
+              </span>
               <span className="flex-1">
                 <div>
                   {i + 1}. {STEP_LABEL[key]}
@@ -867,9 +791,6 @@ function UploadSteps({
           );
         })}
       </ul>
-      <div className="mt-2 text-[10px] text-zinc-400">
-        Tip: open DevTools Console — the SDK logs every multipart chunk.
-      </div>
     </div>
   );
 }

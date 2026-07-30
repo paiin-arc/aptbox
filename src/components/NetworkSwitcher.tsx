@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNetworkController } from "@/lib/networkContext";
+import { CheckIcon } from "./CategoryIcon";
 
 const NETWORK_DOTS: Record<string, string> = {
   shelbynet: "bg-purple-500",
@@ -64,7 +65,7 @@ export function NetworkSwitcher() {
                   />
                   {label(n)}
                 </span>
-                {isActive && <span className="text-xs">✓</span>}
+                {isActive && <CheckIcon className="h-3 w-3" />}
               </button>
             );
           })}

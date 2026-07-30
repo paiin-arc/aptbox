@@ -9,13 +9,13 @@ export type Category =
   | "document"
   | "other";
 
-export const CATEGORIES: { id: Category; label: string; icon: string }[] = [
-  { id: "all", label: "My files", icon: "📁" },
-  { id: "picture", label: "Pictures", icon: "🖼️" },
-  { id: "video", label: "Videos", icon: "🎬" },
-  { id: "audio", label: "Audio", icon: "🎵" },
-  { id: "document", label: "Documents", icon: "📄" },
-  { id: "other", label: "Other", icon: "📦" },
+export const CATEGORIES: { id: Category; label: string }[] = [
+  { id: "all", label: "All datasets" },
+  { id: "picture", label: "Image data" },
+  { id: "video", label: "Video data" },
+  { id: "audio", label: "Audio data" },
+  { id: "document", label: "Text corpora" },
+  { id: "other", label: "Archives & models" },
 ];
 
 const CATEGORY_IDS = new Set<Category>([
@@ -65,16 +65,6 @@ export type FileMeta = {
   expirationMicros?: number;
   isWritten?: boolean;
   isDeleted?: boolean;
-  /** AI overlay status — populated when AI features are enabled. */
-  aiStatus?:
-    | "pending"
-    | "processing"
-    | "ready"
-    | "failed"
-    | "unsupported"
-    | "skipped";
-  aiTags?: string[];
-  aiSummary?: string | null;
 };
 
 function hexFromU8Array(arr: number[] | string): string {
@@ -203,14 +193,7 @@ export async function hasAccess(
 export function accessLabel(t: number): string {
   if (t === 0) return "Public";
   if (t === 1) return "Paid";
-  if (t === 2) return "Whitelist";
+  if (t === 2) return "Restricted";
   if (t === 3) return "Token-gated";
   return "Unknown";
-}
-
-export function aptFromOctas(octas: bigint): string {
-  const apt = Number(octas) / 100_000_000;
-  if (apt === 0) return "0";
-  if (apt < 0.0001) return apt.toExponential(2);
-  return apt.toFixed(apt < 1 ? 4 : 2);
 }

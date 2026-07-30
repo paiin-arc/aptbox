@@ -8,23 +8,25 @@ import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { useShelbyClient } from "@shelby-protocol/react";
 import { ConnectWalletButton } from "@/components/ConnectWalletButton";
 import { NetworkSwitcher } from "@/components/NetworkSwitcher";
-import { RegisterIpPanel } from "@/components/RegisterIpPanel";
 import { AptboxIcon } from "@/components/AptboxIcon";
 import {
+  IntegrityPanel,
+  type IntegrityState,
+} from "@/components/IntegrityPanel";
+import {
   accessLabel,
-  aptFromOctas,
   categoryFor,
   fetchFileMeta,
   hasAccess,
   type FileMeta,
 } from "@/lib/files";
 import { formatBytes } from "@/lib/crypto";
+import { verifyDatasetIntegrity } from "@/lib/verify";
 import {
   ACCESS_PAID,
   ACCESS_PUBLIC,
   ACCESS_WHITELIST,
   buildDeleteFilePayload,
-  buildPurchaseAccessPayload,
 } from "@/lib/registry";
 import { isUserRejection, waitForTx } from "@/lib/tx";
 import {
@@ -41,6 +43,12 @@ import {
 } from "@/lib/blobLifecycle";
 import { getShelbyClient } from "@/lib/shelby";
 import { ShareDialog } from "@/components/ShareDialog";
+import {
+  ChainLinkIcon,
+  CheckIcon,
+  ClockIcon,
+  FlagIcon,
+} from "@/components/CategoryIcon";
 
 type Props = { params: Promise<{ fileId: string }> };
 
@@ -103,6 +111,7 @@ export default function FilePage({ params }: Props) {
 
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
+  const [integrity, setIntegrity] = useState<IntegrityState>({ phase: "idle" });
   const [downloadStage, setDownloadStage] = useState<
     "idle" | "fetching" | "ready" | "error" | "missing" | "propagating"
   >("idle");
@@ -110,10 +119,7 @@ export default function FilePage({ params }: Props) {
   const [propagationAttempts, setPropagationAttempts] = useState(0);
   /** Cap auto-retries at ~2 min to avoid hammering a truly-dead blob. */
   const MAX_PROPAGATION_ATTEMPTS = 20;
-  const [purchaseStage, setPurchaseStage] = useState<
-    "idle" | "signing" | "confirming" | "done" | "error"
-  >("idle");
-  const [purchaseError, setPurchaseError] = useState<string | null>(null);
+  const [tamperAcknowledged, setTamperAcknowledged] = useState(false);
   const [deleteStage, setDeleteStage] = useState<
     "idle" | "confirming" | "signing" | "waiting" | "done" | "error"
   >("idle");
@@ -136,6 +142,9 @@ export default function FilePage({ params }: Props) {
     if (isOwner) return true;
     return accessGranted;
   }, [file, accessGranted, isOwner]);
+
+  const isTampered =
+    integrity.phase === "done" && integrity.result.status === "tampered";
 
   /**
    * A blob can be "missing" for two very different reasons:
@@ -163,13 +172,27 @@ export default function FilePage({ params }: Props) {
       setDownloadError(null);
       setDownloadStage("fetching");
       setPropagationAttempts(0);
+      setIntegrity({ phase: "idle" });
+      setTamperAcknowledged(false);
     }
     try {
-      const { blob } = await fetchShelbyBlob(shelby, {
+      const { bytes, blob } = await fetchShelbyBlob(shelby, {
         uploader: file.uploader,
         cid: file.shelbyCid,
         mimeType: file.mimeType,
       });
+
+      // Verify BEFORE exposing a preview or download. The whole point of the
+      // locker is that nobody consumes unverified bytes.
+      setIntegrity({ phase: "checking" });
+      const result = await verifyDatasetIntegrity(bytes, file.contentHash);
+      setIntegrity({ phase: "done", result });
+      if (result.status === "tampered") {
+        console.warn(
+          `[integrity] file #${file.fileId} FAILED verification — expected ${result.expected}, got ${result.actual}`
+        );
+      }
+
       const url = URL.createObjectURL(blob);
       setPreviewBlob(blob);
       setPreviewUrl(url);
@@ -245,46 +268,21 @@ export default function FilePage({ params }: Props) {
     }
   }
 
-  async function handlePurchase() {
-    if (!file || !connected) return;
-    setPurchaseError(null);
-    try {
-      setPurchaseStage("signing");
-      const submitted = await signAndSubmitTransaction({
-        data: buildPurchaseAccessPayload(network, file.fileId),
-      });
-      const hash = (submitted as { hash: string }).hash;
-      setPurchaseStage("confirming");
-      await waitForTx(hash, { network });
-      setPurchaseStage("done");
-      qc.invalidateQueries({ queryKey: ["access", network, file.fileId, addr] });
-    } catch (e) {
-      if (isUserRejection(e)) {
-        setPurchaseStage("idle");
-        setPurchaseError(null);
-        return;
-      }
-      console.error(e);
-      setPurchaseError((e as Error).message ?? String(e));
-      setPurchaseStage("error");
-    }
-  }
-
   if (isLoading) {
-    return <Shell>Loading file…</Shell>;
+    return <Shell>Loading dataset…</Shell>;
   }
 
   if (error || !file) {
     return (
       <Shell>
         <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-900 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
-          File not found. It may have been removed or never existed.
+          Dataset not found. It may have been removed or never existed.
         </div>
         <Link
           href="/"
           className="mt-4 inline-block rounded-lg bg-zinc-900 px-4 py-2 text-sm font-semibold text-white dark:bg-white dark:text-black"
         >
-          ← Back home
+          Back home
         </Link>
       </Shell>
     );
@@ -304,7 +302,7 @@ export default function FilePage({ params }: Props) {
             {fileName}
           </div>
           <div className="mt-1 text-xs text-zinc-500 sm:text-sm">
-            File #{file.fileId} · {formatBytes(file.sizeBytes)} ·{" "}
+            Dataset #{file.fileId} · {formatBytes(file.sizeBytes)} ·{" "}
             <span className="break-all">{file.mimeType || "unknown"}</span>
           </div>
         </div>
@@ -314,7 +312,10 @@ export default function FilePage({ params }: Props) {
             className="flex-1 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-700 hover:bg-zinc-100 active:scale-95 sm:flex-none dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
             title="Get a shareable link"
           >
-            🔗 Share
+            <span className="inline-flex items-center gap-1.5">
+              <ChainLinkIcon className="h-3 w-3" />
+              Share
+            </span>
           </button>
           <AccessBadge file={file} />
         </div>
@@ -336,19 +337,20 @@ export default function FilePage({ params }: Props) {
         />
       )}
 
-      <div className="mb-6 flex flex-wrap gap-2 text-xs text-zinc-500">
+      <div className="mb-4 flex flex-wrap gap-2 text-xs text-zinc-500">
         <span>
-          Uploader:{" "}
+          Uploaded by{" "}
           <span className="font-mono text-zinc-700 dark:text-zinc-300">
             {short(file.uploader)}
           </span>
         </span>
-        <span>·</span>
-        <span>SHA-256: <span className="font-mono">{file.contentHash.slice(0, 16)}…</span></span>
         {file.flagCount > 0 && (
           <>
             <span>·</span>
-            <span className="text-red-600 dark:text-red-400">🚩 {file.flagCount} flags</span>
+            <span className="inline-flex items-center gap-1 text-red-600 dark:text-red-400">
+              <FlagIcon className="h-3 w-3" />
+              {file.flagCount} flags
+            </span>
           </>
         )}
       </div>
@@ -360,24 +362,26 @@ export default function FilePage({ params }: Props) {
         />
       )}
 
+      {/* Integrity — the core guarantee, shown above the bytes it describes. */}
+      <div className="mb-6">
+        <IntegrityPanel state={integrity} registryHash={file.contentHash} />
+      </div>
+
       {/* Access gate */}
       {!canAccess && (
         <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-5 dark:border-amber-900 dark:bg-amber-950/30">
-          {file.accessType === ACCESS_PAID && (
-            <PaidGate
-              file={file}
-              connected={connected}
-              purchaseStage={purchaseStage}
-              purchaseError={purchaseError}
-              onPurchase={handlePurchase}
-            />
-          )}
           {file.accessType === ACCESS_WHITELIST && (
-            <WhitelistGate connected={connected} accessLoading={accessLoading} />
+            <RestrictedGate connected={connected} accessLoading={accessLoading} />
+          )}
+          {file.accessType === ACCESS_PAID && (
+            <div className="text-sm text-amber-900 dark:text-amber-200">
+              This dataset was registered with paid access, which the Dataset
+              Locker doesn&apos;t support. Only its owner can open it.
+            </div>
           )}
           {file.accessType === 3 && (
             <div className="text-sm text-amber-900 dark:text-amber-200">
-              Token-gated access — not yet implemented.
+              Token-gated access — not supported.
             </div>
           )}
         </div>
@@ -391,7 +395,7 @@ export default function FilePage({ params }: Props) {
               onClick={() => loadBlob(file)}
               className="rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white hover:bg-indigo-700"
             >
-              Load file
+              Load &amp; verify dataset
             </button>
           )}
 
@@ -417,37 +421,35 @@ export default function FilePage({ params }: Props) {
 
           {downloadStage === "propagating" && (
             <div className="space-y-2 rounded-xl border border-violet-500/30 bg-violet-500/[0.06] p-4 text-sm">
-              <div className="flex items-center gap-2 font-semibold text-violet-200">
+              <div className="flex items-center gap-2 font-semibold text-violet-700 dark:text-violet-200">
                 <span className="relative flex h-2 w-2">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-violet-500/60" />
                   <span className="relative inline-flex h-2 w-2 rounded-full bg-violet-400" />
                 </span>
                 Storage providers finalizing…
               </div>
-              <div className="text-xs text-violet-200/80">
-                Your file is uploaded — the gateway just needs a moment to
-                replicate it across providers. We&apos;re auto-checking every
-                6 seconds.
+              <div className="text-xs text-violet-700/80 dark:text-violet-200/80">
+                The dataset is uploaded — the gateway just needs a moment to
+                replicate it across providers. We&apos;re auto-checking every 6
+                seconds.
               </div>
-              <div className="flex items-center justify-between text-[11px] text-violet-300/70">
+              <div className="flex items-center justify-between text-[11px] text-violet-700/70 dark:text-violet-300/70">
                 <span>
-                  Attempt {propagationAttempts + 1} of {MAX_PROPAGATION_ATTEMPTS}
+                  Attempt {propagationAttempts + 1} of{" "}
+                  {MAX_PROPAGATION_ATTEMPTS}
                 </span>
                 <button
                   onClick={() => loadBlob(file)}
-                  className="rounded-md border border-violet-500/30 bg-violet-500/10 px-2.5 py-1 text-[11px] font-medium text-violet-200 hover:bg-violet-500/20"
+                  className="rounded-md border border-violet-500/30 bg-violet-500/10 px-2.5 py-1 text-[11px] font-medium text-violet-700 hover:bg-violet-500/20 dark:text-violet-200"
                 >
                   Check now
                 </button>
               </div>
               {propagationAttempts + 1 >= MAX_PROPAGATION_ATTEMPTS && (
-                <div className="rounded-md bg-amber-500/10 p-2 text-[11px] text-amber-200 ring-1 ring-amber-500/30">
+                <div className="rounded-md bg-amber-500/10 p-2 text-[11px] text-amber-800 ring-1 ring-amber-500/30 dark:text-amber-200">
                   Still not available after 2 minutes. Storage providers may be
-                  slow today — try again later or use{" "}
-                  <Link
-                    href="/cleanup"
-                    className="underline hover:text-amber-100"
-                  >
+                  slow today — try again later, or use{" "}
+                  <Link href="/cleanup" className="underline">
                     /cleanup
                   </Link>{" "}
                   if you&apos;re sure the upload failed.
@@ -466,20 +468,23 @@ export default function FilePage({ params }: Props) {
                   "Shelby's storage gateway returned 404 for this blob."}
               </div>
               <ul className="ml-4 list-disc space-y-1 text-xs text-amber-800 dark:text-amber-300">
-                <li>The blob may have <strong>expired</strong> — its
-                  <code className="mx-1 rounded bg-amber-100 px-1 py-0.5 dark:bg-amber-950/60">expirationMicros</code>
-                  passed and storage providers garbage-collected it.</li>
-                <li>It may have been <strong>evicted</strong> from gateway state
-                  while the indexer still reports it as written (known divergence
-                  for older shelbynet blobs).</li>
-                <li>The original <code className="mx-1 rounded bg-amber-100 px-1 py-0.5 dark:bg-amber-950/60">putBlob</code> may have
-                  finalized only on the registry side — never on storage providers.</li>
+                <li>
+                  The blob may have <strong>expired</strong> — its storage window
+                  passed and providers garbage-collected it.
+                </li>
+                <li>
+                  It may have been <strong>evicted</strong> from gateway state
+                  while the indexer still reports it as written.
+                </li>
+                <li>
+                  The original upload may have finalized only on the registry
+                  side — never on storage providers.
+                </li>
               </ul>
               <div className="text-xs text-amber-800 dark:text-amber-300">
-                The on-chain registry entry (file #{file.fileId}) is intact, but
-                there&apos;s no way to recover the original bytes. If you&apos;re the
-                owner, the cleanest fix is to <strong>delete this entry</strong>{" "}
-                using the Owner controls below and re-upload.
+                The on-chain entry (dataset #{file.fileId}) is intact, but the
+                original bytes aren&apos;t recoverable. If you own it, delete the
+                entry below and re-upload.
               </div>
               <button
                 onClick={() => loadBlob(file)}
@@ -492,20 +497,45 @@ export default function FilePage({ params }: Props) {
 
           {downloadStage === "ready" && previewUrl && (
             <>
-              <Preview cat={cat} url={previewUrl} mime={file.mimeType} name={fileName} />
-              <button
-                onClick={handleDownload}
-                className="rounded-xl bg-zinc-900 px-5 py-3 text-sm font-semibold text-white hover:bg-zinc-700 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
-              >
-                Download {fileName}
-              </button>
+              {isTampered && !tamperAcknowledged ? (
+                <div className="space-y-3 rounded-xl border border-red-300 bg-red-50 p-4 dark:border-red-800 dark:bg-red-950/30">
+                  <div className="text-sm text-red-900 dark:text-red-200">
+                    Preview and download are blocked because this dataset failed
+                    integrity verification.
+                  </div>
+                  <button
+                    onClick={() => setTamperAcknowledged(true)}
+                    className="rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-semibold text-red-800 hover:bg-red-100 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200"
+                  >
+                    I understand the risk — show it anyway
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <Preview
+                    cat={cat}
+                    url={previewUrl}
+                    mime={file.mimeType}
+                    name={fileName}
+                  />
+                  <button
+                    onClick={handleDownload}
+                    className={`rounded-xl px-5 py-3 text-sm font-semibold text-white ${
+                      isTampered
+                        ? "bg-red-600 hover:bg-red-700"
+                        : "bg-zinc-900 hover:bg-zinc-700 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
+                    }`}
+                  >
+                    {isTampered
+                      ? `Download unverified ${fileName}`
+                      : `Download verified ${fileName}`}
+                  </button>
+                </>
+              )}
             </>
           )}
         </div>
       )}
-
-      {/* Programmable IP — owner only */}
-      {isOwner && <RegisterIpPanel file={file} />}
 
       {/* Owner controls */}
       {isOwner && (
@@ -517,11 +547,11 @@ export default function FilePage({ params }: Props) {
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
               <div className="min-w-0">
                 <div className="text-sm font-semibold text-red-900 dark:text-red-200">
-                  Delete this file
+                  Delete this dataset
                 </div>
                 <div className="mt-1 text-xs text-red-800 dark:text-red-300">
-                  Removes the registry entry on Aptos. The Shelby blob expires
-                  on its own at the original expiration time.
+                  Removes the registry entry on Aptos. The Shelby blob expires on
+                  its own at the original expiration time.
                 </div>
                 {deleteError && (
                   <div className="mt-2 text-xs text-red-700 dark:text-red-300">
@@ -563,8 +593,9 @@ export default function FilePage({ params }: Props) {
                   </button>
                 )}
                 {deleteStage === "done" && (
-                  <span className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white">
-                    Deleted ✓
+                  <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white">
+                    <CheckIcon className="h-3 w-3" />
+                    Deleted
                   </span>
                 )}
                 {deleteStage === "error" && (
@@ -590,14 +621,18 @@ function Shell({ children }: { children: React.ReactNode }) {
       <header className="sticky top-0 z-10 flex w-full items-center justify-between border-b border-zinc-200 bg-white/80 px-4 py-3 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/80 sm:px-6 sm:py-4">
         <Link href="/" className="flex items-center gap-2">
           <AptboxIcon className="h-8 w-8 text-zinc-900 dark:text-zinc-100" />
-          <span className="text-lg font-semibold tracking-tight">aptbox</span>
+          <span className="text-lg font-semibold tracking-tight">
+            Dataset Locker
+          </span>
         </Link>
         <div className="flex items-center gap-1.5 sm:gap-2">
           <NetworkSwitcher />
           <ConnectWalletButton />
         </div>
       </header>
-      <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-6 sm:px-6 sm:py-10">{children}</main>
+      <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-6 sm:px-6 sm:py-10">
+        {children}
+      </main>
     </div>
   );
 }
@@ -620,9 +655,11 @@ function ExpirationBanner({
         : "border-zinc-200 bg-white text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300";
 
   return (
-    <div className={`mb-6 flex items-start justify-between gap-3 rounded-xl border p-3 text-xs ${palette}`}>
+    <div
+      className={`mb-6 flex items-start justify-between gap-3 rounded-xl border p-3 text-xs ${palette}`}
+    >
       <div className="flex items-center gap-2">
-        <span className="text-base">⏱</span>
+        <ClockIcon className="mt-0.5 h-4 w-4 shrink-0" />
         <div>
           <div className="text-sm font-semibold">{exp.text}</div>
           <div className="mt-0.5 opacity-80">
@@ -638,7 +675,11 @@ function ExpirationBanner({
             ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
             : "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300"
         }`}
-        title={isWritten ? "Storage providers have acknowledged this blob." : "Bytes are uploaded to the gateway but not yet acknowledged by storage providers."}
+        title={
+          isWritten
+            ? "Storage providers have acknowledged this blob."
+            : "Bytes are uploaded to the gateway but not yet acknowledged by storage providers."
+        }
       >
         {isWritten ? "Stored" : "Pending"}
       </span>
@@ -651,65 +692,17 @@ function AccessBadge({ file }: { file: FileMeta }) {
   const color =
     file.accessType === ACCESS_PUBLIC
       ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
-      : file.accessType === ACCESS_PAID
-        ? "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
-        : "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300";
+      : "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300";
   return (
-    <span className={`shrink-0 rounded-md px-2 py-1 text-xs font-medium ${color}`}>
+    <span
+      className={`shrink-0 rounded-md px-2 py-1 text-xs font-medium ${color}`}
+    >
       {label}
-      {file.accessType === ACCESS_PAID && ` · ${aptFromOctas(file.priceOctas)} APT`}
     </span>
   );
 }
 
-function PaidGate({
-  file,
-  connected,
-  purchaseStage,
-  purchaseError,
-  onPurchase,
-}: {
-  file: FileMeta;
-  connected: boolean;
-  purchaseStage: "idle" | "signing" | "confirming" | "done" | "error";
-  purchaseError: string | null;
-  onPurchase: () => void;
-}) {
-  const busy = purchaseStage === "signing" || purchaseStage === "confirming";
-  return (
-    <div className="space-y-3">
-      <div className="text-sm font-semibold text-amber-900 dark:text-amber-200">
-        Paid file — {aptFromOctas(file.priceOctas)} APT to unlock
-      </div>
-      <div className="text-sm text-amber-800 dark:text-amber-300">
-        Payment goes directly to the uploader. After confirmation, you'll be
-        able to download the file as many times as you like.
-      </div>
-      {!connected ? (
-        <div className="text-sm text-amber-900 dark:text-amber-200">
-          Connect a wallet to purchase access.
-        </div>
-      ) : (
-        <button
-          onClick={onPurchase}
-          disabled={busy}
-          className="rounded-xl bg-amber-600 px-5 py-3 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-50"
-        >
-          {purchaseStage === "idle" && `Buy access · ${aptFromOctas(file.priceOctas)} APT`}
-          {purchaseStage === "signing" && "Awaiting signature…"}
-          {purchaseStage === "confirming" && "Confirming…"}
-          {purchaseStage === "done" && "Purchased ✓"}
-          {purchaseStage === "error" && "Try again"}
-        </button>
-      )}
-      {purchaseError && (
-        <div className="text-xs text-red-700 dark:text-red-300">{purchaseError}</div>
-      )}
-    </div>
-  );
-}
-
-function WhitelistGate({
+function RestrictedGate({
   connected,
   accessLoading,
 }: {
@@ -719,15 +712,15 @@ function WhitelistGate({
   if (!connected) {
     return (
       <div className="text-sm text-amber-900 dark:text-amber-200">
-        Whitelisted file — connect your wallet to check eligibility.
+        Restricted dataset — connect your wallet to check access.
       </div>
     );
   }
   return (
     <div className="text-sm text-amber-900 dark:text-amber-200">
       {accessLoading
-        ? "Checking whitelist…"
-        : "This wallet isn't on the whitelist for this file."}
+        ? "Checking access list…"
+        : "This wallet isn't on the access list for this dataset."}
     </div>
   );
 }
@@ -745,7 +738,13 @@ function Preview({
 }) {
   if (cat === "picture") {
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={url} alt={name} className="max-h-[480px] w-full rounded-xl object-contain" />;
+    return (
+      <img
+        src={url}
+        alt={name}
+        className="max-h-[480px] w-full rounded-xl object-contain"
+      />
+    );
   }
   if (cat === "video") {
     return (
@@ -769,12 +768,12 @@ function Preview({
       />
     );
   }
-  if (mime.startsWith("text/")) {
+  if (mime.startsWith("text/") || mime === "application/json") {
     return <TextPreview url={url} />;
   }
   return (
-    <div className="flex items-center justify-center rounded-xl border border-dashed border-zinc-300 bg-white p-12 text-zinc-500 dark:border-zinc-700 dark:bg-zinc-900">
-      No inline preview for this file type — use download.
+    <div className="flex items-center justify-center rounded-xl border border-dashed border-zinc-300 bg-white p-12 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:bg-zinc-900">
+      No inline preview for this dataset type — use download.
     </div>
   );
 }

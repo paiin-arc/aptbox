@@ -5,7 +5,7 @@ import { ConnectWalletButton } from "./ConnectWalletButton";
 import { NetworkSwitcher } from "./NetworkSwitcher";
 import { BalancePills } from "./BalancePills";
 import { AptboxIcon } from "./AptboxIcon";
-import { EvmConnectButton } from "./EvmConnectButton";
+import { MenuIcon, SearchIcon, UploadArrowIcon } from "./CategoryIcon";
 
 type TopbarProps = {
   search: string;
@@ -24,7 +24,7 @@ export function Topbar({ search, onSearchChange, onMenuClick }: TopbarProps) {
           className="rounded-lg p-2 text-zinc-700 hover:bg-zinc-100 active:scale-95 dark:text-zinc-200 dark:hover:bg-zinc-800 md:hidden"
           aria-label="Open menu"
         >
-          <span className="text-lg">☰</span>
+          <MenuIcon className="h-5 w-5" />
         </button>
       )}
 
@@ -35,7 +35,7 @@ export function Topbar({ search, onSearchChange, onMenuClick }: TopbarProps) {
         aria-label="aptbox home"
       >
         <AptboxIcon className="h-7 w-7 text-zinc-900 dark:text-zinc-100" />
-        <span className="text-base font-bold tracking-tight">aptbox</span>
+        <span className="text-base font-bold tracking-tight">Locker</span>
       </Link>
 
       {/* Upload + (hidden on small) Share */}
@@ -44,7 +44,7 @@ export function Topbar({ search, onSearchChange, onMenuClick }: TopbarProps) {
           href="/upload"
           className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-br from-indigo-600 to-violet-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:from-indigo-700 hover:to-violet-700 active:scale-[0.98]"
         >
-          <span>↑</span>
+          <UploadArrowIcon className="h-3.5 w-3.5" />
           <span>Upload</span>
         </Link>
       </div>
@@ -53,13 +53,13 @@ export function Topbar({ search, onSearchChange, onMenuClick }: TopbarProps) {
       <div className="ml-auto hidden flex-1 max-w-xs lg:block">
         <div className="relative">
           <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400">
-            🔍
+            <SearchIcon className="h-4 w-4" />
           </span>
           <input
             type="search"
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Search my files"
+            placeholder="Search my datasets"
             className="w-full rounded-lg border border-zinc-200 bg-zinc-50 py-2 pl-9 pr-3 text-sm placeholder:text-zinc-400 focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-zinc-800 dark:bg-zinc-900 dark:focus:bg-zinc-950"
           />
         </div>
@@ -70,17 +70,17 @@ export function Topbar({ search, onSearchChange, onMenuClick }: TopbarProps) {
         {/* Mobile floating upload button */}
         <Link
           href="/upload"
-          className="rounded-lg bg-gradient-to-br from-indigo-600 to-violet-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition active:scale-95 sm:hidden"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-br from-indigo-600 to-violet-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition active:scale-95 sm:hidden"
           aria-label="Upload"
         >
-          ↑ Upload
+          <UploadArrowIcon className="h-3 w-3" />
+          Upload
         </Link>
 
         {/* Balance pills hidden on mobile to save space */}
         <BalancePills />
 
         <NetworkSwitcher />
-        <EvmConnectButton />
         <ConnectWalletButton />
       </div>
     </div>

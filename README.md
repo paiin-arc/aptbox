@@ -1,36 +1,75 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AI Dataset Locker
 
-## Getting Started
+Verifiable storage for AI training datasets, built on [Shelby](https://shelby.xyz) and [Aptos](https://aptosfoundation.org).
 
-First, run the development server:
+Training data usually travels as a Google Drive link or a zip file passed around in chat. Nobody downstream can tell whether the dataset they received is the original or a modified copy. The Dataset Locker fixes that: it stores the dataset on Shelby's decentralized object storage and commits its SHA-256 to an Aptos Move registry, so any downloader can prove the bytes are unaltered.
+
+## How verification works
+
+Upload:
+
+1. The browser hashes the file with SHA-256 (`src/lib/crypto.ts`).
+2. The bytes are erasure-coded and uploaded to Shelby (`src/services/uploadService.ts`).
+3. That hash is written to the Aptos registry by the uploader's own signed transaction (`aptos/sources/registry.move`) — **before** the dataset is served to anyone.
+
+Download (`src/app/f/[fileId]/page.tsx`):
+
+1. The bytes are fetched from Shelby.
+2. Their SHA-256 is recomputed in the browser and compared to the on-chain commitment (`src/lib/verify.ts`).
+3. The result is shown with both hashes side by side (`src/components/IntegrityPanel.tsx`). A mismatch blocks preview and download behind an explicit warning.
+
+The on-chain commitment is what makes this meaningful. A hash the uploader hands you next to the file proves nothing, because whoever serves the bytes can serve a matching hash. Because the commitment lives in an immutable Move resource, neither the uploader nor the storage gateway can change it after the fact to match altered bytes.
+
+## Routes
+
+| Route | Purpose |
+| --- | --- |
+| `/` | Landing page, or your dataset list once a wallet is connected |
+| `/upload` | Hash, store on Shelby, and commit the hash on-chain |
+| `/f/[fileId]` | Share page — verifies integrity, then previews/downloads |
+| `/cleanup` | Recover ShelbyUSD from uploads whose bytes never finalized |
+
+## Setup
 
 ```bash
+npm install
+cp .env.local.example .env.local   # then paste your keys
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Required environment variables:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Variable | Purpose |
+| --- | --- |
+| `NEXT_PUBLIC_SHELBY_API_KEY` | Shelby (Geomi) key for storage reads/writes |
+| `NEXT_PUBLIC_REGISTRY_ADDRESS_TESTNET` | Deployed registry address on Aptos testnet |
+| `NEXT_PUBLIC_REGISTRY_ADDRESS_SHELBYNET` | Deployed registry address on shelbynet |
+| `NEXT_PUBLIC_APTOS_API_KEY_TESTNET` | Aptos fullnode API key (optional, avoids rate limits) |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Per-network Shelby keys (`NEXT_PUBLIC_SHELBY_API_KEY_TESTNET`, `..._SHELBYNET`) override the shared key when set.
 
-## Learn More
+## Move contract
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+cd aptos
+aptos move compile
+aptos move publish
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Then point `NEXT_PUBLIC_REGISTRY_ADDRESS_<NETWORK>` at the published address.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Known limits
 
-## Deploy on Vercel
+- **25 MB per dataset** (`MAX_FILE_SIZE_MB` in `src/services/uploadService.ts`) — a practical cap for Shelby testnet, well below what real image corpora or model checkpoints need.
+- **Storage expires.** Blobs carry an expiration (1 day to 1 year, chosen at upload). Once it passes, providers garbage-collect the bytes; the registry entry and its hash remain, but the data is gone.
+- **Verification requires downloading the whole dataset**, since the hash covers the full byte range. There is no partial or streaming verification.
+- Shelby testnet uploads can return 408/5xx after the on-chain register already landed, which locks ShelbyUSD against an orphaned blob. `/cleanup` reclaims it.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Scripts
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm run dev     # dev server
+npm run build   # production build
+npm run lint    # eslint
+npx tsc --noEmit  # typecheck
+```
