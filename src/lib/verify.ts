@@ -23,7 +23,7 @@ export function normalizeHashHex(hash: string): string {
 }
 
 /** SHA-256 a byte array, returning lowercase hex. */
-export async function sha256Bytes(bytes: Uint8Array): Promise<string> {
+async function sha256Bytes(bytes: Uint8Array): Promise<string> {
   // slice() guarantees a fresh, ArrayBuffer-backed copy — SharedArrayBuffer
   // views are not valid BufferSource input for SubtleCrypto.
   const digest = await crypto.subtle.digest("SHA-256", bytes.slice().buffer);
@@ -32,7 +32,7 @@ export async function sha256Bytes(bytes: Uint8Array): Promise<string> {
     .join("");
 }
 
-export type VerificationStatus =
+type VerificationStatus =
   /** Recomputed hash matches the on-chain commitment. */
   | "verified"
   /** Bytes do not match — the dataset was altered after registration. */

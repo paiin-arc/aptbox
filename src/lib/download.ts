@@ -1,7 +1,7 @@
 import type { ShelbyClient } from "@shelby-protocol/sdk/browser";
 import { sha256Stream, type HashProgress } from "./sha256Stream";
 
-export type FetchedBlob = {
+type FetchedBlob = {
   bytes: Uint8Array;
   blob: Blob;
 };
@@ -12,7 +12,7 @@ export type FetchedBlob = {
  * and object URL can't sensibly hold — past this point we stream-verify and
  * hand the user a direct gateway URL, which the browser streams to disk.
  */
-export const MATERIALIZE_MAX_BYTES = 256 * 1024 * 1024;
+const MATERIALIZE_MAX_BYTES = 256 * 1024 * 1024;
 
 export function canMaterialize(sizeBytes: number): boolean {
   return sizeBytes <= MATERIALIZE_MAX_BYTES;

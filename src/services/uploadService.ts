@@ -12,8 +12,6 @@
  *
  *   prepareAndRegisterShelby — sync erasure-code + sign register tx
  *   uploadShelbyBytes        — putBlob with retry (no wallet signature)
- *
- * `uploadFileToShelby` is the convenience wrapper that does both back-to-back.
  */
 
 import {
@@ -52,9 +50,9 @@ import { logStage, signWithTimeout } from "@/lib/tx";
  */
 
 /** Default scheme: erasure_k(10) * chunkSizeBytes(1 MiB). */
-export const CHUNKSET_SIZE_BYTES = 10 * 1024 * 1024;
+const CHUNKSET_SIZE_BYTES = 10 * 1024 * 1024;
 /** `ShelbyRPCClient.#putBlobMultipart` default `partSize`. */
-export const UPLOAD_PART_SIZE_BYTES = 5 * 1024 * 1024;
+const UPLOAD_PART_SIZE_BYTES = 5 * 1024 * 1024;
 /** ClayCode_16Total_10Data: encoding expands each chunkset by n/k. */
 const ERASURE_EXPANSION = 16 / 10;
 
@@ -62,7 +60,7 @@ const ERASURE_EXPANSION = 16 / 10;
  * Above this, an upload takes long enough (hashing + encoding + a sequential
  * multipart transfer) to be worth calling out. Advisory only — never blocks.
  */
-export const LARGE_UPLOAD_ADVISORY_BYTES = 1024 * 1024 * 1024;
+const LARGE_UPLOAD_ADVISORY_BYTES = 1024 * 1024 * 1024;
 
 export function chunksetCountFor(bytes: number): number {
   return Math.max(1, Math.ceil(bytes / CHUNKSET_SIZE_BYTES));
@@ -88,7 +86,7 @@ export function isLargeUpload(bytes: number): boolean {
 }
 
 /** Blob expiration: 30 days from now in microseconds since Unix epoch. */
-export function defaultExpirationMicros(): number {
+function defaultExpirationMicros(): number {
   const ms = Date.now() + 30 * 24 * 60 * 60 * 1000;
   return ms * 1000;
 }
@@ -131,7 +129,7 @@ export type UploadProgress = {
 
 type SignAndSubmitFn = WalletContextState["signAndSubmitTransaction"];
 
-export type PrepareAndRegisterArgs = {
+type PrepareAndRegisterArgs = {
   network: SupportedNetwork;
   uploaderAddress: string;
   /**
@@ -145,17 +143,9 @@ export type PrepareAndRegisterArgs = {
   onProgress?: (p: UploadProgress) => void;
 };
 
-export type PrepareAndRegisterResult = {
+type PrepareAndRegisterResult = {
   blobName: string;
   commitments: BlobCommitments;
-  registerTxHash: string;
-};
-
-export type UploadShelbyArgs = PrepareAndRegisterArgs;
-
-export type UploadShelbyResult = {
-  blobName: string;
-  blobMerkleRoot: string;
   registerTxHash: string;
 };
 
@@ -225,7 +215,7 @@ export async function prepareAndRegisterShelby(
   return { blobName, commitments, registerTxHash };
 }
 
-export type UploadShelbyBytesArgs = {
+type UploadShelbyBytesArgs = {
   network: SupportedNetwork;
   uploaderAddress: string;
   source: Blob;
@@ -328,25 +318,3 @@ export async function uploadShelbyBytes(
   onProgress?.({ stage: "done", message: "Upload complete." });
 }
 
-/**
- * Convenience wrapper: phase 1 then phase 2, sequentially.
- * Use the two split functions directly when you want to interleave the aptbox
- * register tx between the Shelby register and the byte upload.
- */
-export async function uploadFileToShelby(
-  args: UploadShelbyArgs
-): Promise<UploadShelbyResult> {
-  const { commitments, registerTxHash } = await prepareAndRegisterShelby(args);
-  await uploadShelbyBytes({
-    network: args.network,
-    uploaderAddress: args.uploaderAddress,
-    source: args.source,
-    blobName: args.blobName,
-    onProgress: args.onProgress,
-  });
-  return {
-    blobName: args.blobName,
-    blobMerkleRoot: commitments.blob_merkle_root,
-    registerTxHash,
-  };
-}

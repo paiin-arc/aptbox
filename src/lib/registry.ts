@@ -8,7 +8,6 @@ import {
 export const ACCESS_PUBLIC = 0;
 export const ACCESS_PAID = 1;
 export const ACCESS_WHITELIST = 2;
-export const ACCESS_TOKEN_GATED = 3;
 
 const aptosCache = new Map<SupportedNetwork, Aptos>();
 
@@ -30,7 +29,7 @@ export function getRegistryAddress(network: SupportedNetwork): string {
   return registryAddressFor(network);
 }
 
-export type RegisterFileArgs = {
+type RegisterFileArgs = {
   contentHash: Uint8Array;
   shelbyCid: string;
   mimeType: string;
@@ -63,34 +62,6 @@ export function buildRegisterFilePayload(
       args.priceOctas.toString(),
       args.whitelist,
     ],
-  };
-}
-
-export function buildPurchaseAccessPayload(
-  network: SupportedNetwork,
-  fileId: string
-) {
-  const addr = getRegistryAddress(network);
-  if (!addr) throw new Error(`No registry address for ${network}.`);
-  return {
-    function:
-      `${addr}::registry::purchase_access` as `${string}::${string}::${string}`,
-    typeArguments: [],
-    functionArguments: [fileId],
-  };
-}
-
-export function buildFlagFilePayload(
-  network: SupportedNetwork,
-  fileId: string
-) {
-  const addr = getRegistryAddress(network);
-  if (!addr) throw new Error(`No registry address for ${network}.`);
-  return {
-    function:
-      `${addr}::registry::flag_file` as `${string}::${string}::${string}`,
-    typeArguments: [],
-    functionArguments: [fileId],
   };
 }
 

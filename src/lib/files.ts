@@ -121,7 +121,7 @@ export async function fetchFileMeta(
   }
 }
 
-export async function fetchFileMetas(
+async function fetchFileMetas(
   network: SupportedNetwork,
   fileIds: string[]
 ): Promise<FileMeta[]> {
@@ -131,7 +131,7 @@ export async function fetchFileMetas(
   return results.filter((m): m is FileMeta => m !== null);
 }
 
-export async function fetchTotalFileCount(
+async function fetchTotalFileCount(
   network: SupportedNetwork
 ): Promise<number> {
   const addr = getRegistryAddress(network);
@@ -147,7 +147,7 @@ export async function fetchTotalFileCount(
   return Number(result[0]);
 }
 
-export async function fetchAllFiles(
+async function fetchAllFiles(
   network: SupportedNetwork
 ): Promise<FileMeta[]> {
   const total = await fetchTotalFileCount(network);

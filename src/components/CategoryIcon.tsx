@@ -196,21 +196,6 @@ export function WorkspaceIcon({ className = "h-4 w-4" }: { className?: string })
   );
 }
 
-export function VerifiedStorageIcon({
-  className = "h-4 w-4",
-}: {
-  className?: string;
-}) {
-  return (
-    <svg viewBox="0 0 24 24" {...COMMON} className={className} aria-hidden>
-      <ellipse cx="12" cy="6" rx="8" ry="2.6" />
-      <path d="M4 6v6c0 1.45 3.58 2.6 8 2.6s8-1.15 8-2.6V6" />
-      <path d="M4 12v6c0 1.45 3.58 2.6 8 2.6 1.45 0 2.85-.13 4.1-.36" />
-      <path d="M14.5 18.5l1.7 1.7 3.3-3.6" />
-    </svg>
-  );
-}
-
 /* ---------- UI glyphs (replace emoji everywhere) ---------- */
 
 export function CheckIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {

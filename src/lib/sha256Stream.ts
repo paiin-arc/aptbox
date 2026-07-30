@@ -167,7 +167,7 @@ export function bytesToHex(bytes: Uint8Array): string {
  * single-ArrayBuffer engine ceiling so the native path is only used where it's
  * comfortably safe.
  */
-export const WEBCRYPTO_MAX_BYTES = 64 * 1024 * 1024;
+const WEBCRYPTO_MAX_BYTES = 64 * 1024 * 1024;
 
 export type HashProgress = { hashedBytes: number; totalBytes: number };
 

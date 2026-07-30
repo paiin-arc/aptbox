@@ -43,7 +43,7 @@ export function trackUpload(addr: string, fileId: bigint) {
   }
 }
 
-export function readFileIds(addr: string): string[] {
+function readFileIds(addr: string): string[] {
   if (typeof window === "undefined") return [];
   const raw = window.localStorage.getItem(filesKey(addr));
   if (!raw) return [];
@@ -54,16 +54,6 @@ export function readFileIds(addr: string): string[] {
     return [];
   }
 }
-
-export function untrackUpload(addr: string, fileId: bigint) {
-  if (typeof window === "undefined") return;
-  const list = readFileIds(addr).filter((id) => id !== fileId.toString());
-  window.localStorage.setItem(filesKey(addr), JSON.stringify(list));
-}
-
-// ──────────────────────────────────────────────────────────────────────────
-// Rich upload records
-// ──────────────────────────────────────────────────────────────────────────
 
 export type UploadRecord = {
   fileId: string;
@@ -92,7 +82,7 @@ export function trackUploadRecord(addr: string, rec: UploadRecord): void {
   window.localStorage.setItem(recordsKey(addr), JSON.stringify(trimmed));
 }
 
-export function readUploadRecords(
+function readUploadRecords(
   addr: string,
   network?: SupportedNetwork
 ): UploadRecord[] {
@@ -120,7 +110,3 @@ export function readUploadRecords(
   }
 }
 
-export function clearUploadRecords(addr: string): void {
-  if (typeof window === "undefined" || !addr) return;
-  window.localStorage.removeItem(recordsKey(addr));
-}

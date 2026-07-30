@@ -55,6 +55,9 @@ export function ConnectWalletButton() {
                 className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
               >
                 {w.icon && (
+                  // Wallet icons are data URLs supplied by the adapter at
+                  // runtime, so next/image has no domain to configure.
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img src={w.icon} alt="" className="h-5 w-5 rounded" />
                 )}
                 <span>{w.name}</span>
