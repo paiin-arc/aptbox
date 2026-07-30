@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "verify:sha256": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-sha256.mts",
     "verify:streaming": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-streaming.mts",
+    "verify:network": "node --experimental-strip-types --env-file=.env.local --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-network.mts",
     "verify": "npm run typecheck && npm run verify:sha256 && npm run verify:streaming"
   },
   "dependencies": {

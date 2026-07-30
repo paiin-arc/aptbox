@@ -1,0 +1,67 @@
+/**
+ * Confirms the app's default network actually has a live registry behind it.
+ *
+ * Reads the same env vars the app reads, resolves them the same way
+ * src/lib/networks.ts does, then calls the registry's `next_id` view. Kept
+ * standalone rather than importing src/lib so it can run under plain node,
+ * which doesn't resolve the extensionless internal imports the bundler does.
+ *
+ * Run: node --experimental-strip-types --env-file=.env.local scripts/check-network.mts
+ */
+
+const SUPPORTED = ["shelbynet", "testnet"] as const;
+type Net = (typeof SUPPORTED)[number];
+
+const NODE_API: Record<Net, string> = {
+  shelbynet: "https://api.shelbynet.shelby.xyz/v1",
+  testnet: "https://api.testnet.aptoslabs.com/v1",
+};
+
+function resolveDefault(): Net {
+  for (const raw of [
+    process.env.NEXT_PUBLIC_DEFAULT_NETWORK,
+    process.env.NEXT_PUBLIC_APTOS_NETWORK,
+  ]) {
+    const v = (raw ?? "").toLowerCase();
+    if ((SUPPORTED as readonly string[]).includes(v)) return v as Net;
+  }
+  return "testnet"; // must mirror defaultNetwork() in src/lib/networks.ts
+}
+
+const net = resolveDefault();
+const addr =
+  net === "testnet"
+    ? process.env.NEXT_PUBLIC_REGISTRY_ADDRESS_TESTNET
+    : process.env.NEXT_PUBLIC_REGISTRY_ADDRESS_SHELBYNET;
+
+console.log("default network :", net);
+console.log("registry address:", addr);
+
+if (!addr) {
+  console.log("\nFAIL: no registry address configured for this network");
+  process.exit(1);
+}
+
+const res = await fetch(`${NODE_API[net]}/view`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    function: `${addr}::registry::next_id`,
+    type_arguments: [],
+    arguments: [],
+  }),
+});
+
+const body = await res.json();
+if (!res.ok) {
+  console.log("\nFAIL: registry not reachable —", body.message ?? res.status);
+  process.exit(1);
+}
+
+const total = Number(body[0]);
+console.log("datasets in registry:", total);
+console.log(
+  total > 0
+    ? "\nOK: default network has a live registry with data"
+    : "\nWARN: registry is live but empty"
+);

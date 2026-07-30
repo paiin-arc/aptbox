@@ -19,7 +19,11 @@ export function defaultNetwork(): SupportedNetwork {
   // legacy var still accepted for back-compat with existing .env.local
   const legacy = (process.env.NEXT_PUBLIC_APTOS_NETWORK ?? "").toLowerCase();
   if (isSupported(legacy)) return legacy;
-  return Network.SHELBYNET;
+  // Testnet, not shelbynet: the registry Move module is deployed on testnet,
+  // while the shelbynet account has no modules published at all. Defaulting to
+  // shelbynet dropped new users onto a network where the dashboard is silently
+  // empty and every upload fails at register_file.
+  return Network.TESTNET;
 }
 
 export function shelbyApiKeyFor(network: SupportedNetwork): string | undefined {

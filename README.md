@@ -86,9 +86,14 @@ npm run typecheck         # tsc --noEmit
 npm run verify            # typecheck + both correctness gates below
 npm run verify:sha256     # streaming SHA-256 vs NIST vectors + WebCrypto fuzz
 npm run verify:streaming  # streamed commitments == buffered commitments
+npm run verify:network    # default network actually has a live registry
 ```
 
 The two `verify:*` gates guard the pieces where a silent bug would be worst:
 
 - `verify:sha256` — the streaming digest replaces WebCrypto on the upload path. If it were wrong, every dataset would get a bad on-chain commitment and every download would report tampering. Checked against FIPS 180-4 known-answer vectors, block/padding boundaries (55/56/57, 63/64/65, 119/120/121), and 300 randomized differential comparisons against `crypto.subtle.digest` with random update splits.
 - `verify:streaming` — uploads now stream into `generateCommitments`. If streaming changed the merkle root, blobs would register on-chain with the wrong root. Checked at chunkset boundaries with both aligned and ragged stream chunking.
+
+`verify:network` is separate from `npm run verify` because it needs `.env.local` and network access. It resolves the default network the same way the app does and calls the registry's `next_id`, which catches the case where the app points at a network with no contract deployed.
+
+**The registry is deployed on Aptos testnet, not shelbynet.** The shelbynet account exists but has zero modules published, so the app defaults to testnet — pointing it at shelbynet gives a silently empty dashboard and uploads that fail at `register_file`.
