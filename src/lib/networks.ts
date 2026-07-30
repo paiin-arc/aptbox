@@ -13,16 +13,22 @@ export const NETWORK_LABEL: Record<SupportedNetwork, string> = {
   [Network.TESTNET]: "Testnet",
 };
 
+/**
+ * NEXT_PUBLIC_DEFAULT_NETWORK is the only env override.
+ *
+ * The old NEXT_PUBLIC_APTOS_NETWORK was kept as a back-compat shim and turned
+ * into a production bug: a stale `shelbynet` value was sitting in the Vercel
+ * project, and because NEXT_PUBLIC_* is inlined at build time it beat this
+ * function's fallback on every deploy — so the live site kept defaulting to a
+ * network whose registry is empty, no matter what the code said. Dropping the
+ * shim means the deployed default comes from one place we can actually see.
+ *
+ * Testnet is that default because the registry holds real datasets there;
+ * shelbynet is deployed but empty, and lands users on a blank workspace.
+ */
 export function defaultNetwork(): SupportedNetwork {
   const env = (process.env.NEXT_PUBLIC_DEFAULT_NETWORK ?? "").toLowerCase();
   if (isSupported(env)) return env;
-  // legacy var still accepted for back-compat with existing .env.local
-  const legacy = (process.env.NEXT_PUBLIC_APTOS_NETWORK ?? "").toLowerCase();
-  if (isSupported(legacy)) return legacy;
-  // Testnet, not shelbynet: the registry Move module is deployed on testnet,
-  // while the shelbynet account has no modules published at all. Defaulting to
-  // shelbynet dropped new users onto a network where the dashboard is silently
-  // empty and every upload fails at register_file.
   return Network.TESTNET;
 }
 

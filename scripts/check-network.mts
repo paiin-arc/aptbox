@@ -18,14 +18,10 @@ const NODE_API: Record<Net, string> = {
 };
 
 function resolveDefault(): Net {
-  for (const raw of [
-    process.env.NEXT_PUBLIC_DEFAULT_NETWORK,
-    process.env.NEXT_PUBLIC_APTOS_NETWORK,
-  ]) {
-    const v = (raw ?? "").toLowerCase();
-    if ((SUPPORTED as readonly string[]).includes(v)) return v as Net;
-  }
-  return "testnet"; // must mirror defaultNetwork() in src/lib/networks.ts
+  // Mirrors defaultNetwork() in src/lib/networks.ts — one override, one fallback.
+  const v = (process.env.NEXT_PUBLIC_DEFAULT_NETWORK ?? "").toLowerCase();
+  if ((SUPPORTED as readonly string[]).includes(v)) return v as Net;
+  return "testnet";
 }
 
 const net = resolveDefault();

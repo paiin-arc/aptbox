@@ -119,14 +119,24 @@ vercel env add NEXT_PUBLIC_REGISTRY_ADDRESS_SHELBYNET production
 
 # Recommended
 vercel env add NEXT_PUBLIC_APTOS_API_KEY_TESTNET production   # avoids fullnode rate limits
-vercel env add NEXT_PUBLIC_DEFAULT_NETWORK production          # "testnet"
 vercel env add NEXT_PUBLIC_SITE_URL production                 # your real URL, for OG tags
+
+# Optional — only to override the default network. Testnet is the built-in
+# default, so leaving this unset is correct for production.
+vercel env add NEXT_PUBLIC_DEFAULT_NETWORK production          # "shelbynet" to switch
 
 vercel --prod
 ```
 
 Values are in your local `.env.local`, which is gitignored and never reaches
 the repo.
+
+`NEXT_PUBLIC_DEFAULT_NETWORK` is the **only** env var that changes the active
+network. An older `NEXT_PUBLIC_APTOS_NETWORK` was once honoured as a fallback
+and is now ignored — a stale `shelbynet` value left in a Vercel project silently
+pinned production to an empty registry, and because `NEXT_PUBLIC_*` is inlined
+at build time no code change could override it. If that variable still exists in
+your Vercel project it is inert, but worth deleting.
 
 Two things worth knowing:
 
