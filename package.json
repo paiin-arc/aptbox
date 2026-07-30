@@ -6,7 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "verify:sha256": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-sha256.mts",
+    "verify:streaming": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-streaming.mts",
+    "verify": "npm run typecheck && npm run verify:sha256 && npm run verify:streaming"
   },
   "dependencies": {
     "@aptos-labs/ts-sdk": "^5.2.1",

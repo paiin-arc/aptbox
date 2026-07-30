@@ -21,7 +21,7 @@ import {
   type FileMeta,
 } from "@/lib/files";
 import { formatBytes } from "@/lib/crypto";
-import { verifyDatasetIntegrity } from "@/lib/verify";
+import { normalizeHashHex, verifyDatasetIntegrity } from "@/lib/verify";
 import {
   ACCESS_PAID,
   ACCESS_PUBLIC,
@@ -30,11 +30,14 @@ import {
 } from "@/lib/registry";
 import { isUserRejection, waitForTx } from "@/lib/tx";
 import {
+  canMaterialize,
   fetchShelbyBlob,
   fileNameFromCid,
+  hashShelbyBlobStreaming,
   ShelbyBlobNotFoundError,
   triggerBrowserDownload,
 } from "@/lib/download";
+import { buildShelbyBlobUrl } from "@/lib/shelbyUrls";
 import { useNetwork, useNetworkController } from "@/lib/networkContext";
 import { isSupported, NETWORK_LABEL } from "@/lib/networks";
 import {
@@ -117,6 +120,7 @@ export default function FilePage({ params }: Props) {
   >("idle");
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const [propagationAttempts, setPropagationAttempts] = useState(0);
+  const [hashPct, setHashPct] = useState<number | null>(null);
   /** Cap auto-retries at ~2 min to avoid hammering a truly-dead blob. */
   const MAX_PROPAGATION_ATTEMPTS = 20;
   const [tamperAcknowledged, setTamperAcknowledged] = useState(false);
@@ -176,26 +180,57 @@ export default function FilePage({ params }: Props) {
       setTamperAcknowledged(false);
     }
     try {
-      const { bytes, blob } = await fetchShelbyBlob(shelby, {
-        uploader: file.uploader,
-        cid: file.shelbyCid,
-        mimeType: file.mimeType,
-      });
+      // Uploads are unbounded, so a dataset can easily exceed what this tab can
+      // buffer. Small enough → materialize once and verify from those bytes.
+      // Too large → stream-verify in constant memory and skip the in-tab copy,
+      // so integrity is still provable at any size.
+      if (canMaterialize(file.sizeBytes)) {
+        const { bytes, blob } = await fetchShelbyBlob(shelby, {
+          uploader: file.uploader,
+          cid: file.shelbyCid,
+          mimeType: file.mimeType,
+        });
 
-      // Verify BEFORE exposing a preview or download. The whole point of the
-      // locker is that nobody consumes unverified bytes.
-      setIntegrity({ phase: "checking" });
-      const result = await verifyDatasetIntegrity(bytes, file.contentHash);
-      setIntegrity({ phase: "done", result });
-      if (result.status === "tampered") {
-        console.warn(
-          `[integrity] file #${file.fileId} FAILED verification — expected ${result.expected}, got ${result.actual}`
+        // Verify BEFORE exposing a preview or download. The whole point of the
+        // locker is that nobody consumes unverified bytes.
+        setIntegrity({ phase: "checking" });
+        const result = await verifyDatasetIntegrity(bytes, file.contentHash);
+        setIntegrity({ phase: "done", result });
+        if (result.status === "tampered") {
+          console.warn(
+            `[integrity] dataset #${file.fileId} FAILED verification — expected ${result.expected}, got ${result.actual}`
+          );
+        }
+
+        const url = URL.createObjectURL(blob);
+        setPreviewBlob(blob);
+        setPreviewUrl(url);
+      } else {
+        setIntegrity({ phase: "checking" });
+        setHashPct(0);
+        const { hex } = await hashShelbyBlobStreaming(
+          shelby,
+          { uploader: file.uploader, cid: file.shelbyCid },
+          (h) => {
+            if (h.totalBytes > 0) {
+              setHashPct(Math.round((h.hashedBytes / h.totalBytes) * 100));
+            }
+          },
+          file.sizeBytes
         );
+        setHashPct(null);
+        const expected = normalizeHashHex(file.contentHash);
+        const valid = expected.length === 64 && /^[0-9a-f]+$/.test(expected);
+        setIntegrity({
+          phase: "done",
+          result: {
+            status: !valid ? "unverifiable" : expected === hex ? "verified" : "tampered",
+            expected,
+            actual: hex,
+            sizeBytes: file.sizeBytes,
+          },
+        });
       }
-
-      const url = URL.createObjectURL(blob);
-      setPreviewBlob(blob);
-      setPreviewUrl(url);
       setDownloadStage("ready");
       setPropagationAttempts(0);
     } catch (e) {
@@ -363,8 +398,25 @@ export default function FilePage({ params }: Props) {
       )}
 
       {/* Integrity — the core guarantee, shown above the bytes it describes. */}
-      <div className="mb-6">
+      <div className="mb-6 space-y-2">
         <IntegrityPanel state={integrity} registryHash={file.contentHash} />
+        {integrity.phase === "checking" && hashPct !== null && (
+          <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-3 text-xs text-indigo-900 dark:border-indigo-900 dark:bg-indigo-950/30 dark:text-indigo-200">
+            <div className="flex items-baseline justify-between">
+              <span>
+                Streaming {formatBytes(file.sizeBytes)} through SHA-256 without
+                buffering…
+              </span>
+              <span className="font-medium">{hashPct}%</span>
+            </div>
+            <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-indigo-200/60 dark:bg-indigo-900">
+              <div
+                className="h-full rounded-full bg-indigo-500 transition-[width] duration-200"
+                style={{ width: `${hashPct}%` }}
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Access gate */}
@@ -492,6 +544,37 @@ export default function FilePage({ params }: Props) {
               >
                 Try again
               </button>
+            </div>
+          )}
+
+          {downloadStage === "ready" && !previewUrl && (
+            <div className="space-y-3 rounded-xl border border-zinc-200 bg-white p-4 text-sm dark:border-zinc-800 dark:bg-zinc-900">
+              <div className="font-semibold">
+                Verified — too large to open in the browser
+              </div>
+              <div className="text-xs text-zinc-600 dark:text-zinc-400">
+                This dataset is {formatBytes(file.sizeBytes)}. It was hashed
+                straight off the wire, so the integrity result above is complete
+                — but holding it in the tab to preview or re-download would
+                exhaust memory. Use the direct gateway URL instead; the browser
+                streams it to disk.
+              </div>
+              {file.accessType === ACCESS_PUBLIC ? (
+                <a
+                  href={buildShelbyBlobUrl(network, file.uploader, file.shelbyCid)}
+                  download={fileName}
+                  className="inline-block rounded-lg bg-zinc-900 px-4 py-2 text-xs font-semibold text-white hover:bg-zinc-700 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
+                >
+                  Download via Shelby gateway
+                </a>
+              ) : (
+                <div className="text-xs text-amber-700 dark:text-amber-300">
+                  This dataset is access-controlled, so there is no public
+                  gateway URL to hand you. Fetch it with the Shelby SDK or CLI
+                  using your own credentials, then check its SHA-256 against the
+                  hash above.
+                </div>
+              )}
             </div>
           )}
 

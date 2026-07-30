@@ -1,21 +1,18 @@
+import { sha256Blob, type HashProgress } from "./sha256Stream";
+
 /**
- * Compute SHA-256 of a file in the browser using SubtleCrypto.
- * Returns the raw hash bytes (32 bytes) plus a hex-encoded string.
+ * Compute SHA-256 of a dataset. Returns the raw 32 hash bytes (for the on-chain
+ * commitment) plus hex (for display and comparison).
+ *
+ * Delegates to `sha256Blob`, which uses native WebCrypto for small inputs and
+ * a streaming digest for large ones — so this never buffers a whole multi-GB
+ * dataset just to hash it.
  */
 export async function sha256File(
-  file: File
+  file: Blob,
+  onProgress?: (p: HashProgress) => void
 ): Promise<{ bytes: Uint8Array; hex: string }> {
-  const buf = await file.arrayBuffer();
-  const digest = await crypto.subtle.digest("SHA-256", buf);
-  const bytes = new Uint8Array(digest);
-  const hex = Array.from(bytes)
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-  return { bytes, hex };
-}
-
-export async function fileToUint8Array(file: File): Promise<Uint8Array> {
-  return new Uint8Array(await file.arrayBuffer());
+  return sha256Blob(file, onProgress);
 }
 
 export function formatBytes(n: number): string {

@@ -1,9 +1,22 @@
 import type { ShelbyClient } from "@shelby-protocol/sdk/browser";
+import { sha256Stream, type HashProgress } from "./sha256Stream";
 
 export type FetchedBlob = {
   bytes: Uint8Array;
   blob: Blob;
 };
+
+/**
+ * Above this we refuse to materialize a downloaded dataset into an in-tab Blob.
+ * Uploads are unbounded, so verification has to stay possible at sizes a Blob
+ * and object URL can't sensibly hold — past this point we stream-verify and
+ * hand the user a direct gateway URL, which the browser streams to disk.
+ */
+export const MATERIALIZE_MAX_BYTES = 256 * 1024 * 1024;
+
+export function canMaterialize(sizeBytes: number): boolean {
+  return sizeBytes <= MATERIALIZE_MAX_BYTES;
+}
 
 /**
  * Custom error so the file-detail page can surface a friendly UX for the
@@ -36,6 +49,35 @@ export async function fetchShelbyBlob(
       type: args.mimeType || "application/octet-stream",
     });
     return { bytes, blob };
+  } catch (e) {
+    if (isNotFound(e)) {
+      throw new ShelbyBlobNotFoundError(
+        "Shelby's storage gateway reports this blob doesn't exist (404). The on-chain registry entry still exists, but the bytes may have expired, been evicted, or never finalized."
+      );
+    }
+    throw e;
+  }
+}
+
+/**
+ * Hash a dataset straight off the wire without ever holding it in memory.
+ *
+ * This is what lets integrity verification work for datasets far larger than
+ * the tab could buffer — the whole point of the locker is that nobody has to
+ * take the bytes on trust, including at sizes too big to preview.
+ */
+export async function hashShelbyBlobStreaming(
+  client: ShelbyClient,
+  args: { uploader: string; cid: string },
+  onProgress?: (p: HashProgress) => void,
+  totalBytes?: number
+): Promise<{ bytes: Uint8Array; hex: string }> {
+  try {
+    const result = await client.rpc.getBlob({
+      account: args.uploader,
+      blobName: args.cid,
+    });
+    return await sha256Stream(result.readable, { totalBytes, onProgress });
   } catch (e) {
     if (isNotFound(e)) {
       throw new ShelbyBlobNotFoundError(

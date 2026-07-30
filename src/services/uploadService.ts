@@ -29,46 +29,40 @@ import { shelbyApiKeyFor, type SupportedNetwork } from "@/lib/networks";
 import { logStage, signWithTimeout } from "@/lib/tx";
 
 /**
- * Shelby imposes no maximum blob size.
+ * There is no maximum dataset size.
  *
  * Verified against @shelby-protocol/sdk 0.3.1 rather than assumed:
- *   - `generateCommitments` streams the data into as many chunksets as needed
- *     (`readInChunks(fullData, erasure_k * chunkSizeBytes)`), 10 MiB each with
- *     the default ClayCode_16Total_10Data scheme. No chunkset-count ceiling.
- *   - `putBlob` uploads via multipart in 5 MiB parts with no part-count cap.
- *   - Neither the SDK nor docs.shelby.xyz state a per-blob maximum; the docs
+ *   - `generateCommitments(provider, ReadableStream | Uint8Array)` streams the
+ *     data into as many chunksets as needed, 10 MiB each under the default
+ *     ClayCode_16Total_10Data scheme. No chunkset-count ceiling.
+ *   - `putBlob({ blobData: ReadableStream, totalBytes })` uploads via multipart
+ *     in 5 MiB parts with no part-count cap.
+ *   - Neither the SDK nor docs.shelby.xyz states a per-blob maximum; the docs
  *     say "files of any size with automatic chunking and erasure coding".
  *
- * The binding constraint is therefore this browser, not the protocol: we hand
- * the SDK one contiguous Uint8Array from `file.arrayBuffer()`, and JS engines
- * cap a single ArrayBuffer. 2 GiB - 1 is the conservative cross-engine limit.
+ * This module therefore never materializes the dataset in memory. Every pass
+ * takes a fresh `Blob.stream()`:
  *
- * Override with NEXT_PUBLIC_MAX_UPLOAD_BYTES if your target browser allows more.
+ *   1. SHA-256      — streaming digest (see src/lib/sha256Stream.ts)
+ *   2. commitments  — SDK streams it, one 10 MiB chunkset at a time
+ *   3. putBlob      — SDK streams it, one 5 MiB part at a time
+ *
+ * Peak memory is a small constant regardless of dataset size, so there is no
+ * size cap to enforce. The cost is that the file is read from disk three times.
  */
-const ENGINE_MAX_BUFFER_BYTES = 2 ** 31 - 1;
-
-function resolveMaxUploadBytes(): number {
-  const raw = process.env.NEXT_PUBLIC_MAX_UPLOAD_BYTES;
-  if (!raw) return ENGINE_MAX_BUFFER_BYTES;
-  const parsed = Number(raw);
-  if (!Number.isFinite(parsed) || parsed <= 0) return ENGINE_MAX_BUFFER_BYTES;
-  return Math.floor(parsed);
-}
-
-export const MAX_FILE_SIZE_BYTES = resolveMaxUploadBytes();
 
 /** Default scheme: erasure_k(10) * chunkSizeBytes(1 MiB). */
 export const CHUNKSET_SIZE_BYTES = 10 * 1024 * 1024;
 /** `ShelbyRPCClient.#putBlobMultipart` default `partSize`. */
 export const UPLOAD_PART_SIZE_BYTES = 5 * 1024 * 1024;
-/** ClayCode_16Total_10Data: encoding allocates n/k on top of the raw bytes. */
+/** ClayCode_16Total_10Data: encoding expands each chunkset by n/k. */
 const ERASURE_EXPANSION = 16 / 10;
 
 /**
- * Above this, browser-side erasure coding gets slow and memory-hungry enough
- * to be worth warning about. Advisory only — never blocks the upload.
+ * Above this, an upload takes long enough (hashing + encoding + a sequential
+ * multipart transfer) to be worth calling out. Advisory only — never blocks.
  */
-export const LARGE_UPLOAD_ADVISORY_BYTES = 256 * 1024 * 1024;
+export const LARGE_UPLOAD_ADVISORY_BYTES = 1024 * 1024 * 1024;
 
 export function chunksetCountFor(bytes: number): number {
   return Math.max(1, Math.ceil(bytes / CHUNKSET_SIZE_BYTES));
@@ -78,9 +72,15 @@ export function partCountFor(bytes: number): number {
   return Math.max(1, Math.ceil(bytes / UPLOAD_PART_SIZE_BYTES));
 }
 
-/** Rough peak: the raw buffer plus the parity the encoder builds alongside it. */
-export function estimatedPeakMemoryBytes(bytes: number): number {
-  return Math.round(bytes * (1 + ERASURE_EXPANSION));
+/**
+ * Peak working set, which is bounded by the largest single stage rather than by
+ * the dataset: one chunkset plus its parity, or one multipart part.
+ */
+export function peakWorkingSetBytes(): number {
+  return Math.max(
+    Math.round(CHUNKSET_SIZE_BYTES * (1 + ERASURE_EXPANSION)),
+    UPLOAD_PART_SIZE_BYTES
+  );
 }
 
 export function isLargeUpload(bytes: number): boolean {
@@ -134,7 +134,11 @@ type SignAndSubmitFn = WalletContextState["signAndSubmitTransaction"];
 export type PrepareAndRegisterArgs = {
   network: SupportedNetwork;
   uploaderAddress: string;
-  blobData: Uint8Array;
+  /**
+   * The dataset itself. Kept as a Blob (not Uint8Array) so each stage can take
+   * a fresh `.stream()` — that's what removes the size ceiling.
+   */
+  source: Blob;
   blobName: string;
   signAndSubmitTransaction: SignAndSubmitFn;
   expirationMicros?: number;
@@ -155,18 +159,14 @@ export type UploadShelbyResult = {
   registerTxHash: string;
 };
 
+/**
+ * No size ceiling — every stage streams, so a dataset only has to be readable,
+ * not resident in memory. Empty is still rejected: Shelby would substitute a
+ * zero-filled chunkset, which is never what the uploader meant.
+ */
 export function validateFile(file: File): void {
-  if (!file) throw new Error("No file selected.");
+  if (!file) throw new Error("No dataset selected.");
   if (file.size === 0) throw new Error("Empty dataset is not allowed.");
-  if (file.size > MAX_FILE_SIZE_BYTES) {
-    const gib = (MAX_FILE_SIZE_BYTES / 1024 ** 3).toFixed(2);
-    throw new Error(
-      `Dataset is ${(file.size / 1024 ** 3).toFixed(2)} GiB, which exceeds what ` +
-        `this browser can hold in a single buffer (${gib} GiB). Shelby itself has ` +
-        `no size limit — split the dataset into shards and upload them separately, ` +
-        `or raise NEXT_PUBLIC_MAX_UPLOAD_BYTES if your browser supports more.`
-    );
-  }
 }
 
 /**
@@ -178,22 +178,23 @@ export async function prepareAndRegisterShelby(
 ): Promise<PrepareAndRegisterResult> {
   const {
     uploaderAddress,
-    blobData,
+    source,
     blobName,
     signAndSubmitTransaction,
     onProgress,
   } = args;
 
-  // 1. Erasure-code → commitments
-  onProgress?.({ stage: "encoding", message: "Erasure-coding file…" });
+  // 1. Erasure-code → commitments. Streamed: the SDK pulls one 10 MiB chunkset
+  //    at a time, so this is flat in memory no matter how big the dataset is.
+  onProgress?.({ stage: "encoding", message: "Erasure-coding dataset…" });
   const ecProvider = await createDefaultErasureCodingProvider();
   const encoding = ecProvider.config.enumIndex;
   if (typeof window !== "undefined") {
     console.log(
-      `[shelby] erasure scheme enumIndex=${encoding} (n=${ecProvider.config.erasure_n}, k=${ecProvider.config.erasure_k}, chunk=${ecProvider.config.chunkSizeBytes}B) for ${blobData.length}B`
+      `[shelby] erasure scheme enumIndex=${encoding} (n=${ecProvider.config.erasure_n}, k=${ecProvider.config.erasure_k}, chunk=${ecProvider.config.chunkSizeBytes}B) streaming ${source.size}B`
     );
   }
-  const commitments = await generateCommitments(ecProvider, blobData);
+  const commitments = await generateCommitments(ecProvider, source.stream());
 
   // 2. Build + sign registerBlob Move payload
   onProgress?.({
@@ -227,7 +228,7 @@ export async function prepareAndRegisterShelby(
 export type UploadShelbyBytesArgs = {
   network: SupportedNetwork;
   uploaderAddress: string;
-  blobData: Uint8Array;
+  source: Blob;
   blobName: string;
   onProgress?: (p: UploadProgress) => void;
 };
@@ -239,7 +240,7 @@ export type UploadShelbyBytesArgs = {
 export async function uploadShelbyBytes(
   args: UploadShelbyBytesArgs
 ): Promise<void> {
-  const { network, uploaderAddress, blobData, blobName, onProgress } = args;
+  const { network, uploaderAddress, source, blobName, onProgress } = args;
 
   const apiKey = shelbyApiKeyFor(network);
   if (!apiKey) {
@@ -255,44 +256,49 @@ export async function uploadShelbyBytes(
   });
   const rpc = new ShelbyRPCClient({ network, apiKey });
 
-  const putParams = {
+  const handlePutProgress = (p: {
+    phase: "uploading" | "finalizing";
+    partIdx: number;
+    totalParts: number;
+    partBytes: number;
+    uploadedBytes: number;
+    totalBytes: number;
+  }) => {
+    const pct =
+      p.totalBytes > 0 ? Math.min(100, (p.uploadedBytes / p.totalBytes) * 100) : 0;
+    if (typeof window !== "undefined") {
+      console.log(
+        `[shelby putBlob] ${p.phase} part ${p.partIdx + 1}/${p.totalParts}  ${p.uploadedBytes}/${p.totalBytes} bytes (${pct.toFixed(1)}%)`
+      );
+    }
+    onProgress?.({
+      stage: "putting",
+      pct,
+      uploadedBytes: p.uploadedBytes,
+      totalBytes: p.totalBytes,
+      partIdx: p.partIdx,
+      totalParts: p.totalParts,
+      phase: p.phase,
+      message: `Uploading bytes to Shelby (part ${p.partIdx + 1}/${p.totalParts})…`,
+    });
+  };
+
+  /**
+   * Built per attempt, never hoisted: a ReadableStream is single-use, so a
+   * retry that reused the first stream would upload zero bytes.
+   */
+  const buildPutParams = () => ({
     account: uploaderAddress,
     blobName,
-    blobData,
-    onProgress: (p: {
-      phase: "uploading" | "finalizing";
-      partIdx: number;
-      totalParts: number;
-      partBytes: number;
-      uploadedBytes: number;
-      totalBytes: number;
-    }) => {
-      const pct =
-        p.totalBytes > 0
-          ? Math.min(100, (p.uploadedBytes / p.totalBytes) * 100)
-          : 0;
-      if (typeof window !== "undefined") {
-        console.log(
-          `[shelby putBlob] ${p.phase} part ${p.partIdx + 1}/${p.totalParts}  ${p.uploadedBytes}/${p.totalBytes} bytes (${pct.toFixed(1)}%)`
-        );
-      }
-      onProgress?.({
-        stage: "putting",
-        pct,
-        uploadedBytes: p.uploadedBytes,
-        totalBytes: p.totalBytes,
-        partIdx: p.partIdx,
-        totalParts: p.totalParts,
-        phase: p.phase,
-        message: `Uploading bytes to Shelby (part ${p.partIdx + 1}/${p.totalParts})…`,
-      });
-    },
-  };
+    blobData: source.stream(),
+    totalBytes: source.size,
+    onProgress: handlePutProgress,
+  });
 
   let lastPutErr: unknown = null;
   for (let attempt = 0; attempt <= MAX_PUT_RETRIES; attempt++) {
     try {
-      await rpc.putBlob(putParams);
+      await rpc.putBlob(buildPutParams());
       lastPutErr = null;
       break;
     } catch (e) {
@@ -301,7 +307,7 @@ export async function uploadShelbyBytes(
       if (!isTransientGatewayError(e) || isLast) {
         if (isTransientGatewayError(e)) {
           throw new Error(
-            `Shelby storage timed out twice (status ${getErrorStatus(e)}). The Shelby register tx is on-chain and your ShelbyUSD is locked, but storage providers couldn't acknowledge the upload. Try again later or use a smaller file. Original error: ${(e as Error).message}`
+            `Shelby storage timed out twice (status ${getErrorStatus(e)}). The Shelby register tx is on-chain and your ShelbyUSD is locked, but storage providers couldn't acknowledge the upload. Try again later, or shard the dataset so each transfer is shorter. Original error: ${(e as Error).message}`
           );
         }
         throw e;
@@ -334,7 +340,7 @@ export async function uploadFileToShelby(
   await uploadShelbyBytes({
     network: args.network,
     uploaderAddress: args.uploaderAddress,
-    blobData: args.blobData,
+    source: args.source,
     blobName: args.blobName,
     onProgress: args.onProgress,
   });

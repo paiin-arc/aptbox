@@ -6,12 +6,7 @@ import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { ConnectWalletButton } from "@/components/ConnectWalletButton";
 import { AptboxIcon } from "@/components/AptboxIcon";
 import { NetworkSwitcher } from "@/components/NetworkSwitcher";
-import {
-  sha256File,
-  fileToUint8Array,
-  formatBytes,
-  blobNameFor,
-} from "@/lib/crypto";
+import { sha256File, formatBytes, blobNameFor } from "@/lib/crypto";
 import { formatHashForDisplay } from "@/lib/verify";
 import {
   ArrowRightIcon,
@@ -32,11 +27,10 @@ import { trackUpload, trackUploadRecord } from "@/lib/storage";
 import { isUserRejection, logStage, signWithTimeout, waitForTx } from "@/lib/tx";
 import { useNetwork } from "@/lib/networkContext";
 import {
-  MAX_FILE_SIZE_BYTES,
   chunksetCountFor,
-  estimatedPeakMemoryBytes,
   isLargeUpload,
   partCountFor,
+  peakWorkingSetBytes,
   prepareAndRegisterShelby,
   uploadShelbyBytes,
   validateFile,
@@ -115,6 +109,7 @@ export default function UploadPage() {
 
   const [stage, setStage] = useState<UploadStage>("idle");
   const [putPct, setPutPct] = useState<number | null>(null);
+  const [hashPct, setHashPct] = useState<number | null>(null);
   const [putDetail, setPutDetail] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [errorIsOrphaned, setErrorIsOrphaned] = useState(false);
@@ -211,9 +206,15 @@ export default function UploadPage() {
       return;
     }
     setStage("hashing");
+    setHashPct(null);
     try {
-      const { hex } = await sha256File(f);
+      const { hex } = await sha256File(f, (h) => {
+        if (h.totalBytes > 0) {
+          setHashPct(Math.round((h.hashedBytes / h.totalBytes) * 100));
+        }
+      });
       setHashHex(hex);
+      setHashPct(null);
       setStage("idle");
     } catch (e) {
       setStage("error");
@@ -253,6 +254,7 @@ export default function UploadPage() {
     setTxHash(null);
     setPutPct(null);
     setPutDetail(null);
+    setHashPct(null);
 
     try {
       validateFile(file);
@@ -263,8 +265,7 @@ export default function UploadPage() {
       const { bytes: hashBytes, hex } = await sha256File(file);
       setHashHex(hex);
 
-      // 2. Read bytes
-      const blobData = await fileToUint8Array(file);
+      // 2. No buffering — every stage below takes a fresh file.stream().
       const blobName = blobNameFor(hex, displayName);
       const uploaderAddress = account.address.toString();
 
@@ -272,7 +273,7 @@ export default function UploadPage() {
       const shelbyResult = await prepareAndRegisterShelby({
         network,
         uploaderAddress,
-        blobData,
+        source: file,
         blobName,
         signAndSubmitTransaction,
         expirationMicros,
@@ -313,7 +314,7 @@ export default function UploadPage() {
         uploadShelbyBytes({
           network,
           uploaderAddress,
-          blobData,
+          source: file,
           blobName,
           onProgress: handleProgress,
         }),
@@ -394,8 +395,8 @@ export default function UploadPage() {
           <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400 sm:text-sm">
             Image sets, text corpora, audio data, or model files. Stored on
             Shelby, with its SHA-256 committed to Aptos so anyone can prove the
-            bytes were never altered. Shelby has no size limit — this browser
-            caps a single upload at {formatBytes(MAX_FILE_SIZE_BYTES)}.
+            bytes were never altered. No size limit — datasets stream straight
+            through, so memory stays flat however large they get.
           </p>
         </div>
 
@@ -647,6 +648,23 @@ export default function UploadPage() {
           {stage === "shelby-put" && putPct !== null && ` (${putPct}%)`}
         </button>
 
+        {/* Streaming-hash progress — the one stage that runs before any wallet
+            prompt, and the slowest for very large datasets. */}
+        {stage === "hashing" && hashPct !== null && (
+          <div className="rounded-xl border border-zinc-200 bg-white p-3 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
+            <div className="flex items-baseline justify-between">
+              <span>Hashing dataset (SHA-256)…</span>
+              <span className="font-medium">{hashPct}%</span>
+            </div>
+            <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800">
+              <div
+                className="h-full rounded-full bg-indigo-500 transition-[width] duration-200"
+                style={{ width: `${hashPct}%` }}
+              />
+            </div>
+          </div>
+        )}
+
         {/* Stage-by-stage progress when busy */}
         {busy && (
           <UploadSteps stage={stage} putPct={putPct} putDetail={putDetail} />
@@ -726,7 +744,8 @@ function StoragePlan({ sizeBytes }: { sizeBytes: number }) {
           {formatBytes(sizeBytes)} → {chunksets.toLocaleString()} erasure-coded
           chunkset{chunksets === 1 ? "" : "s"} (10 MiB each), uploaded as{" "}
           {parts.toLocaleString()} multipart chunk{parts === 1 ? "" : "s"} of 5
-          MiB.
+          MiB. Streamed, so peak memory stays near{" "}
+          {formatBytes(peakWorkingSetBytes())}.
         </div>
       </div>
 
@@ -734,11 +753,12 @@ function StoragePlan({ sizeBytes }: { sizeBytes: number }) {
         <div className="rounded-lg border border-amber-300 bg-amber-50 p-2.5 text-[11px] text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
           <div className="font-semibold">Large dataset</div>
           <div className="mt-0.5">
-            Erasure coding runs in this tab and will hold roughly{" "}
-            {formatBytes(estimatedPeakMemoryBytes(sizeBytes))} in memory at peak.
-            Expect several minutes before the first wallet prompt, and keep this
-            tab in the foreground. If the tab runs out of memory, shard the
-            dataset and upload the shards separately.
+            Memory stays flat at about{" "}
+            {formatBytes(peakWorkingSetBytes())} because every stage streams, but
+            the dataset is read three times (hash, encode, upload) and the
+            transfer is sequential. Expect this to take a while, and keep the tab
+            open — closing it mid-transfer leaves an orphaned blob that{" "}
+            <code>/cleanup</code> has to reclaim.
           </div>
         </div>
       )}
