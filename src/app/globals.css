@@ -247,3 +247,83 @@ body {
   }
   .ax-anim-check { stroke-dashoffset: 0; animation: none !important; }
 }
+
+/* ---------- Docs backdrop: hero image, light rays ---------- */
+
+/* Slow drift keeps the artwork from feeling like a static screenshot. */
+@keyframes ax-hero-drift {
+  0%, 100% { transform: scale(1.06) translate3d(0, 0, 0); }
+  50%      { transform: scale(1.12) translate3d(-1.2%, -0.8%, 0); }
+}
+.ax-hero-image {
+  opacity: 0.5;
+  animation: ax-hero-drift 32s ease-in-out infinite;
+  will-change: transform;
+}
+
+/* Volumetric rays. Each is a soft skewed gradient sweeping across the page. */
+@keyframes ax-ray-sweep {
+  0%, 100% { opacity: 0.20; transform: translate3d(0, 0, 0) rotate(var(--ax-ray-rot, -18deg)); }
+  50%      { opacity: 0.55; transform: translate3d(3%, 1.5%, 0) rotate(calc(var(--ax-ray-rot, -18deg) + 2deg)); }
+}
+.ax-ray {
+  position: absolute;
+  top: -35%;
+  height: 170%;
+  width: 22rem;
+  filter: blur(38px);
+  transform-origin: top center;
+  animation: ax-ray-sweep 14s ease-in-out infinite;
+  will-change: opacity, transform;
+}
+.ax-ray-1 {
+  --ax-ray-rot: -20deg;
+  right: 8%;
+  background: linear-gradient(180deg, rgba(96,165,250,0.30), rgba(59,130,246,0.10) 45%, transparent 78%);
+}
+.ax-ray-2 {
+  --ax-ray-rot: -12deg;
+  right: 26%;
+  width: 14rem;
+  animation-delay: 3.5s;
+  background: linear-gradient(180deg, rgba(167,139,250,0.26), rgba(139,92,246,0.08) 50%, transparent 80%);
+}
+.ax-ray-3 {
+  --ax-ray-rot: -26deg;
+  right: 46%;
+  width: 10rem;
+  animation-delay: 7s;
+  background: linear-gradient(180deg, rgba(147,197,253,0.18), transparent 72%);
+}
+
+/* ---------- Scroll reveal: lift + settle ---------- */
+
+/* A deeper, slower entrance than .ax-reveal — sections rise into place with a
+   slight scale and blur falloff so they read as arriving rather than fading. */
+.ax-lift {
+  opacity: 0;
+  transform: translate3d(0, 42px, 0) scale(0.985);
+  filter: blur(6px);
+  transition:
+    opacity 900ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 900ms cubic-bezier(0.16, 1, 0.3, 1),
+    filter 700ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition-delay: var(--ax-lift-delay, 0ms);
+  will-change: opacity, transform;
+}
+.ax-lift[data-revealed="true"] {
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1);
+  filter: blur(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ax-hero-image { animation: none !important; }
+  .ax-ray { animation: none !important; opacity: 0.28 !important; }
+  .ax-lift {
+    transition: none !important;
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}

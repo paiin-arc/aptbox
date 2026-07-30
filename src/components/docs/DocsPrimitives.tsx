@@ -18,13 +18,17 @@ export function Words({ text }: { text: string }) {
   return (
     <>
       {words.map((word, i) => (
-        <span
-          key={`${word}-${i}`}
-          className="ax-word"
-          style={{ ["--ax-word-index" as string]: i }}
-        >
-          {/* Trailing space lives inside the span so words still wrap normally. */}
-          {i < words.length - 1 ? `${word} ` : word}
+        // The separator is a text node BETWEEN spans, not inside them: .ax-word
+        // is display:inline-block, and a trailing space inside an inline-block
+        // is trimmed, which ran every heading's words together.
+        <span key={`${word}-${i}`}>
+          <span
+            className="ax-word"
+            style={{ ["--ax-word-index" as string]: i }}
+          >
+            {word}
+          </span>
+          {i < words.length - 1 ? " " : null}
         </span>
       ))}
     </>
@@ -54,7 +58,7 @@ export function Section({
       id={id}
       ref={ref}
       data-revealed={revealed}
-      className="ax-reveal scroll-mt-24 border-t border-white/5 pt-10 sm:pt-14"
+      className="ax-lift scroll-mt-24 border-t border-white/5 pt-10 sm:pt-14"
     >
       <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-violet-300">
         {eyebrow}
@@ -88,10 +92,16 @@ export function Figure({
   children: React.ReactNode;
   scroll?: boolean;
 }) {
+  const { ref, revealed } = useReveal<HTMLElement>({ threshold: 0.12 });
   return (
-    <figure className="mt-8">
+    <figure
+      ref={ref}
+      data-revealed={revealed}
+      className="ax-lift mt-8"
+      style={{ ["--ax-lift-delay" as string]: "120ms" }}
+    >
       <div
-        className={`rounded-2xl border border-white/10 bg-white/[0.02] p-4 sm:p-6 ${
+        className={`rounded-2xl border border-white/10 bg-white/[0.02] p-4 backdrop-blur-sm sm:p-6 ${
           scroll ? "overflow-x-auto" : ""
         }`}
       >

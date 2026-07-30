@@ -16,6 +16,7 @@ import {
   Section,
   Words,
 } from "@/components/docs/DocsPrimitives";
+import { DocsBackdrop } from "@/components/docs/DocsBackdrop";
 import {
   ChunksetTree,
   LayerStack,
@@ -38,7 +39,7 @@ const TOC = [
 export default function DocsPage() {
   return (
     <div className="relative flex min-h-dvh flex-col bg-black text-zinc-100">
-      <Backdrop />
+      <DocsBackdrop />
 
       <header className="sticky top-0 z-30 border-b border-white/5 bg-black/80 backdrop-blur-md">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
@@ -583,35 +584,6 @@ function Closing() {
           Back to workspace
         </Link>
       </div>
-    </div>
-  );
-}
-
-/* -------------------------- Backdrop -------------------------- */
-
-function Backdrop() {
-  return (
-    <div aria-hidden className="pointer-events-none fixed inset-0 overflow-hidden">
-      <div
-        className="absolute inset-0 opacity-40"
-        style={{
-          backgroundImage:
-            "radial-gradient(circle at 1.5px 1.5px, rgba(255, 110, 20, 0.14) 1px, transparent 0)",
-          backgroundSize: "22px 22px",
-        }}
-      />
-      <div className="ax-anim-blob absolute -top-40 right-[-15%] h-[32rem] w-[32rem] rounded-full bg-orange-600/[0.07] blur-3xl" />
-      <div
-        className="ax-anim-blob absolute bottom-[-20%] left-[-10%] h-[28rem] w-[28rem] rounded-full bg-violet-600/[0.07] blur-3xl"
-        style={{ animationDelay: "2.5s", animationDuration: "10s" }}
-      />
-      <div
-        className="absolute inset-0"
-        style={{
-          background:
-            "radial-gradient(ellipse at center, transparent 35%, rgba(0,0,0,0.7) 92%)",
-        }}
-      />
     </div>
   );
 }
