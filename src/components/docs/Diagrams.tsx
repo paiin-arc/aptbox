@@ -1,5 +1,7 @@
 "use client";
 
+import { CheckIcon } from "@/components/CategoryIcon";
+
 /**
  * Animated diagrams for /docs.
  *
@@ -390,5 +392,105 @@ export function TamperDiff() {
         which is exactly why it can&apos;t be fudged.
       </p>
     </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* 5. Integrity layers — what Shelby covers, what the locker covers.    */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Failure-mode coverage matrix. The interesting cell is the
+ * length-preserving alteration: Shelby's client-side read check compares
+ * `bytesReceived` against the content-length header and nothing more, so a
+ * same-length mutation passes it. That is the case the SHA-256 commitment
+ * exists to catch, and the one demonstrated by `npm run verify:tamper`.
+ */
+const FAILURE_MODES = [
+  {
+    mode: "Truncated or partial download",
+    shelby: true,
+    locker: true,
+    note: "Byte count differs, so both layers see it",
+  },
+  {
+    mode: "Bytes altered, length unchanged",
+    shelby: false,
+    locker: true,
+    note: "Passes a content-length check; the hash diverges completely",
+  },
+  {
+    mode: "Provider stops holding the data",
+    shelby: true,
+    locker: false,
+    note: "Proof of retrievability is Shelby's job, not the hash's",
+  },
+  {
+    mode: "Dataset swapped after publication",
+    shelby: false,
+    locker: true,
+    note: "New bytes can't match a commitment made before them",
+  },
+];
+
+export function IntegrityLayers() {
+  return (
+    <div className="mt-8 overflow-x-auto">
+      <table className="w-full min-w-[34rem] border-separate border-spacing-0 text-left">
+        <thead>
+          <tr className="text-[11px] uppercase tracking-wider text-zinc-500">
+            <th className="pb-3 pr-4 font-semibold">Failure mode</th>
+            <th className="pb-3 pr-4 text-center font-semibold">Shelby read check</th>
+            <th className="pb-3 pr-4 text-center font-semibold">SHA-256 commitment</th>
+          </tr>
+        </thead>
+        <tbody>
+          {FAILURE_MODES.map((f) => (
+            <tr key={f.mode} className="align-top">
+              <td className="border-t border-white/10 py-3 pr-4">
+                <div className="text-[13px] font-medium text-zinc-200">{f.mode}</div>
+                <div className="mt-0.5 text-[11px] leading-relaxed text-zinc-500">
+                  {f.note}
+                </div>
+              </td>
+              <td className="border-t border-white/10 py-3 pr-4 text-center">
+                <Mark ok={f.shelby} />
+              </td>
+              <td className="border-t border-white/10 py-3 pr-4 text-center">
+                <Mark ok={f.locker} />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function Mark({ ok }: { ok: boolean }) {
+  return (
+    <span
+      title={ok ? "Caught" : "Not covered by this layer"}
+      className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-[13px] font-semibold ${
+        ok
+          ? "bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-500/30"
+          : "bg-zinc-500/10 text-zinc-600 ring-1 ring-white/10"
+      }`}
+      aria-label={ok ? "caught" : "not covered"}
+    >
+      {ok ? (
+        <CheckIcon className="h-3.5 w-3.5" />
+      ) : (
+        <svg viewBox="0 0 24 24" className="h-3 w-3" aria-hidden>
+          <path
+            d="M6 12h12"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+          />
+        </svg>
+      )}
+    </span>
   );
 }

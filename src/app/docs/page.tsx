@@ -19,6 +19,7 @@ import {
 import { DocsBackdrop } from "@/components/docs/DocsBackdrop";
 import {
   ChunksetTree,
+  IntegrityLayers,
   LayerStack,
   TamperDiff,
   VerificationFlow,
@@ -30,6 +31,7 @@ const TOC = [
   { id: "verification", label: "How verification works" },
   { id: "trust", label: "Why the on-chain hash matters" },
   { id: "shelby", label: "What it does on Shelby" },
+  { id: "layers", label: "Two integrity layers" },
   { id: "ai-teams", label: "For AI teams" },
   { id: "verify-yourself", label: "Verify it yourself" },
   { id: "size", label: "No size limit" },
@@ -106,6 +108,7 @@ export default function DocsPage() {
             <HowVerificationWorks />
             <TrustArgument />
             <OnShelby />
+            <TwoLayers />
             <ForAiTeams />
             <VerifyYourself />
             <NoSizeLimit />
@@ -358,6 +361,72 @@ function OnShelby() {
       </p>
 
       <LayerStack />
+    </Section>
+  );
+}
+
+function TwoLayers() {
+  return (
+    <Section
+      id="layers"
+      eyebrow="Division of labour"
+      title="Shelby checks the count. The hash checks the bytes."
+      lead="These are two different guarantees, and the distinction is the reason this project exists rather than just pointing people at a gateway URL."
+    >
+      <p className="mt-4 max-w-3xl text-[15px] leading-relaxed text-zinc-400">
+        Shelby&apos;s job is durability and retrievability: erasure-coded shards
+        across independent providers, a blob merkle root committed on-chain at
+        upload, and providers that must keep proving they still hold the data.
+        That machinery is real and this app depends on it.
+      </p>
+      <p className="mt-4 max-w-3xl text-[15px] leading-relaxed text-zinc-400">
+        What it doesn&apos;t do is verify bytes cryptographically on the read
+        path. The client&apos;s download check, in{" "}
+        <code className="rounded bg-white/5 px-1 py-0.5 text-[13px]">
+          ShelbyRPCClient.getBlob
+        </code>
+        , is a byte count:
+      </p>
+
+      <CodeBlock
+        lines={[
+          { text: "// @shelby-protocol/sdk 0.3.1", comment: true },
+          { text: "if (bytesReceived !== expectedContentLength) {" },
+          { text: "  controller.error(new Error(" },
+          { text: "    `Downloaded data size (${bytesReceived} bytes) does not`" },
+          { text: "    + ` match content-length header ...`" },
+          { text: "  ));" },
+          { text: "}" },
+        ]}
+        caption="That catches a truncated or partial transfer. It cannot catch an alteration that preserves length, because nothing hashes the bytes."
+      />
+
+      <Callout tone="violet" title="The end-to-end argument">
+        A check inside the transport tells you the transport behaved. Only a
+        check at the endpoint, against a commitment made before the data was
+        served, tells you the data is what was published. That is where the
+        SHA-256 sits.
+      </Callout>
+
+      <IntegrityLayers />
+
+      <p className="mt-8 max-w-3xl text-[15px] leading-relaxed text-zinc-400">
+        The second row is the one that matters. Flipping a single byte in a
+        196,882-byte dataset leaves it 196,882 bytes long — a content-length
+        check passes it unchanged, while the digest becomes unrecognisable.
+        That case is exercised against live registry data by{" "}
+        <code className="rounded bg-white/5 px-1 py-0.5 text-[13px]">
+          npm run verify:tamper
+        </code>
+        .
+      </p>
+      <p className="mt-4 max-w-3xl text-[15px] leading-relaxed text-zinc-400">
+        It also explains why the commitment is a plain SHA-256 in our own
+        registry rather than Shelby&apos;s merkle root. The merkle root is
+        internal to Shelby and needs their tooling to interpret; a SHA-256 can
+        be reproduced by anyone with <code className="rounded bg-white/5 px-1 py-0.5 text-[13px]">shasum</code>{" "}
+        and no dependency on us or on Shelby.
+      </p>
     </Section>
   );
 }
