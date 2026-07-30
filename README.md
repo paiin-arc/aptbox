@@ -45,6 +45,7 @@ Required environment variables:
 | `NEXT_PUBLIC_REGISTRY_ADDRESS_TESTNET` | Deployed registry address on Aptos testnet |
 | `NEXT_PUBLIC_REGISTRY_ADDRESS_SHELBYNET` | Deployed registry address on shelbynet |
 | `NEXT_PUBLIC_APTOS_API_KEY_TESTNET` | Aptos fullnode API key (optional, avoids rate limits) |
+| `NEXT_PUBLIC_MAX_UPLOAD_BYTES` | Optional. Raises the per-upload byte ceiling above the default ~2 GiB browser buffer limit |
 
 Per-network Shelby keys (`NEXT_PUBLIC_SHELBY_API_KEY_TESTNET`, `..._SHELBYNET`) override the shared key when set.
 
@@ -60,7 +61,7 @@ Then point `NEXT_PUBLIC_REGISTRY_ADDRESS_<NETWORK>` at the published address.
 
 ## Known limits
 
-- **25 MB per dataset** (`MAX_FILE_SIZE_MB` in `src/services/uploadService.ts`) — a practical cap for Shelby testnet, well below what real image corpora or model checkpoints need.
+- **No size limit from Shelby, but the browser caps a single upload at ~2 GiB.** Shelby has no per-blob maximum — the SDK splits data into as many 10 MiB erasure-coded chunksets as needed and uploads them as 5 MiB multipart chunks with no part-count ceiling. The constraint is that this app hands the SDK one contiguous `Uint8Array` from `file.arrayBuffer()`, and JS engines cap a single ArrayBuffer at roughly 2 GiB. Set `NEXT_PUBLIC_MAX_UPLOAD_BYTES` to raise it, or shard larger datasets. Erasure coding also runs in the tab and holds about 2.6× the dataset size in memory at peak, so uploads over 256 MiB show an advisory.
 - **Storage expires.** Blobs carry an expiration (1 day to 1 year, chosen at upload). Once it passes, providers garbage-collect the bytes; the registry entry and its hash remain, but the data is gone.
 - **Verification requires downloading the whole dataset**, since the hash covers the full byte range. There is no partial or streaming verification.
 - Shelby testnet uploads can return 408/5xx after the on-chain register already landed, which locks ShelbyUSD against an orphaned blob. `/cleanup` reclaims it.

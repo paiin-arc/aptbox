@@ -32,7 +32,11 @@ import { trackUpload, trackUploadRecord } from "@/lib/storage";
 import { isUserRejection, logStage, signWithTimeout, waitForTx } from "@/lib/tx";
 import { useNetwork } from "@/lib/networkContext";
 import {
-  MAX_FILE_SIZE_MB,
+  MAX_FILE_SIZE_BYTES,
+  chunksetCountFor,
+  estimatedPeakMemoryBytes,
+  isLargeUpload,
+  partCountFor,
   prepareAndRegisterShelby,
   uploadShelbyBytes,
   validateFile,
@@ -390,7 +394,8 @@ export default function UploadPage() {
           <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400 sm:text-sm">
             Image sets, text corpora, audio data, or model files. Stored on
             Shelby, with its SHA-256 committed to Aptos so anyone can prove the
-            bytes were never altered. Up to {MAX_FILE_SIZE_MB} MB.
+            bytes were never altered. Shelby has no size limit — this browser
+            caps a single upload at {formatBytes(MAX_FILE_SIZE_BYTES)}.
           </p>
         </div>
 
@@ -424,8 +429,7 @@ export default function UploadPage() {
                 Click to choose a dataset
               </div>
               <div className="text-xs">
-                .zip, .tar, .csv, .jsonl, .parquet, .safetensors, images, audio ·{" "}
-                {MAX_FILE_SIZE_MB} MB max
+                .zip, .tar, .csv, .jsonl, .parquet, .safetensors, images, audio
               </div>
             </div>
           )}
@@ -515,6 +519,8 @@ export default function UploadPage() {
                 </div>
               </div>
             )}
+
+            <StoragePlan sizeBytes={file.size} />
           </div>
         )}
 
@@ -696,6 +702,46 @@ export default function UploadPage() {
           </div>
         )}
       </main>
+    </div>
+  );
+}
+
+/**
+ * Shows how the SDK will actually break this dataset up, so the numbers in the
+ * progress steps aren't a surprise, plus an advisory (never a block) once
+ * browser-side erasure coding starts getting expensive.
+ */
+function StoragePlan({ sizeBytes }: { sizeBytes: number }) {
+  const chunksets = chunksetCountFor(sizeBytes);
+  const parts = partCountFor(sizeBytes);
+  const large = isLargeUpload(sizeBytes);
+
+  return (
+    <div className="mt-2 space-y-2">
+      <div className="rounded-lg border border-zinc-200 bg-white p-2.5 text-[11px] text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
+        <div className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">
+          Storage plan
+        </div>
+        <div className="mt-1">
+          {formatBytes(sizeBytes)} → {chunksets.toLocaleString()} erasure-coded
+          chunkset{chunksets === 1 ? "" : "s"} (10 MiB each), uploaded as{" "}
+          {parts.toLocaleString()} multipart chunk{parts === 1 ? "" : "s"} of 5
+          MiB.
+        </div>
+      </div>
+
+      {large && (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 p-2.5 text-[11px] text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+          <div className="font-semibold">Large dataset</div>
+          <div className="mt-0.5">
+            Erasure coding runs in this tab and will hold roughly{" "}
+            {formatBytes(estimatedPeakMemoryBytes(sizeBytes))} in memory at peak.
+            Expect several minutes before the first wallet prompt, and keep this
+            tab in the foreground. If the tab runs out of memory, shard the
+            dataset and upload the shards separately.
+          </div>
+        </div>
+      )}
     </div>
   );
 }

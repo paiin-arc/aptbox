@@ -28,8 +28,64 @@ import type { WalletContextState } from "@aptos-labs/wallet-adapter-react";
 import { shelbyApiKeyFor, type SupportedNetwork } from "@/lib/networks";
 import { logStage, signWithTimeout } from "@/lib/tx";
 
-export const MAX_FILE_SIZE_MB = 25;
-export const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+/**
+ * Shelby imposes no maximum blob size.
+ *
+ * Verified against @shelby-protocol/sdk 0.3.1 rather than assumed:
+ *   - `generateCommitments` streams the data into as many chunksets as needed
+ *     (`readInChunks(fullData, erasure_k * chunkSizeBytes)`), 10 MiB each with
+ *     the default ClayCode_16Total_10Data scheme. No chunkset-count ceiling.
+ *   - `putBlob` uploads via multipart in 5 MiB parts with no part-count cap.
+ *   - Neither the SDK nor docs.shelby.xyz state a per-blob maximum; the docs
+ *     say "files of any size with automatic chunking and erasure coding".
+ *
+ * The binding constraint is therefore this browser, not the protocol: we hand
+ * the SDK one contiguous Uint8Array from `file.arrayBuffer()`, and JS engines
+ * cap a single ArrayBuffer. 2 GiB - 1 is the conservative cross-engine limit.
+ *
+ * Override with NEXT_PUBLIC_MAX_UPLOAD_BYTES if your target browser allows more.
+ */
+const ENGINE_MAX_BUFFER_BYTES = 2 ** 31 - 1;
+
+function resolveMaxUploadBytes(): number {
+  const raw = process.env.NEXT_PUBLIC_MAX_UPLOAD_BYTES;
+  if (!raw) return ENGINE_MAX_BUFFER_BYTES;
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed <= 0) return ENGINE_MAX_BUFFER_BYTES;
+  return Math.floor(parsed);
+}
+
+export const MAX_FILE_SIZE_BYTES = resolveMaxUploadBytes();
+
+/** Default scheme: erasure_k(10) * chunkSizeBytes(1 MiB). */
+export const CHUNKSET_SIZE_BYTES = 10 * 1024 * 1024;
+/** `ShelbyRPCClient.#putBlobMultipart` default `partSize`. */
+export const UPLOAD_PART_SIZE_BYTES = 5 * 1024 * 1024;
+/** ClayCode_16Total_10Data: encoding allocates n/k on top of the raw bytes. */
+const ERASURE_EXPANSION = 16 / 10;
+
+/**
+ * Above this, browser-side erasure coding gets slow and memory-hungry enough
+ * to be worth warning about. Advisory only — never blocks the upload.
+ */
+export const LARGE_UPLOAD_ADVISORY_BYTES = 256 * 1024 * 1024;
+
+export function chunksetCountFor(bytes: number): number {
+  return Math.max(1, Math.ceil(bytes / CHUNKSET_SIZE_BYTES));
+}
+
+export function partCountFor(bytes: number): number {
+  return Math.max(1, Math.ceil(bytes / UPLOAD_PART_SIZE_BYTES));
+}
+
+/** Rough peak: the raw buffer plus the parity the encoder builds alongside it. */
+export function estimatedPeakMemoryBytes(bytes: number): number {
+  return Math.round(bytes * (1 + ERASURE_EXPANSION));
+}
+
+export function isLargeUpload(bytes: number): boolean {
+  return bytes > LARGE_UPLOAD_ADVISORY_BYTES;
+}
 
 /** Blob expiration: 30 days from now in microseconds since Unix epoch. */
 export function defaultExpirationMicros(): number {
@@ -101,10 +157,14 @@ export type UploadShelbyResult = {
 
 export function validateFile(file: File): void {
   if (!file) throw new Error("No file selected.");
-  if (file.size === 0) throw new Error("Empty file is not allowed.");
+  if (file.size === 0) throw new Error("Empty dataset is not allowed.");
   if (file.size > MAX_FILE_SIZE_BYTES) {
+    const gib = (MAX_FILE_SIZE_BYTES / 1024 ** 3).toFixed(2);
     throw new Error(
-      `File exceeds ${MAX_FILE_SIZE_MB} MB limit (current Shelby testnet practical cap).`
+      `Dataset is ${(file.size / 1024 ** 3).toFixed(2)} GiB, which exceeds what ` +
+        `this browser can hold in a single buffer (${gib} GiB). Shelby itself has ` +
+        `no size limit — split the dataset into shards and upload them separately, ` +
+        `or raise NEXT_PUBLIC_MAX_UPLOAD_BYTES if your browser supports more.`
     );
   }
 }
