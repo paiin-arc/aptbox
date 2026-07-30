@@ -13,8 +13,8 @@ import { useEffect, useRef, useState } from "react";
  * are painted once, statically, and no animation loop ever starts.
  */
 
-/** Set this to a file you drop in /public to use a hero image behind the page. */
-const HERO_IMAGE = "/docs/hero-bg.jpg";
+/** Hero artwork behind the page. See public/HERO-BG.md. */
+const HERO_IMAGE = "/hero-bg.jpg";
 
 type Particle = {
   x: number;
