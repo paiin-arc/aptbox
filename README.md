@@ -102,6 +102,47 @@ suddenly has no datasets, run `NEXT_PUBLIC_DEFAULT_NETWORK=shelbynet npm run
 verify:network` before assuming the data is gone. If it reports the module
 missing, republish and re-run `initialize`.
 
+## Deploying to Vercel
+
+Every variable the app reads is `NEXT_PUBLIC_*`, which Next inlines **at build
+time**. They must exist in the Vercel project before the build runs — setting
+them afterwards does nothing until you redeploy.
+
+```bash
+vercel login
+vercel link                     # connect this directory to a Vercel project
+
+# Required — the build silently produces a broken app without these
+vercel env add NEXT_PUBLIC_SHELBY_API_KEY production
+vercel env add NEXT_PUBLIC_REGISTRY_ADDRESS_TESTNET production
+vercel env add NEXT_PUBLIC_REGISTRY_ADDRESS_SHELBYNET production
+
+# Recommended
+vercel env add NEXT_PUBLIC_APTOS_API_KEY_TESTNET production   # avoids fullnode rate limits
+vercel env add NEXT_PUBLIC_DEFAULT_NETWORK production          # "testnet"
+vercel env add NEXT_PUBLIC_SITE_URL production                 # your real URL, for OG tags
+
+vercel --prod
+```
+
+Values are in your local `.env.local`, which is gitignored and never reaches
+the repo.
+
+Two things worth knowing:
+
+- **`NEXT_PUBLIC_SITE_URL`** feeds `metadataBase`. Without it the code falls
+  back to `https://aptbox.vercel.app`, so Open Graph images on any other domain
+  will resolve against the wrong host.
+- **Shelby keys are public by construction.** They ship in the client bundle —
+  that is how the browser talks to the gateway. Scope them accordingly and
+  don't reuse a key that carries wider privileges.
+
+After the first deploy, confirm the deployed build points at a live registry:
+
+```bash
+npm run verify:network        # locally, same resolution logic the app uses
+```
+
 ## Known limits
 
 - **Uploads are unbounded**, but the dataset is read from disk three times (hash, encode, upload) and the transfer is sequential, so very large datasets simply take a while. Datasets over 1 GiB show a timing advisory.
