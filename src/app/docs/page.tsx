@@ -421,20 +421,43 @@ function VerifyYourself() {
     >
       <CodeBlock
         lines={[
-          { text: "# 1. Hash the dataset you downloaded", comment: true },
-          { text: "shasum -a 256 my-dataset.zip" },
-          { text: "" },
-          { text: "# 2. Read the commitment straight off Aptos", comment: true },
-          { text: "#    (registry address is in .env.local)", comment: true },
+          { text: "# 1. Read the commitment straight off Aptos", comment: true },
           { text: "aptos move view \\" },
           { text: "  --function-id '<REGISTRY_ADDR>::registry::get_file' \\" },
-          { text: "  --args u64:<DATASET_ID>" },
+          { text: "  --args u64:<DATASET_ID> \\" },
+          { text: "  --url https://api.testnet.aptoslabs.com" },
           { text: "" },
-          { text: "# 3. Compare content_hash to your shasum output.", comment: true },
-          { text: "#    Identical means the bytes are unaltered.", comment: true },
+          { text: "# 2. Hash the bytes you actually received", comment: true },
+          { text: "shasum -a 256 my-dataset.zip" },
+          { text: "" },
+          {
+            text: "# 3. Compare. content_hash is 0x-prefixed, shasum is not,",
+            comment: true,
+          },
+          { text: "#    so strip the 0x before comparing the two.", comment: true },
         ]}
-        caption="Nothing here depends on this app being honest, or even being online — the commitment is public chain state."
+        caption="Nothing here depends on this app being honest, or even being online — the commitment is public chain state, readable by anyone."
       />
+
+      <p className="mt-8 max-w-3xl text-[15px] leading-relaxed text-zinc-400">
+        Worked example, against a real dataset in the testnet registry. Dataset{" "}
+        <span className="font-mono text-zinc-200">#24</span> is a 34,145,930-byte
+        video. The chain says its hash is:
+      </p>
+
+      <CodeBlock
+        lines={[
+          { text: "content_hash", comment: true },
+          { text: "0x9ad5a9ac80bf9425239f87fdf5d08ea1" },
+          { text: "  7010f069d10bf881b4d74d638ac0ae7c" },
+          { text: "" },
+          { text: "# shasum of the bytes fetched from Shelby", comment: true },
+          { text: "  9ad5a9ac80bf9425239f87fdf5d08ea1" },
+          { text: "  7010f069d10bf881b4d74d638ac0ae7c" },
+        ]}
+        caption="Identical once the 0x is removed — and size_bytes on chain matches the downloaded length exactly. Nothing in that check went through this app."
+      />
+
       <Callout tone="emerald" title="This is the whole point">
         If the locker disappeared tomorrow, every dataset it published would
         still be verifiable by anyone with the hash and a copy of the bytes.
