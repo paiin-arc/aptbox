@@ -225,6 +225,15 @@ export default function Home() {
       </main>
 
       <footer className="relative z-10 flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1 border-t border-white/5 bg-black/30 px-4 py-3 text-xs text-zinc-500 backdrop-blur sm:py-4">
+        {/* The sidebar only renders once a wallet is connected, so this is the
+            only route to the docs for a first-time visitor. */}
+        <Link
+          href="/docs"
+          className="font-semibold text-zinc-300 transition hover:text-violet-400"
+        >
+          Docs
+        </Link>
+        <span className="text-zinc-600">·</span>
         <span>AI Dataset Locker · verifiable dataset storage built on</span>
         <a
           href="https://shelby.xyz"
