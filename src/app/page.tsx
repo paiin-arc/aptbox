@@ -118,7 +118,7 @@ export default function Home() {
         <ConnectWalletButton />
       </header>
 
-      <main className="relative z-10 mx-auto flex w-full max-w-5xl flex-1 flex-col items-center justify-center gap-8 px-4 py-12 text-center sm:gap-10 sm:px-6 sm:py-20">
+      <main className="relative z-10 mx-auto flex w-full max-w-5xl flex-1 flex-col items-center justify-center gap-7 px-4 py-10 text-center sm:gap-10 sm:px-6 sm:py-20">
         <div className="space-y-5 sm:space-y-6">
           <div className="inline-flex flex-wrap items-center justify-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-zinc-200 backdrop-blur">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-violet-400 shadow-[0_0_8px_rgba(167,139,250,0.8)]" />
@@ -145,7 +145,7 @@ export default function Home() {
             </a>
           </div>
 
-          <h1 className="text-5xl font-bold leading-[0.95] tracking-tight text-white sm:text-7xl md:text-8xl">
+          <h1 className="text-4xl font-bold leading-[1.02] tracking-tight text-white sm:text-6xl sm:leading-[0.95] md:text-7xl lg:text-8xl">
             AI datasets,
             <br />
             <span
@@ -158,7 +158,7 @@ export default function Home() {
               provably unaltered.
             </span>
           </h1>
-          <p className="mx-auto max-w-2xl text-base text-zinc-300/90 sm:text-lg">
+          <p className="mx-auto max-w-2xl text-[15px] leading-relaxed text-zinc-300/90 sm:text-lg">
             Stop shipping training data through Drive links and zip files nobody
             can verify. Store it on{" "}
             <span className="font-semibold text-orange-300">Shelby</span>, commit

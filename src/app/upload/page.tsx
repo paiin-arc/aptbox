@@ -389,7 +389,7 @@ export default function UploadPage() {
 
       <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-5 px-4 py-6 sm:gap-6 sm:px-6 sm:py-12">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+          <h1 className="text-xl font-bold tracking-tight sm:text-3xl">
             Upload a dataset
           </h1>
           <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400 sm:text-sm">
@@ -533,7 +533,7 @@ export default function UploadPage() {
               Larger windows cost more ShelbyUSD
             </div>
           </div>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="grid grid-cols-3 gap-1.5 sm:flex sm:flex-wrap">
             {(Object.keys(PRESET_LABEL) as DurationPreset[]).map((key) => {
               const active = durationPreset === key;
               return (
@@ -542,7 +542,7 @@ export default function UploadPage() {
                   type="button"
                   onClick={() => setDurationPreset(key)}
                   disabled={busy}
-                  className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+                  className={`rounded-lg border px-3 py-2 text-xs font-medium transition sm:py-1.5 ${
                     active
                       ? "border-indigo-500 bg-indigo-50 text-indigo-900 dark:bg-indigo-950/40 dark:text-indigo-200"
                       : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
@@ -587,20 +587,20 @@ export default function UploadPage() {
         {/* Access mode */}
         <div className="space-y-3">
           <div className="text-sm font-semibold">Who can download it</div>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <div className="grid grid-cols-2 gap-2">
             {(["public", "restricted"] as AccessMode[]).map((mode) => (
               <button
                 key={mode}
                 type="button"
                 onClick={() => setAccessMode(mode)}
                 disabled={busy}
-                className={`flex items-start gap-2 rounded-xl border px-3 py-3 text-left text-sm transition active:scale-[0.98] sm:flex-col sm:gap-1 ${
+                className={`flex flex-col items-start gap-1 rounded-xl border px-3 py-2.5 text-left text-sm transition active:scale-[0.98] sm:py-3 ${
                   accessMode === mode
                     ? "border-indigo-500 bg-indigo-50 text-indigo-900 ring-2 ring-indigo-500/20 dark:bg-indigo-950/40 dark:text-indigo-200"
                     : "border-zinc-200 bg-white hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:bg-zinc-800"
                 }`}
               >
-                <div className="flex items-center gap-2 sm:gap-1.5">
+                <div className="flex items-center gap-1.5">
                   {mode === "public" ? (
                     <GlobeIcon className="h-4 w-4" />
                   ) : (
@@ -608,7 +608,7 @@ export default function UploadPage() {
                   )}
                   <div className="font-medium capitalize">{mode}</div>
                 </div>
-                <div className="ml-7 text-xs text-zinc-500 sm:ml-0">
+                <div className="text-[11px] leading-snug text-zinc-500 sm:text-xs">
                   {mode === "public"
                     ? "Anyone with the link"
                     : "Only wallets you list"}
@@ -642,7 +642,7 @@ export default function UploadPage() {
         <button
           onClick={handleUpload}
           disabled={!file || !connected || busy}
-          className="rounded-xl bg-zinc-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
+          className="sticky bottom-3 z-10 w-full rounded-xl bg-zinc-900 px-5 py-3.5 text-sm font-semibold text-white shadow-lg transition hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-black dark:hover:bg-zinc-200 sm:static sm:w-auto sm:self-start sm:py-3 sm:shadow-sm"
         >
           {STAGE_LABEL[stage]}
           {stage === "shelby-put" && putPct !== null && ` (${putPct}%)`}

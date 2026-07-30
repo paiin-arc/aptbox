@@ -10,6 +10,10 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  /* Tailwind's smallest default breakpoint is sm (40rem), which leaves no way
+     to target the 320-390px phones where the topbar action row runs out of
+     room. 24rem = 384px, just under an iPhone 14/15 at 390px. */
+  --breakpoint-xs: 24rem;
 }
 
 @media (prefers-color-scheme: dark) {

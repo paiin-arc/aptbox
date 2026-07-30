@@ -95,7 +95,9 @@ export function Dashboard() {
   const restrictedCount = enriched.length - publicCount;
 
   return (
-    <div className="flex h-screen overflow-hidden bg-black text-zinc-100">
+    // h-dvh, not h-screen: on iOS Safari h-screen (100vh) is taller than the
+    // visible area, which pushed the scroll container under the address bar.
+    <div className="flex h-dvh overflow-hidden bg-black text-zinc-100">
       <Sidebar
         active={activeCat}
         onChange={(c) => {
@@ -160,38 +162,23 @@ function WorkspaceOverview({
   restrictedCount: number;
 }) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 sm:space-y-6">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight text-zinc-100">
+        <h1 className="text-xl font-semibold tracking-tight text-zinc-100 sm:text-2xl">
           My datasets
         </h1>
-        <p className="mt-1 text-sm text-zinc-500">
+        <p className="mt-1 text-[13px] leading-relaxed text-zinc-500 sm:text-sm">
           Stored on Shelby, each with its SHA-256 committed to Aptos so any
           downloader can prove the bytes are unaltered.
         </p>
       </header>
 
-      {/* Quick actions */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <QuickAction
-          label="Upload dataset"
-          desc="Store on Shelby + commit hash on-chain"
-          href="/upload"
-          tone="primary"
-        />
-        <QuickAction
-          label="Recover a failed upload"
-          desc="Reclaim ShelbyUSD from orphaned blobs"
-          href="/cleanup"
-        />
-      </div>
-
-      {/* Summary tiles */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      {/* Summary tiles. 2-up on phones, 4-up from sm. */}
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 sm:gap-3">
         <SummaryTile label="Datasets" value={totalFiles.toLocaleString()} />
-        <SummaryTile label="Storage used" value={formatBytes(totalBytes)} />
+        <SummaryTile label="Stored" value={formatBytes(totalBytes)} />
         <SummaryTile
-          label="Stored on Shelby"
+          label="On Shelby"
           value={`${verifiedCount}/${totalFiles || "—"}`}
           accent="verified"
         />
@@ -202,10 +189,21 @@ function WorkspaceOverview({
         />
       </div>
 
-      <div className="flex items-baseline justify-between">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-500">
+      {/*
+        No upload button here — the topbar carries the single persistent one.
+        Cleanup stays as a quiet text link: it's recovery, not a primary action,
+        and it shouldn't compete with upload for attention.
+      */}
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 sm:text-sm">
           Recent datasets
         </h2>
+        <Link
+          href="/cleanup"
+          className="text-xs font-medium text-zinc-500 underline-offset-2 transition hover:text-zinc-300 hover:underline"
+        >
+          Recover a failed upload
+        </Link>
       </div>
     </div>
   );
@@ -240,32 +238,6 @@ const LABEL: Record<Category, string> = {
   other: "Other",
 };
 
-function QuickAction({
-  label,
-  desc,
-  href,
-  tone,
-}: {
-  label: string;
-  desc: string;
-  href: string;
-  tone?: "primary";
-}) {
-  return (
-    <Link
-      href={href}
-      className={`ax-card ax-card-hover group flex flex-col gap-1 p-3 ${
-        tone === "primary" ? "ring-1 ring-violet-500/30" : ""
-      }`}
-    >
-      <div className="text-sm font-semibold text-zinc-100 group-hover:text-violet-200">
-        {label}
-      </div>
-      <div className="text-xs text-zinc-500">{desc}</div>
-    </Link>
-  );
-}
-
 function SummaryTile({
   label,
   value,
@@ -275,21 +247,24 @@ function SummaryTile({
   label: string;
   value: string;
   sub?: string;
-  accent?: "verified" | "royalty";
+  accent?: "verified";
 }) {
   const accentColor =
-    accent === "verified"
-      ? "text-emerald-300"
-      : accent === "royalty"
-        ? "text-amber-300"
-        : "text-zinc-100";
+    accent === "verified" ? "text-emerald-300" : "text-zinc-100";
   return (
-    <div className="ax-card p-3">
-      <div className="text-[11px] uppercase tracking-wider text-zinc-500">
+    <div className="ax-card p-2.5 sm:p-3">
+      <div className="truncate text-[10px] uppercase tracking-wider text-zinc-500 sm:text-[11px]">
         {label}
       </div>
-      <div className={`mt-1 text-lg font-semibold ${accentColor}`}>{value}</div>
-      {sub && <div className="text-[11px] text-zinc-500">{sub}</div>}
+      {/* Values like "1.23 GB" must not wrap inside a 2-up mobile grid. */}
+      <div className={`mt-0.5 truncate text-base font-semibold sm:text-lg ${accentColor}`}>
+        {value}
+      </div>
+      {sub && (
+        <div className="truncate text-[10px] text-zinc-500 sm:text-[11px]">
+          {sub}
+        </div>
+      )}
     </div>
   );
 }

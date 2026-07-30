@@ -1,18 +1,30 @@
 /**
  * Official Shelby symbol — extracted from media-kit.shelby.xyz.
  * `fill="currentColor"` so it inherits text color from a parent class.
+ *
+ * Decorative by default: every use sits directly beside the word "Shelby", so
+ * labelling the mark too made screen readers say it twice. Pass `label` if you
+ * ever render it without adjacent text.
  */
-export function ShelbyLogo({ className = "" }: { className?: string }) {
+export function ShelbyLogo({
+  className = "",
+  label,
+}: {
+  className?: string;
+  label?: string;
+}) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 699.93 663.68"
       fill="currentColor"
-      role="img"
-      aria-label="Shelby"
+      role={label ? "img" : undefined}
+      aria-label={label}
+      aria-hidden={label ? undefined : true}
+      focusable="false"
       className={className}
     >
-      <title>Shelby</title>
+      {label && <title>{label}</title>}
       <g>
         <path d="M170.41,224.87c8.43-14.59,18.31-27.8,29.35-39.58l-51.86-89.81c-5.49-9.51-19.21-9.51-24.7,0L11.47,289.05c-15.29,26.47-15.29,59.1,0,85.57l111.75,193.56c5.49,9.51,19.21,9.51,24.7,0l51.86-89.81c-62.99-66.97-77.7-169.77-29.35-253.5h-.01Z" />
         <path d="M512.14,0h-223.5c-10.98,0-17.84,11.88-12.35,21.39l51.87,89.85c51.14-12.02,106.79-5.36,155.88,22.98,49.09,28.34,82.69,73.2,97.85,123.51h103.75c10.98,0,17.84-11.88,12.35-21.39l-111.75-193.54c-15.29-26.47-43.53-42.78-74.1-42.78Z" />

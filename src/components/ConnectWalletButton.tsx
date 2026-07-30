@@ -15,9 +15,16 @@ export function ConnectWalletButton() {
     return (
       <button
         onClick={() => disconnect()}
-        className="rounded-full bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
+        className="shrink-0 rounded-full bg-zinc-900 px-3 py-2 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-white dark:text-black dark:hover:bg-zinc-200 sm:px-4"
+        title="Disconnect wallet"
+        aria-label={`Connected as ${shortAddr(account.address.toString())}. Disconnect.`}
       >
-        {shortAddr(account.address.toString())}  ·  Disconnect
+        <span className="font-mono text-xs sm:text-sm sm:font-sans">
+          {shortAddr(account.address.toString())}
+        </span>
+        {/* "Disconnect" is the widest thing in the mobile action row; the label
+            drops on phones but title/aria-label keep the affordance explicit. */}
+        <span className="hidden sm:inline"> · Disconnect</span>
       </button>
     );
   }

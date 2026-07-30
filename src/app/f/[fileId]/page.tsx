@@ -445,7 +445,7 @@ export default function FilePage({ params }: Props) {
           {downloadStage === "idle" && (
             <button
               onClick={() => loadBlob(file)}
-              className="rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white hover:bg-indigo-700"
+              className="w-full rounded-xl bg-indigo-600 px-5 py-3.5 text-sm font-semibold text-white hover:bg-indigo-700 sm:w-auto sm:py-3"
             >
               Load &amp; verify dataset
             </button>
@@ -603,7 +603,7 @@ export default function FilePage({ params }: Props) {
                   />
                   <button
                     onClick={handleDownload}
-                    className={`rounded-xl px-5 py-3 text-sm font-semibold text-white ${
+                    className={`w-full rounded-xl px-5 py-3.5 text-sm font-semibold text-white sm:w-auto sm:py-3 ${
                       isTampered
                         ? "bg-red-600 hover:bg-red-700"
                         : "bg-zinc-900 hover:bg-zinc-700 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
