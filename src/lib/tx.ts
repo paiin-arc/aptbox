@@ -48,7 +48,6 @@ export async function signWithTimeout<T>(
 export function logStage(scope: string, label: string, extra?: unknown) {
   if (typeof window === "undefined") return;
   if (process.env.NODE_ENV === "production") return;
-  // eslint-disable-next-line no-console
   console.log(
     `%c[${scope}]%c ${new Date().toISOString().slice(11, 23)} %c${label}`,
     "color:#a78bfa;font-weight:bold",

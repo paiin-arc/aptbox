@@ -2,7 +2,7 @@ import { getAptos } from "./registry";
 import type { SupportedNetwork } from "./networks";
 
 /** ShelbyUSD Fungible Asset metadata address (same on testnet + shelbynet). */
-export const SUSD_METADATA =
+const SUSD_METADATA =
   "0x1b18363a9f1fe5e6ebf247daba5cc1c18052bb232efdc4c50f556053922d98e1";
 
 export const APT_DECIMALS = 8;

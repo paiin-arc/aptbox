@@ -10,6 +10,7 @@ import {
   getSusdBalance,
 } from "@/lib/balances";
 import { useNetwork } from "@/lib/networkContext";
+import { ExternalLinkIcon } from "./CategoryIcon";
 import { faucetUrlsFor } from "@/lib/networks";
 
 export function BalancePills() {
@@ -53,7 +54,7 @@ export function BalancePills() {
           title="APT balance is low — open the faucet docs"
           className="rounded-md bg-red-50 px-2 py-1 text-[11px] font-medium text-red-700 ring-1 ring-red-200 transition hover:bg-red-100 dark:bg-red-950/40 dark:text-red-300 dark:ring-red-900 dark:hover:bg-red-900/40"
         >
-          {aptStr} APT · Get more ↗
+          <span className="inline-flex items-center gap-1">{aptStr} APT · Get more <ExternalLinkIcon className="h-2.5 w-2.5" /></span>
         </a>
       ) : (
         <span
@@ -71,7 +72,7 @@ export function BalancePills() {
           title="No ShelbyUSD — open the faucet docs"
           className="rounded-md bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-700 ring-1 ring-amber-200 transition hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-900 dark:hover:bg-amber-900/40"
         >
-          {susdStr} sUSD · Get some ↗
+          <span className="inline-flex items-center gap-1">{susdStr} sUSD · Get some <ExternalLinkIcon className="h-2.5 w-2.5" /></span>
         </a>
       ) : (
         <span

@@ -8,7 +8,6 @@ import {
 export const ACCESS_PUBLIC = 0;
 export const ACCESS_PAID = 1;
 export const ACCESS_WHITELIST = 2;
-export const ACCESS_TOKEN_GATED = 3;
 
 const aptosCache = new Map<SupportedNetwork, Aptos>();
 
@@ -30,7 +29,7 @@ export function getRegistryAddress(network: SupportedNetwork): string {
   return registryAddressFor(network);
 }
 
-export type RegisterFileArgs = {
+type RegisterFileArgs = {
   contentHash: Uint8Array;
   shelbyCid: string;
   mimeType: string;
@@ -66,34 +65,6 @@ export function buildRegisterFilePayload(
   };
 }
 
-export function buildPurchaseAccessPayload(
-  network: SupportedNetwork,
-  fileId: string
-) {
-  const addr = getRegistryAddress(network);
-  if (!addr) throw new Error(`No registry address for ${network}.`);
-  return {
-    function:
-      `${addr}::registry::purchase_access` as `${string}::${string}::${string}`,
-    typeArguments: [],
-    functionArguments: [fileId],
-  };
-}
-
-export function buildFlagFilePayload(
-  network: SupportedNetwork,
-  fileId: string
-) {
-  const addr = getRegistryAddress(network);
-  if (!addr) throw new Error(`No registry address for ${network}.`);
-  return {
-    function:
-      `${addr}::registry::flag_file` as `${string}::${string}::${string}`,
-    typeArguments: [],
-    functionArguments: [fileId],
-  };
-}
-
 export function buildDeleteFilePayload(
   network: SupportedNetwork,
   fileId: string
@@ -109,10 +80,10 @@ export function buildDeleteFilePayload(
 }
 
 export function extractFileIdFromTx(
-  events: { type: string; data: any }[]
+  events: { type: string; data: Record<string, unknown> }[]
 ): bigint | null {
   const evt = events.find((e) => e.type.includes("::registry::FileRegistered"));
   if (!evt) return null;
-  const id = evt.data?.file_id;
+  const id = evt.data?.file_id as string | number | undefined;
   return id != null ? BigInt(id) : null;
 }

@@ -25,7 +25,13 @@ type NetworkCtx = {
 
 const Ctx = createContext<NetworkCtx | null>(null);
 
-const STORAGE_KEY = "aptbox:activeNetwork";
+/**
+ * Versioned so the default change to testnet actually reaches people who
+ * already used the app. The v1 key holds "shelbynet" for anyone who visited
+ * before the registry situation was understood, and a stored value always beat
+ * the default — so without this bump the fix would be a no-op for them.
+ */
+const STORAGE_KEY = "aptbox:activeNetwork:v2";
 
 export function NetworkProvider({ children }: PropsWithChildren) {
   // Hydration-safe: start with the env default, then bump to localStorage on mount.

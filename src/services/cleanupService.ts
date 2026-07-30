@@ -14,7 +14,6 @@ import {
   ShelbyBlobClient,
   type ShelbyClient,
 } from "@shelby-protocol/sdk/browser";
-import type { BlobLifecycle } from "@/lib/blobLifecycle";
 
 export type PendingBlob = {
   /** The full blob_name as the indexer reports it (e.g. "@<addr>/aptbox/foo.png"). */
@@ -71,17 +70,3 @@ export function buildDeleteMultiplePayload(blobNames: string[]) {
 /**
  * Single-blob fallback (atomic batch can be wasteful for one).
  */
-export function buildDeleteSinglePayload(blobName: string) {
-  return ShelbyBlobClient.createDeleteBlobPayload({ blobName });
-}
-
-/** Helper: convert lifecycle map to a pending list (when caller already has lifecycles). */
-export function pendingFromLifecycles(
-  lifecycles: Map<string, BlobLifecycle>
-): string[] {
-  const out: string[] = [];
-  for (const [shelbyCid, lc] of lifecycles) {
-    if (!lc.isWritten && !lc.isDeleted) out.push(shelbyCid);
-  }
-  return out;
-}

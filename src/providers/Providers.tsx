@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type PropsWithChildren } from "react";
+import { useState, type PropsWithChildren } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AptosWalletAdapterProvider } from "@aptos-labs/wallet-adapter-react";
 import type { Network } from "@aptos-labs/ts-sdk";
@@ -9,7 +9,6 @@ import { getShelbyClient } from "@/lib/shelby";
 import { NetworkProvider, useNetwork } from "@/lib/networkContext";
 import { isUserRejection } from "@/lib/tx";
 import { silenceExtensionNoise } from "@/lib/silenceExtensionNoise";
-import { installDevHooks } from "@/lib/devHooks";
 
 silenceExtensionNoise();
 
@@ -49,11 +48,6 @@ function NetworkScopedProviders({ children }: PropsWithChildren) {
 
 export function Providers({ children }: PropsWithChildren) {
   const [queryClient] = useState(() => new QueryClient());
-
-  // Mount window.aptboxDev — no-op in production, useful in dev devtools.
-  useEffect(() => {
-    installDevHooks();
-  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>

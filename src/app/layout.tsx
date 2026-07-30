@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/providers/Providers";
@@ -17,9 +17,9 @@ export const metadata: Metadata = {
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_SITE_URL ?? "https://aptbox.vercel.app"
   ),
-  title: "aptbox · decentralized file vault on Shelby + Aptos",
+  title: "AI Dataset Locker · verifiable dataset storage on Shelby + Aptos",
   description:
-    "Upload, share, and monetize files with cryptographic provenance. Built on Shelby and Aptos.",
+    "Store AI training datasets on Shelby with their SHA-256 committed to Aptos, so anyone downloading can prove the bytes were never altered.",
   icons: {
     icon: [
       { url: "/brand/favicon.svg", type: "image/svg+xml" },
@@ -29,20 +29,37 @@ export const metadata: Metadata = {
     apple: "/brand/png/favicon@180.png",
   },
   openGraph: {
-    title: "aptbox · decentralized file vault",
+    title: "AI Dataset Locker",
     description:
-      "Upload, share, and monetize files with cryptographic provenance. Built on Shelby and Aptos.",
+      "Verifiable storage for AI training datasets, on Shelby and Aptos.",
     images: [
-      { url: "/brand/png/og-card@1200.png", width: 1200, height: 630, alt: "aptbox" },
+      {
+        url: "/brand/png/og-card@1200.png",
+        width: 1200,
+        height: 630,
+        alt: "AI Dataset Locker",
+      },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "aptbox",
+    title: "AI Dataset Locker",
     description:
-      "Upload, share, and monetize files with cryptographic provenance. Built on Shelby and Aptos.",
+      "Verifiable storage for AI training datasets, on Shelby and Aptos.",
     images: ["/brand/png/og-card@1200.png"],
   },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  // Let the dark page bleed into the iOS safe areas instead of leaving white
+  // bars beside the notch / home indicator.
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
+  ],
 };
 
 export default function RootLayout({

@@ -1,22 +1,34 @@
 /**
- * The aptbox logo icon — box outline + Shelby symbol inside.
+ * The app logo icon — box outline + Shelby symbol inside.
  *
  * Uses `currentColor` for both stroke and fill so it adapts to the parent's
  * text color (dark in light mode, light in dark mode) — no need for separate
  * dark-mode versions.
  *
+ * Decorative by default: every place it renders sits beside the visible
+ * wordmark, so labelling the icon too made screen readers announce the brand
+ * twice. Pass `label` where it appears without adjacent text.
+ *
  * Visual matches public/brand/logo-icon.svg.
  */
-export function AptboxIcon({ className = "" }: { className?: string }) {
+export function AptboxIcon({
+  className = "",
+  label,
+}: {
+  className?: string;
+  label?: string;
+}) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 256 256"
-      role="img"
-      aria-label="aptbox"
+      role={label ? "img" : undefined}
+      aria-label={label}
+      aria-hidden={label ? undefined : true}
+      focusable="false"
       className={className}
     >
-      <title>aptbox</title>
+      {label && <title>{label}</title>}
       {/* Outer rounded box */}
       <rect
         x="24"

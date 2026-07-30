@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNetworkController } from "@/lib/networkContext";
+import { CheckIcon, ChevronIcon } from "./CategoryIcon";
 
 const NETWORK_DOTS: Record<string, string> = {
   shelbynet: "bg-purple-500",
@@ -29,14 +30,17 @@ export function NetworkSwitcher() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
-        title="Switch active network"
+        className="flex shrink-0 items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-2 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800 sm:gap-2 sm:px-3 sm:py-1.5"
+        title={`Network: ${label(network)} — tap to switch`}
+        aria-label={`Network: ${label(network)}. Switch active network.`}
       >
         <span
-          className={`h-2 w-2 rounded-full ${NETWORK_DOTS[network] ?? "bg-zinc-400"}`}
+          className={`h-2 w-2 shrink-0 rounded-full ${NETWORK_DOTS[network] ?? "bg-zinc-400"}`}
         />
-        <span>{label(network)}</span>
-        <span className="text-zinc-400">▾</span>
+        {/* Name drops on phones — the colour dot still identifies the network,
+            and the row has to fit the wallet button too. */}
+        <span className="hidden sm:inline">{label(network)}</span>
+        <ChevronIcon className="h-3 w-3 rotate-90 text-zinc-400" />
       </button>
 
       {open && (
@@ -64,7 +68,7 @@ export function NetworkSwitcher() {
                   />
                   {label(n)}
                 </span>
-                {isActive && <span className="text-xs">✓</span>}
+                {isActive && <CheckIcon className="h-3 w-3" />}
               </button>
             );
           })}

@@ -45,12 +45,12 @@ export async function fetchAccountBlobLifecycles(
   }
 }
 
-export type ExpirationSeverity = "ok" | "warn" | "expired";
+type ExpirationSeverity = "ok" | "warn" | "expired";
 
 const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
 
-export type ExpirationDisplay = {
+type ExpirationDisplay = {
   text: string;
   severity: ExpirationSeverity;
   /** Milliseconds until expiry; negative if past. */

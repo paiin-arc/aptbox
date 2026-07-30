@@ -10,6 +10,10 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  /* Tailwind's smallest default breakpoint is sm (40rem), which leaves no way
+     to target the 320-390px phones where the topbar action row runs out of
+     room. 24rem = 384px, just under an iPhone 14/15 at 390px. */
+  --breakpoint-xs: 24rem;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -25,29 +29,7 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-/* ---------- AptBox brand tokens (Phase 1: owned-intelligence shift) ---------- */
-
-:root {
-  /* Primary purple — used for active state, focus, primary CTAs */
-  --ax-primary-50:  #f5f3ff;
-  --ax-primary-100: #ede9fe;
-  --ax-primary-200: #ddd6fe;
-  --ax-primary-300: #c4b5fd;
-  --ax-primary-400: #a78bfa;
-  --ax-primary-500: #8b5cf6;
-  --ax-primary-600: #7c3aed;
-  --ax-primary-700: #6d28d9;
-  --ax-primary-800: #5b21b6;
-  --ax-primary-900: #4c1d95;
-  /* Status accents for IP/monetization/verification badges */
-  --ax-accent-verified: #34d399; /* emerald */
-  --ax-accent-licensed: #a78bfa; /* purple */
-  --ax-accent-ai:       #22d3ee; /* cyan */
-  --ax-accent-royalty:  #fbbf24; /* gold */
-  --ax-accent-expiring: #fb923c; /* orange */
-}
-
-/* Premium glass card — used across new pages */
+/* Glass card — dashboard summary tiles */
 .ax-card {
   background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
   border: 1px solid rgba(255,255,255,0.06);
@@ -55,17 +37,6 @@ body {
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
 }
-.ax-card-hover { transition: border-color 200ms, background 200ms; }
-.ax-card-hover:hover {
-  border-color: rgba(167,139,250,0.35);
-  background: linear-gradient(180deg, rgba(139,92,246,0.05), rgba(139,92,246,0.02));
-}
-
-/* Subtle purple glow used for active sidebar items */
-.ax-glow-purple {
-  box-shadow: 0 0 0 1px rgba(167,139,250,0.25), 0 4px 18px -6px rgba(124,58,237,0.45);
-}
-
 /* Status badge baseline */
 .ax-badge {
   display: inline-flex;
@@ -107,11 +78,6 @@ body {
   50%      { transform: scale(1.18); opacity: 0;    }
 }
 
-@keyframes ax-stack-shimmer {
-  0%, 100% { opacity: 1; }
-  50%      { opacity: 0.55; }
-}
-
 @keyframes ax-check-draw {
   from { stroke-dashoffset: 28; }
   to   { stroke-dashoffset: 0;  }
@@ -126,9 +92,6 @@ body {
   stroke-dashoffset: 28;
   animation: ax-check-draw 1.2s ease-out 0.4s forwards;
 }
-.ax-anim-stack-1   { animation: ax-stack-shimmer 4s ease-in-out infinite; }
-.ax-anim-stack-2   { animation: ax-stack-shimmer 4s ease-in-out 0.6s infinite; }
-.ax-anim-stack-3   { animation: ax-stack-shimmer 4s ease-in-out 1.2s infinite; }
 
 @keyframes ax-drift-slow {
   0%, 100% { transform: rotate(0deg) scale(1); }
@@ -216,7 +179,8 @@ body {
   transform: translateY(0);
 }
 
-/* SVG line draw — used by the trinity flow + architecture diagram. */
+/* SVG line draw — used by the docs diagrams. Paths set pathLength=600
+   so this fixed dasharray normalizes to one full-length dash. */
 @keyframes ax-draw-line {
   to { stroke-dashoffset: 0; }
 }
@@ -278,10 +242,7 @@ body {
   .ax-anim-breathe,
   .ax-anim-tilt,
   .ax-anim-spin-slow,
-  .ax-anim-ring,
-  .ax-anim-stack-1,
-  .ax-anim-stack-2,
-  .ax-anim-stack-3 {
+  .ax-anim-ring {
     animation: none !important;
   }
   .ax-anim-check { stroke-dashoffset: 0; animation: none !important; }

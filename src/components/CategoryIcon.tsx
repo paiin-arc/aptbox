@@ -196,83 +196,117 @@ export function WorkspaceIcon({ className = "h-4 w-4" }: { className?: string })
   );
 }
 
-export function IpVaultIcon({ className = "h-4 w-4" }: { className?: string }) {
+/* ---------- UI glyphs (replace emoji everywhere) ---------- */
+
+export function CheckIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" {...COMMON} className={className} aria-hidden>
-      <path d="M12 2.5L4 6v6c0 4.5 3.4 8.3 8 9.5 4.6-1.2 8-5 8-9.5V6l-8-3.5z" />
-      <circle cx="12" cy="11" r="2.4" />
-      <path d="M12 13.4V17" />
+    <svg viewBox="0 0 24 24" {...COMMON} strokeWidth={2.2} className={className} aria-hidden>
+      <path d="M4.5 12.5l5 5 10-11" />
     </svg>
   );
 }
 
-export function VerifiedStorageIcon({
-  className = "h-4 w-4",
-}: {
-  className?: string;
-}) {
+export function CloseIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" {...COMMON} className={className} aria-hidden>
-      <ellipse cx="12" cy="6" rx="8" ry="2.6" />
-      <path d="M4 6v6c0 1.45 3.58 2.6 8 2.6s8-1.15 8-2.6V6" />
-      <path d="M4 12v6c0 1.45 3.58 2.6 8 2.6 1.45 0 2.85-.13 4.1-.36" />
-      <path d="M14.5 18.5l1.7 1.7 3.3-3.6" />
+    <svg viewBox="0 0 24 24" {...COMMON} strokeWidth={2} className={className} aria-hidden>
+      <path d="M6 6l12 12M18 6L6 18" />
     </svg>
   );
 }
 
-export function MonetizeIcon({ className = "h-4 w-4" }: { className?: string }) {
+export function RefreshIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" {...COMMON} className={className} aria-hidden>
-      <circle cx="12" cy="12" r="9" />
-      <path d="M15 9.2c-.6-.9-1.7-1.5-3-1.5-1.9 0-3.4 1.1-3.4 2.6 0 1.4 1.1 2 3.4 2.5 2.3.5 3.4 1.1 3.4 2.5 0 1.5-1.5 2.6-3.4 2.6-1.3 0-2.4-.6-3-1.5" />
-      <path d="M12 5.5v13" />
+      <path d="M20 12a8 8 0 1 1-2.34-5.66" />
+      <path d="M20 4v4h-4" />
     </svg>
   );
 }
 
-export function PermissionsIcon({
-  className = "h-4 w-4",
-}: {
-  className?: string;
-}) {
+export function PencilIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" {...COMMON} className={className} aria-hidden>
+      <path d="M4 20h4l10-10-4-4L4 16v4z" />
+      <path d="M13.5 6.5l4 4" />
+    </svg>
+  );
+}
+
+export function LockIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" {...COMMON} className={className} aria-hidden>
       <rect x="5" y="11" width="14" height="9" rx="2" />
       <path d="M8 11V7.5a4 4 0 0 1 8 0V11" />
-      <circle cx="12" cy="15.2" r="1.3" fill="currentColor" stroke="none" />
     </svg>
   );
 }
 
-export function AiMemoryIcon({ className = "h-4 w-4" }: { className?: string }) {
+export function FlagIcon({ className = "h-3 w-3" }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" {...COMMON} className={className} aria-hidden>
-      <path d="M9 4.5a3.5 3.5 0 0 0-3.4 4.4A3.5 3.5 0 0 0 6 15.7 3.5 3.5 0 0 0 12 19a3.5 3.5 0 0 0 6-3.3 3.5 3.5 0 0 0 .4-6.8A3.5 3.5 0 0 0 15 4.5c-1.1 0-2.1.5-2.8 1.3a3.5 3.5 0 0 0-3.2-1.3z" />
-      <path d="M12 8v10" opacity="0.55" />
-      <path d="M9.5 11h2.5M12 14h2.5" opacity="0.55" />
+      <path d="M5.5 21V4" />
+      <path d="M5.5 4.5h10l-1.5 4 1.5 4h-10z" />
     </svg>
   );
 }
 
-export function MarketplaceIcon({
-  className = "h-4 w-4",
+export function ClockIcon({ className = "h-3 w-3" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" {...COMMON} className={className} aria-hidden>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M12 7.5V12l3 2" />
+    </svg>
+  );
+}
+
+export function PlayIcon({ className = "h-3 w-3" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden>
+      <path d="M8 5.5l10 6.5-10 6.5z" fill="currentColor" />
+    </svg>
+  );
+}
+
+export function SearchIcon({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" {...COMMON} className={className} aria-hidden>
+      <circle cx="11" cy="11" r="6.5" />
+      <path d="M15.8 15.8L21 21" />
+    </svg>
+  );
+}
+
+export function MenuIcon({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" {...COMMON} strokeWidth={2} className={className} aria-hidden>
+      <path d="M4 7h16M4 12h16M4 17h16" />
+    </svg>
+  );
+}
+
+export function ExternalLinkIcon({
+  className = "h-3 w-3",
 }: {
   className?: string;
 }) {
   return (
     <svg viewBox="0 0 24 24" {...COMMON} className={className} aria-hidden>
-      <path d="M3 8l1.4-3.5A1 1 0 0 1 5.3 4h13.4a1 1 0 0 1 .93.5L21 8" />
-      <path d="M4 8v11a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V8" />
-      <path d="M3 8a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0" />
+      <path d="M14 4h6v6" />
+      <path d="M20 4l-8.5 8.5" />
+      <path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" />
     </svg>
   );
 }
 
-export function ActivityIcon({ className = "h-4 w-4" }: { className?: string }) {
+export function ArrowRightIcon({
+  className = "h-3.5 w-3.5",
+}: {
+  className?: string;
+}) {
   return (
     <svg viewBox="0 0 24 24" {...COMMON} className={className} aria-hidden>
-      <path d="M3 12h4l2.5-7 5 14L17 12h4" />
+      <path d="M5 12h14" />
+      <path d="M13 6l6 6-6 6" />
     </svg>
   );
 }
@@ -283,15 +317,6 @@ export function DocsIcon({ className = "h-4 w-4" }: { className?: string }) {
       <path d="M6 3h8l4 4v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" />
       <path d="M14 3v4h4" />
       <path d="M8 12h8M8 16h6M8 8h3" opacity="0.85" />
-    </svg>
-  );
-}
-
-export function SettingsIcon({ className = "h-4 w-4" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" {...COMMON} className={className} aria-hidden>
-      <circle cx="12" cy="12" r="3" />
-      <path d="M19 12a7 7 0 0 0-.1-1.2l2-1.6-2-3.4-2.4.8a7 7 0 0 0-2-1.2L14 3h-4l-.5 2.4a7 7 0 0 0-2 1.2L5 5.8 3 9.2l2 1.6A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.6 2 3.4 2.4-.8a7 7 0 0 0 2 1.2L10 21h4l.5-2.4a7 7 0 0 0 2-1.2l2.4.8 2-3.4-2-1.6c.1-.4.1-.8.1-1.2z" />
     </svg>
   );
 }
