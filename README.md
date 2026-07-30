@@ -60,13 +60,41 @@ Per-network Shelby keys (`NEXT_PUBLIC_SHELBY_API_KEY_TESTNET`, `..._SHELBYNET`) 
 
 ## Move contract
 
+Publishing alone is not enough — the module has an `initialize` entry function
+that creates the `Registry` resource, and every view aborts with
+`Failed to borrow global resource` until it has been called.
+
 ```bash
 cd aptos
-aptos move compile
-aptos move publish
+
+# 1. Publish, with the named address bound to the deploying account
+aptos move publish \
+  --named-addresses aptbox=<DEPLOYER_ADDR> \
+  --profile <PROFILE> --assume-yes
+
+# 2. Create the Registry resource (must be sent by the same account)
+aptos move run \
+  --function-id '<DEPLOYER_ADDR>::registry::initialize' \
+  --profile <PROFILE> --assume-yes
+
+# 3. Confirm it answers
+aptos move view \
+  --function-id '<DEPLOYER_ADDR>::registry::next_id' \
+  --profile <PROFILE>
 ```
 
-Then point `NEXT_PUBLIC_REGISTRY_ADDRESS_<NETWORK>` at the published address.
+Run `aptos move run` from `aptos/` — the CLI profile lives in `aptos/.aptos/`,
+and from the repo root it looks for a global config instead.
+
+Then point `NEXT_PUBLIC_REGISTRY_ADDRESS_<NETWORK>` at the published address and
+check it with `npm run verify:network`.
+
+### Deployed registries
+
+| Network | Address | Status |
+| --- | --- | --- |
+| Aptos testnet | `0x6e5c78b1b9fd0c729cc525529f012227bf3e0b4aff7f8af93539dd186668ec25` | live, in use — the app's default |
+| Shelbynet | `0x2251165b1dd4124e02304bd781779070e87af21aa86f69c1f6d452d4d8bd2e5c` | live, empty |
 
 ## Known limits
 
@@ -96,4 +124,4 @@ The two `verify:*` gates guard the pieces where a silent bug would be worst:
 
 `verify:network` is separate from `npm run verify` because it needs `.env.local` and network access. It resolves the default network the same way the app does and calls the registry's `next_id`, which catches the case where the app points at a network with no contract deployed.
 
-**The registry is deployed on Aptos testnet, not shelbynet.** The shelbynet account exists but has zero modules published, so the app defaults to testnet — pointing it at shelbynet gives a silently empty dashboard and uploads that fail at `register_file`.
+The registry is now deployed on **both** networks (see the table above). The app defaults to Aptos testnet because that's where the existing datasets are; shelbynet is a working but empty registry.
