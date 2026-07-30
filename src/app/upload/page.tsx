@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { AppBackdrop } from "@/components/AppBackdrop";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { ConnectWalletButton } from "@/components/ConnectWalletButton";
 import { AptboxIcon } from "@/components/AptboxIcon";
@@ -373,7 +374,8 @@ export default function UploadPage() {
     stage === "registering";
 
   return (
-    <div className="flex min-h-screen flex-col bg-zinc-50 dark:bg-black">
+    <div className="relative flex min-h-dvh flex-col text-zinc-100">
+      <AppBackdrop />
       <header className="sticky top-0 z-10 flex w-full items-center justify-between border-b border-zinc-200 bg-white/80 px-4 py-3 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/80 sm:px-6 sm:py-4">
         <Link href="/" className="flex items-center gap-2">
           <AptboxIcon className="h-8 w-8 text-zinc-900 dark:text-zinc-100" />

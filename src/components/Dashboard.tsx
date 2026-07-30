@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
+import { AppBackdrop } from "./AppBackdrop";
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
 import { FileGrid } from "./FileGrid";
@@ -97,7 +98,8 @@ export function Dashboard() {
   return (
     // h-dvh, not h-screen: on iOS Safari h-screen (100vh) is taller than the
     // visible area, which pushed the scroll container under the address bar.
-    <div className="flex h-dvh overflow-hidden bg-black text-zinc-100">
+    <div className="flex h-dvh overflow-hidden text-zinc-100">
+      <AppBackdrop />
       <Sidebar
         active={activeCat}
         onChange={(c) => {
@@ -109,13 +111,13 @@ export function Dashboard() {
         drawerOpen={drawerOpen}
         onDrawerClose={() => setDrawerOpen(false)}
       />
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="relative z-10 flex flex-1 flex-col overflow-hidden">
         <Topbar
           search={search}
           onSearchChange={setSearch}
           onMenuClick={() => setDrawerOpen(true)}
         />
-        <main className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 sm:py-8">
+        <main className="relative z-10 flex-1 overflow-y-auto px-4 py-6 sm:px-6 sm:py-8">
           {activeCat === "all" ? (
             <WorkspaceOverview
               totalFiles={enriched.length}

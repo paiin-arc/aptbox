@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+/* The app is dark by design — the sidebar, landing and docs are dark-only, and
+   the workspace/upload/share pages carry full `dark:` variants that were only
+   applying when the OS happened to prefer dark. Driving the variant off a class
+   lets us opt in once on <html> so the whole app is consistent. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
