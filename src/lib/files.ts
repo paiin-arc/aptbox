@@ -147,7 +147,7 @@ async function fetchTotalFileCount(
   return Number(result[0]);
 }
 
-async function fetchAllFiles(
+export async function fetchAllFiles(
   network: SupportedNetwork
 ): Promise<FileMeta[]> {
   const total = await fetchTotalFileCount(network);

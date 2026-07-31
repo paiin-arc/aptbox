@@ -311,6 +311,19 @@ export function ArrowRightIcon({
   );
 }
 
+/** Magnifier over a document — the "check a file against the registry" tool. */
+export function VerifyIcon({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" {...COMMON} className={className} aria-hidden>
+      <path d="M6 3h7l4 4v4" />
+      <path d="M13 3v4h4" />
+      <circle cx="14" cy="16" r="4" />
+      <path d="M17.2 19.2L20 22" />
+      <path d="M9 20H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1" />
+    </svg>
+  );
+}
+
 export function DocsIcon({ className = "h-4 w-4" }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" {...COMMON} className={className} aria-hidden>

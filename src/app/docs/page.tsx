@@ -532,6 +532,19 @@ function VerifyYourself() {
         If the locker disappeared tomorrow, every dataset it published would
         still be verifiable by anyone with the hash and a copy of the bytes.
       </Callout>
+
+      <p className="mt-6 max-w-3xl text-[15px] leading-relaxed text-zinc-400">
+        If you&apos;d rather not do it by hand,{" "}
+        <Link
+          href="/verify"
+          className="text-violet-300 underline-offset-2 hover:underline"
+        >
+          drop the file into the checker
+        </Link>
+        . It hashes locally, never uploads, needs no wallet, and additionally
+        flags datasets published under the same filename with different bytes —
+        which comparing one hash by eye cannot tell you.
+      </p>
     </Section>
   );
 }
