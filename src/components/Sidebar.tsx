@@ -285,9 +285,11 @@ export function Sidebar({
               target="_blank"
               rel="noopener noreferrer"
               className="mt-2 flex items-center gap-1 text-[10px] text-zinc-500 transition hover:text-orange-300"
-              title="Verified decentralized storage by Shelby"
+              title="Powered by Shelby — verified decentralized storage"
             >
-              <span>Storage by</span>
+              {/* Matches the landing page's wording so the attribution reads
+                  the same everywhere. */}
+              <span>Powered by</span>
               <ShelbyLogo className="h-3 w-3 text-orange-400" />
               <span className="font-semibold tracking-tight text-zinc-300">
                 Shelby
