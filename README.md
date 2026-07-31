@@ -96,6 +96,14 @@ check it with `npm run verify:network`.
 | Aptos testnet | `0x6e5c78b1b9fd0c729cc525529f012227bf3e0b4aff7f8af93539dd186668ec25` | live, in use — the app's default |
 | Shelbynet | `0x2251165b1dd4124e02304bd781779070e87af21aa86f69c1f6d452d4d8bd2e5c` | live, empty |
 
+Both carry the `Descriptions` resource. After any upgrade that adds a resource,
+run its one-time initializer as well as `initialize`:
+
+```bash
+aptos move run --function-id '<ADDR>::registry::init_descriptions' \
+  --profile <PROFILE> --assume-yes
+```
+
 Shelbynet gets wiped periodically. A wipe takes the module with it, and the app
 responds by showing an empty workspace rather than an error — so if shelbynet
 suddenly has no datasets, run `NEXT_PUBLIC_DEFAULT_NETWORK=shelbynet npm run

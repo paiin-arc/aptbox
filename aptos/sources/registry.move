@@ -32,6 +32,12 @@ module aptbox::registry {
     const E_INVALID_ACCESS_TYPE: u64 = 4;
     const E_NOT_PAID_FILE: u64 = 5;
     const E_ALREADY_INITIALIZED: u64 = 6;
+    const E_DESCRIPTIONS_NOT_PUBLISHED: u64 = 7;
+    const E_DESCRIPTION_TOO_LONG: u64 = 8;
+
+    /// Descriptions are permanent public chain state; cap them so a listing
+    /// can't be used to store arbitrary payloads.
+    const MAX_DESCRIPTION_LEN: u64 = 500;
 
     // ---- Resources ----
 
@@ -60,6 +66,24 @@ module aptbox::registry {
         files: Table<u64, FileRecord>,
         // (buyer_addr, file_id) -> bought_at_timestamp
         receipts: Table<address, Table<u64, u64>>,
+    }
+
+    /// Publisher-supplied listing text, keyed by file_id.
+    ///
+    /// Deliberately a separate resource rather than a field on FileRecord:
+    /// FileRecord is stored inside a Table in a `key` resource, and altering a
+    /// stored struct's layout is rejected by the module upgrade compatibility
+    /// check. Adding a new resource is compatible, so every dataset registered
+    /// before this existed keeps working and can be described retroactively.
+    struct Descriptions has key {
+        // file_id -> publisher-written text
+        texts: Table<u64, String>,
+    }
+
+    #[event]
+    struct DescriptionSet has drop, store {
+        file_id: u64,
+        uploader: address,
     }
 
     // ---- Events ----
@@ -247,6 +271,61 @@ module aptbox::registry {
 
         // ACCESS_TOKEN_GATED handling reserved for future implementation
         false
+    }
+
+    // ---- Entry: publisher listing description ----
+
+    /// One-time setup for the descriptions table. Separate from `initialize`
+    /// so registries deployed before this upgrade can adopt it in place.
+    public entry fun init_descriptions(owner: &signer) {
+        let owner_addr = signer::address_of(owner);
+        assert!(owner_addr == @aptbox, error::permission_denied(E_NOT_OWNER));
+        assert!(!exists<Descriptions>(@aptbox), error::already_exists(E_ALREADY_INITIALIZED));
+        move_to(owner, Descriptions { texts: table::new() });
+    }
+
+    /// Set or replace a dataset's description. Only the original uploader may
+    /// call this — buying access never confers the right to rewrite a listing.
+    public entry fun set_description(
+        uploader: &signer,
+        file_id: u64,
+        text: String,
+    ) acquires Registry, Descriptions {
+        assert!(exists<Registry>(@aptbox), error::not_found(E_NOT_PUBLISHED));
+        assert!(
+            exists<Descriptions>(@aptbox),
+            error::not_found(E_DESCRIPTIONS_NOT_PUBLISHED)
+        );
+        assert!(
+            std::string::length(&text) <= MAX_DESCRIPTION_LEN,
+            error::invalid_argument(E_DESCRIPTION_TOO_LONG)
+        );
+
+        let registry = borrow_global<Registry>(@aptbox);
+        assert!(table::contains(&registry.files, file_id), error::not_found(E_FILE_NOT_FOUND));
+
+        let uploader_addr = signer::address_of(uploader);
+        let record = table::borrow(&registry.files, file_id);
+        assert!(record.uploader == uploader_addr, error::permission_denied(E_NOT_OWNER));
+
+        let descriptions = borrow_global_mut<Descriptions>(@aptbox);
+        if (table::contains(&descriptions.texts, file_id)) {
+            *table::borrow_mut(&mut descriptions.texts, file_id) = text;
+        } else {
+            table::add(&mut descriptions.texts, file_id, text);
+        };
+
+        event::emit(DescriptionSet { file_id, uploader: uploader_addr });
+    }
+
+    // Empty string when unset, so callers never have to handle an abort for
+    // the ordinary "this dataset has no description" case.
+    #[view]
+    public fun get_description(file_id: u64): String acquires Descriptions {
+        if (!exists<Descriptions>(@aptbox)) return std::string::utf8(b"");
+        let descriptions = borrow_global<Descriptions>(@aptbox);
+        if (!table::contains(&descriptions.texts, file_id)) return std::string::utf8(b"");
+        *table::borrow(&descriptions.texts, file_id)
     }
 
     #[view]
