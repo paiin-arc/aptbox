@@ -164,6 +164,36 @@ After the first deploy, confirm the deployed build points at a live registry:
 npm run verify:network        # locally, same resolution logic the app uses
 ```
 
+## Shelby SDK version is pinned — do not upgrade yet
+
+`@shelby-protocol/sdk` is held at **0.3.1** and `@shelby-protocol/react` at
+**2.0.1**. They are a matched pair: react 2.0.1 declares an exact peer of sdk
+0.3.1, and react 3.0.1 an exact peer of sdk 0.4.1.
+
+**0.4.1 cannot run this app.** It removed the v1 upload endpoint in favour of a
+v2 chunkset flow that has no wallet-adapter path yet. `useUploadBlobs` in react
+3.0.1 throws on sight of a wallet signer:
+
+> Wallet-adapter uploads are temporarily unavailable: the v1 blob upload
+> endpoint has been removed and the v2 chunkset upload flow has not yet been
+> implemented for wallet-adapter signers in the React hooks. Use an account
+> signer in the meantime.
+
+`useCommitBlobs` throws unconditionally for the same reason. The raw
+`ShelbyRPCClient.putBlobChunksets` is no help either — it signs its auth
+challenge synchronously from an `Account`, so it needs a local private key,
+which a browser wallet does not expose. "Use an account signer" means shipping
+a private key to the browser, which is not an option.
+
+Two smaller breaks come with it: `putBlob` is gone, and
+`createDeleteMultipleBlobsPayload` was renamed to
+`createDeleteMultipleObjectsPayload`.
+
+Recheck before attempting the upgrade: install react@latest and grep its dist
+for "Wallet-adapter uploads are temporarily unavailable". When that error is
+gone, 0.4.x becomes viable and brings a `BlobEncryption` label
+(`"Unencrypted" | "AES_GCM_V1"`) plus per-location writes.
+
 ## Known limits
 
 - **Uploads are unbounded**, but the dataset is read from disk three times (hash, encode, upload) and the transfer is sequential, so very large datasets simply take a while. Datasets over 1 GiB show a timing advisory.
