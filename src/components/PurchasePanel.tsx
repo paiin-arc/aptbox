@@ -81,6 +81,24 @@ export function PurchasePanel({
         </div>
       ) : null}
 
+      {/*
+        Shelby stores blobs publicly: the gateway serves any blob to anyone who
+        knows the account and blob name, and both are public on-chain. access_type
+        lives in our registry and gates this UI, not the bytes. Saying so is the
+        only honest option until client-side encryption ships.
+      */}
+      <div className="flex gap-2 rounded-lg border border-orange-500/40 bg-orange-500/[0.07] p-3">
+        <WarningTriangleIcon className="mt-0.5 h-4 w-4 shrink-0 text-orange-300" />
+        <div className="text-[13px] leading-relaxed text-orange-100">
+          <strong>These bytes are not private.</strong> Shelby stores blobs
+          openly, so anyone who reads this dataset&apos;s account and blob name
+          from the registry can fetch it from the gateway without paying. Buying
+          records your access on-chain and pays the publisher — it does not
+          restrict anyone else. Encryption is planned; until then, treat paid
+          datasets as public.
+        </div>
+      </div>
+
       <ul className="space-y-1.5 rounded-lg border border-white/10 bg-black/20 p-3 text-[12px] leading-relaxed text-zinc-400">
         <li className="flex gap-2">
           <span aria-hidden className="text-zinc-600">

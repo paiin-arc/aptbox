@@ -85,7 +85,10 @@ export function ListingCard({
             <div className="flex flex-col items-center gap-2 text-zinc-600">
               <CategoryIcon id={cat} className="h-9 w-9" />
               {isPaid && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-medium uppercase tracking-wider text-amber-300/80">
+                <span
+                  className="inline-flex items-center gap-1 text-[10px] font-medium uppercase tracking-wider text-amber-300/80"
+                  title="The preview is withheld in this UI, but the stored bytes are public on Shelby"
+                >
                   <LockIcon className="h-3 w-3" />
                   Preview withheld
                 </span>
@@ -121,6 +124,12 @@ export function ListingCard({
           {formatBytes(file.sizeBytes)} · {file.mimeType || "unknown"} ·{" "}
           {new Date(file.createdAt * 1000).toLocaleDateString()}
         </div>
+
+        {!isPublic && (
+          <div className="text-[10px] leading-relaxed text-orange-300/70">
+            Stored unencrypted — the bytes are publicly retrievable from Shelby.
+          </div>
+        )}
 
         {showPublisher && (
           <Link
