@@ -29,12 +29,61 @@ import { NETWORK_LABEL } from "@/lib/networks";
 
 type AccessFilter = "any" | "free" | "paid";
 
+/**
+ * Only the part that reads search params is suspended. Wrapping the whole page
+ * meant the static prerender emitted an empty document — no header, no main —
+ * so the route was blank until JS hydrated.
+ */
 export default function MarketplacePage() {
   return (
-    // useSearchParams needs a Suspense boundary for the static prerender.
-    <Suspense fallback={null}>
-      <Marketplace />
-    </Suspense>
+    <div className="relative flex min-h-dvh flex-col text-zinc-100">
+      <AppBackdrop />
+      <MarketplaceHeader />
+      <Suspense fallback={<MarketplaceSkeleton />}>
+        <Marketplace />
+      </Suspense>
+    </div>
+  );
+}
+
+function MarketplaceHeader() {
+  return (
+    <header className="sticky top-0 z-30 border-b border-white/5 bg-black/70 backdrop-blur-md">
+      <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+        <Link href="/" className="flex min-w-0 items-center gap-2">
+          <AptboxIcon className="h-6 w-6 shrink-0 text-zinc-100" />
+          <span className="truncate text-[15px] font-bold tracking-tight">
+            Dataset Locker
+          </span>
+        </Link>
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+          <NetworkSwitcher />
+          <ConnectWalletButton />
+        </div>
+      </div>
+    </header>
+  );
+}
+
+function MarketplaceSkeleton() {
+  return (
+    <main className="relative z-10 mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6 sm:py-12">
+      <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+        Marketplace
+      </h1>
+      <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-zinc-400">
+        Every dataset published to the registry, with a SHA-256 committed
+        on-chain before it was ever served.
+      </p>
+      <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div
+            key={i}
+            className="h-52 animate-pulse rounded-2xl border border-white/10 bg-white/[0.03]"
+          />
+        ))}
+      </div>
+    </main>
   );
 }
 
@@ -46,7 +95,7 @@ function Marketplace() {
   const publisher = params?.get("publisher") ?? null;
   const catParam = params?.get("cat");
   const [cat, setCat] = useState<Category>(
-    isSupportedCategory(catParam) ? catParam : "all"
+    isSupportedCategory(catParam) ? catParam : "all",
   );
   const [access, setAccess] = useState<AccessFilter>("any");
   const [search, setSearch] = useState("");
@@ -66,18 +115,28 @@ function Marketplace() {
 
   const listings = useMemo(() => {
     let list = byPublisher;
-    if (cat !== "all") list = list.filter((f) => categoryFor(f.mimeType) === cat);
-    if (access === "free") list = list.filter((f) => f.accessType === ACCESS_PUBLIC);
-    if (access === "paid") list = list.filter((f) => f.accessType === ACCESS_PAID);
+    if (cat !== "all")
+      list = list.filter((f) => categoryFor(f.mimeType) === cat);
+    if (access === "free")
+      list = list.filter((f) => f.accessType === ACCESS_PUBLIC);
+    if (access === "paid")
+      list = list.filter((f) => f.accessType === ACCESS_PAID);
     const q = search.trim().toLowerCase();
     if (q) list = list.filter((f) => f.shelbyCid.toLowerCase().includes(q));
     return list;
   }, [byPublisher, cat, access, search]);
 
   const publishers = useMemo(() => {
-    const m = new Map<string, { count: number; bytes: number; first: number }>();
+    const m = new Map<
+      string,
+      { count: number; bytes: number; first: number }
+    >();
     for (const f of all) {
-      const cur = m.get(f.uploader) ?? { count: 0, bytes: 0, first: f.createdAt };
+      const cur = m.get(f.uploader) ?? {
+        count: 0,
+        bytes: 0,
+        first: f.createdAt,
+      };
       m.set(f.uploader, {
         count: cur.count + 1,
         bytes: cur.bytes + f.sizeBytes,
@@ -88,85 +147,66 @@ function Marketplace() {
   }, [all]);
 
   return (
-    <div className="relative flex min-h-dvh flex-col text-zinc-100">
-      <AppBackdrop />
-
-      <header className="sticky top-0 z-30 border-b border-white/5 bg-black/70 backdrop-blur-md">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
-          <Link href="/" className="flex min-w-0 items-center gap-2">
-            <AptboxIcon className="h-6 w-6 shrink-0 text-zinc-100" />
-            <span className="truncate text-[15px] font-bold tracking-tight">
-              Dataset Locker
-            </span>
-          </Link>
-          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-            <NetworkSwitcher />
-            <ConnectWalletButton />
-          </div>
-        </div>
-      </header>
-
-      <main className="relative z-10 mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6 sm:py-12">
-        {publisher ? (
-          <PublisherHeader
-            address={publisher}
-            stats={publishers.get(publisher)}
-            onClear={() => router.push("/marketplace")}
-          />
-        ) : (
-          <>
-            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-              Marketplace
-            </h1>
-            <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-zinc-400">
-              Every dataset published on {NETWORK_LABEL[network]}, from{" "}
-              {publishers.size} publisher{publishers.size === 1 ? "" : "s"}.
-              Each one carries a SHA-256 committed on-chain before it was ever
-              served, so you can check it before and after you download.
-            </p>
-          </>
-        )}
-
-        <Filters
-          cat={cat}
-          setCat={setCat}
-          access={access}
-          setAccess={setAccess}
-          search={search}
-          setSearch={setSearch}
-          shown={listings.length}
-          total={byPublisher.length}
+    <main className="relative z-10 mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6 sm:py-12">
+      {publisher ? (
+        <PublisherHeader
+          address={publisher}
+          stats={publishers.get(publisher)}
+          onClear={() => router.push("/marketplace")}
         />
+      ) : (
+        <>
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+            Marketplace
+          </h1>
+          <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-zinc-400">
+            Every dataset published on {NETWORK_LABEL[network]}, from{" "}
+            {publishers.size} publisher{publishers.size === 1 ? "" : "s"}. Each
+            one carries a SHA-256 committed on-chain before it was ever served,
+            so you can check it before and after you download.
+          </p>
+        </>
+      )}
 
-        {isLoading ? (
-          <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div
-                key={i}
-                className="h-52 animate-pulse rounded-2xl border border-white/10 bg-white/[0.03]"
-              />
-            ))}
-          </div>
-        ) : listings.length === 0 ? (
-          <EmptyState hasAny={all.length > 0} />
-        ) : (
-          <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {listings.map((f) => (
-              <ListingCard
-                key={f.fileId}
-                file={f}
-                network={network}
-                showPublisher={!publisher}
-              />
-            ))}
-          </div>
-        )}
+      <Filters
+        cat={cat}
+        setCat={setCat}
+        access={access}
+        setAccess={setAccess}
+        search={search}
+        setSearch={setSearch}
+        shown={listings.length}
+        total={byPublisher.length}
+      />
 
-        {!publisher && publishers.size > 0 && (
-          <PublisherList publishers={publishers} />
-        )}
-      </main>
-    </div>
+      {isLoading ? (
+        <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div
+              key={i}
+              className="h-52 animate-pulse rounded-2xl border border-white/10 bg-white/[0.03]"
+            />
+          ))}
+        </div>
+      ) : listings.length === 0 ? (
+        <EmptyState hasAny={all.length > 0} />
+      ) : (
+        <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {listings.map((f) => (
+            <ListingCard
+              key={f.fileId}
+              file={f}
+              network={network}
+              showPublisher={!publisher}
+            />
+          ))}
+        </div>
+      )}
+
+      {!publisher && publishers.size > 0 && (
+        <PublisherList publishers={publishers} />
+      )}
+    </main>
   );
 }
 
@@ -201,7 +241,9 @@ function PublisherHeader({
             {stats.count === 1 ? "" : "s"}
           </span>
           <span>
-            <strong className="text-zinc-200">{formatBytes(stats.bytes)}</strong>{" "}
+            <strong className="text-zinc-200">
+              {formatBytes(stats.bytes)}
+            </strong>{" "}
             published
           </span>
           <span>
@@ -260,7 +302,11 @@ function Filters({
 
       <div className="flex flex-wrap gap-1.5">
         {CATEGORIES.map((c) => (
-          <button key={c.id} onClick={() => setCat(c.id)} className={pill(cat === c.id)}>
+          <button
+            key={c.id}
+            onClick={() => setCat(c.id)}
+            className={pill(cat === c.id)}
+          >
             {c.label}
           </button>
         ))}
@@ -268,7 +314,11 @@ function Filters({
 
       <div className="flex flex-wrap items-center gap-1.5">
         {(["any", "free", "paid"] as AccessFilter[]).map((a) => (
-          <button key={a} onClick={() => setAccess(a)} className={pill(access === a)}>
+          <button
+            key={a}
+            onClick={() => setAccess(a)}
+            className={pill(access === a)}
+          >
             {a === "any" ? "Any access" : a === "free" ? "Free" : "Paid"}
           </button>
         ))}
@@ -285,7 +335,9 @@ function PublisherList({
 }: {
   publishers: Map<string, { count: number; bytes: number; first: number }>;
 }) {
-  const rows = [...publishers.entries()].sort((a, b) => b[1].count - a[1].count);
+  const rows = [...publishers.entries()].sort(
+    (a, b) => b[1].count - a[1].count,
+  );
   return (
     <section className="mt-12 border-t border-white/10 pt-8">
       <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-500">
