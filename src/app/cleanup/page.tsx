@@ -259,7 +259,7 @@ export default function CleanupPage() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-6 sm:px-6 sm:py-10">
+      <main className="relative z-10 mx-auto w-full max-w-3xl flex-1 px-4 py-6 sm:px-6 sm:py-10">
         <div className="mb-5">
           <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
             Cleanup pending blobs

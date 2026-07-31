@@ -389,7 +389,7 @@ export default function UploadPage() {
         </div>
       </header>
 
-      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-5 px-4 py-6 sm:gap-6 sm:px-6 sm:py-12">
+      <main className="relative z-10 mx-auto flex w-full max-w-2xl flex-1 flex-col gap-5 px-4 py-6 sm:gap-6 sm:px-6 sm:py-12">
         <div>
           <h1 className="text-xl font-bold tracking-tight sm:text-3xl">
             Upload a dataset

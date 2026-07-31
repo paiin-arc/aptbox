@@ -715,7 +715,7 @@ function Shell({ children }: { children: React.ReactNode }) {
           <ConnectWalletButton />
         </div>
       </header>
-      <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-6 sm:px-6 sm:py-10">
+      <main className="relative z-10 mx-auto w-full max-w-3xl flex-1 px-4 py-6 sm:px-6 sm:py-10">
         {children}
       </main>
     </div>
