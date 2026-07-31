@@ -228,6 +228,13 @@ export default function Home() {
         {/* The sidebar only renders once a wallet is connected, so this is the
             only route to the docs for a first-time visitor. */}
         <Link
+          href="/marketplace"
+          className="font-semibold text-zinc-300 transition hover:text-violet-400"
+        >
+          Marketplace
+        </Link>
+        <span className="text-zinc-600">·</span>
+        <Link
           href="/docs"
           className="font-semibold text-zinc-300 transition hover:text-violet-400"
         >

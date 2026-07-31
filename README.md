@@ -37,6 +37,9 @@ The on-chain commitment is what makes this meaningful. A hash the uploader hands
 | `/` | Landing page, or your dataset list once a wallet is connected |
 | `/upload` | Hash, store on Shelby, and commit the hash on-chain |
 | `/f/[fileId]` | Share page — verifies integrity, then previews/downloads |
+| `/marketplace` | Public catalogue of every published dataset, plus publisher views |
+| `/verify` | Drop a file and check it against the registry — no wallet needed |
+| `/docs` | How verification works, and what it doesn't cover |
 | `/cleanup` | Recover ShelbyUSD from uploads whose bytes never finalized |
 
 ## Setup

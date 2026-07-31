@@ -311,6 +311,17 @@ export function ArrowRightIcon({
   );
 }
 
+/** Storefront awning — the public dataset catalogue. */
+export function MarketplaceIcon({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" {...COMMON} className={className} aria-hidden>
+      <path d="M3 8l1.4-3.5A1 1 0 0 1 5.3 4h13.4a1 1 0 0 1 .93.5L21 8" />
+      <path d="M4 8v11a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V8" />
+      <path d="M3 8a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0" />
+    </svg>
+  );
+}
+
 /** Magnifier over a document — the "check a file against the registry" tool. */
 export function VerifyIcon({ className = "h-4 w-4" }: { className?: string }) {
   return (

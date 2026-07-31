@@ -65,6 +65,44 @@ export function buildRegisterFilePayload(
   };
 }
 
+/** Buys access to a paid dataset. Pays the uploader directly, on-chain. */
+export function buildPurchaseAccessPayload(
+  network: SupportedNetwork,
+  fileId: string
+) {
+  const addr = getRegistryAddress(network);
+  if (!addr) throw new Error(`No registry address for ${network}.`);
+  return {
+    function:
+      `${addr}::registry::purchase_access` as `${string}::${string}::${string}`,
+    typeArguments: [],
+    functionArguments: [fileId],
+  };
+}
+
+/** Max accepted by the Move module — mirror it so the UI fails before the tx. */
+export const MAX_DESCRIPTION_LEN = 500;
+
+/**
+ * Sets a dataset's listing description. The module asserts the signer is the
+ * original uploader, so this will abort for anyone else — buying access never
+ * confers the right to rewrite a listing.
+ */
+export function buildSetDescriptionPayload(
+  network: SupportedNetwork,
+  fileId: string,
+  text: string
+) {
+  const addr = getRegistryAddress(network);
+  if (!addr) throw new Error(`No registry address for ${network}.`);
+  return {
+    function:
+      `${addr}::registry::set_description` as `${string}::${string}::${string}`,
+    typeArguments: [],
+    functionArguments: [fileId, text],
+  };
+}
+
 export function buildDeleteFilePayload(
   network: SupportedNetwork,
   fileId: string

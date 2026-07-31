@@ -28,6 +28,7 @@ import {
   ACCESS_PUBLIC,
   ACCESS_WHITELIST,
   buildDeleteFilePayload,
+  buildPurchaseAccessPayload,
 } from "@/lib/registry";
 import { isUserRejection, waitForTx } from "@/lib/tx";
 import {
@@ -47,6 +48,8 @@ import {
 } from "@/lib/blobLifecycle";
 import { getShelbyClient } from "@/lib/shelby";
 import { ShareDialog } from "@/components/ShareDialog";
+import { PurchasePanel } from "@/components/PurchasePanel";
+import { DescriptionPanel } from "@/components/DescriptionPanel";
 import {
   ChainLinkIcon,
   CheckIcon,
@@ -277,6 +280,37 @@ export default function FilePage({ params }: Props) {
     triggerBrowserDownload(previewBlob, fileNameFromCid(file.shelbyCid));
   }
 
+  const [purchaseStage, setPurchaseStage] = useState<
+    "idle" | "signing" | "confirming" | "done" | "error"
+  >("idle");
+  const [purchaseError, setPurchaseError] = useState<string | null>(null);
+
+  async function handlePurchase() {
+    if (!file || !connected) return;
+    setPurchaseError(null);
+    try {
+      setPurchaseStage("signing");
+      const submitted = await signAndSubmitTransaction({
+        data: buildPurchaseAccessPayload(network, file.fileId),
+      });
+      const hash = (submitted as { hash: string }).hash;
+      setPurchaseStage("confirming");
+      await waitForTx(hash, { network });
+      setPurchaseStage("done");
+      // has_access now returns true on-chain; refetch so the gate opens.
+      qc.invalidateQueries({ queryKey: ["access", network, file.fileId, addr] });
+    } catch (e) {
+      if (isUserRejection(e)) {
+        setPurchaseStage("idle");
+        setPurchaseError(null);
+        return;
+      }
+      console.error(e);
+      setPurchaseError((e as Error).message ?? String(e));
+      setPurchaseStage("error");
+    }
+  }
+
   async function handleDelete() {
     if (!file || !connected) return;
     setDeleteError(null);
@@ -398,6 +432,13 @@ export default function FilePage({ params }: Props) {
         />
       )}
 
+      <DescriptionPanel
+        fileId={file.fileId}
+        network={network}
+        isOwner={isOwner}
+        signAndSubmitTransaction={signAndSubmitTransaction}
+      />
+
       {/* Integrity — the core guarantee, shown above the bytes it describes. */}
       <div className="mb-6 space-y-2">
         <IntegrityPanel state={integrity} registryHash={file.contentHash} />
@@ -427,10 +468,14 @@ export default function FilePage({ params }: Props) {
             <RestrictedGate connected={connected} accessLoading={accessLoading} />
           )}
           {file.accessType === ACCESS_PAID && (
-            <div className="text-sm text-amber-900 dark:text-amber-200">
-              This dataset was registered with paid access, which the Dataset
-              Locker doesn&apos;t support. Only its owner can open it.
-            </div>
+            <PurchasePanel
+              file={file}
+              connected={connected}
+              stage={purchaseStage}
+              error={purchaseError}
+              expirationMicros={lifecycle?.expirationMicros}
+              onPurchase={handlePurchase}
+            />
           )}
           {file.accessType === 3 && (
             <div className="text-sm text-amber-900 dark:text-amber-200">

@@ -12,6 +12,7 @@ import {
   ChevronIcon,
   CloseIcon,
   DocsIcon,
+  MarketplaceIcon,
   VerifyIcon,
   WorkspaceIcon,
 } from "./CategoryIcon";
@@ -42,6 +43,7 @@ type PrimaryItem = {
  */
 const PRIMARY_NAV: PrimaryItem[] = [
   { label: "My datasets", href: "/", icon: <WorkspaceIcon /> },
+  { label: "Marketplace", href: "/marketplace", icon: <MarketplaceIcon /> },
   { label: "Check a file", href: "/verify", icon: <VerifyIcon /> },
   { label: "Docs", href: "/docs", icon: <DocsIcon /> },
 ];

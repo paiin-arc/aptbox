@@ -190,6 +190,34 @@ export async function hasAccess(
   }
 }
 
+/**
+ * Publisher-written listing text. Returns "" when unset — the Move view already
+ * normalises that case, so there is no missing-description error to handle.
+ */
+export async function fetchDescription(
+  network: SupportedNetwork,
+  fileId: string
+): Promise<string> {
+  const addr = getRegistryAddress(network);
+  if (!addr) return "";
+  try {
+    const aptos = getAptos(network);
+    const result = await aptos.view({
+      payload: {
+        function:
+          `${addr}::registry::get_description` as `${string}::${string}::${string}`,
+        typeArguments: [],
+        functionArguments: [fileId],
+      },
+    });
+    return String(result[0] ?? "");
+  } catch (e) {
+    // A registry deployed before the Descriptions upgrade has no such function.
+    console.warn(`[fetchDescription] ${network}/${fileId} unavailable`, e);
+    return "";
+  }
+}
+
 export function accessLabel(t: number): string {
   if (t === 0) return "Public";
   if (t === 1) return "Paid";
