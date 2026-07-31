@@ -3,7 +3,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { AppBackdrop } from "@/components/AppBackdrop";
-import { useWallet } from "@aptos-labs/wallet-adapter-react";
+import {
+  isAptosConnectWallet,
+  isPetraWebWallet,
+  useWallet,
+} from "@aptos-labs/wallet-adapter-react";
 import { ConnectWalletButton } from "@/components/ConnectWalletButton";
 import { AptboxIcon } from "@/components/AptboxIcon";
 import { NetworkSwitcher } from "@/components/NetworkSwitcher";
@@ -33,10 +37,15 @@ import {
   partCountFor,
   peakWorkingSetBytes,
   prepareAndRegisterShelby,
+  prepareShelbyCommitments,
+  registerShelbyBlob,
   uploadShelbyBytes,
   validateFile,
   type UploadProgress,
 } from "@/services/uploadService";
+
+const BTN_PRIMARY =
+  "sticky bottom-3 z-10 w-full rounded-xl bg-zinc-900 px-5 py-3.5 text-sm font-semibold text-white shadow-lg transition hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-black dark:hover:bg-zinc-200 sm:static sm:w-auto sm:self-start sm:py-3 sm:shadow-sm";
 
 type AccessMode = "public" | "restricted";
 
@@ -97,6 +106,40 @@ export default function UploadPage() {
   const { connected, account, signAndSubmitTransaction } = wallet;
   const network = useNetwork();
 
+  /**
+   * Popup-based wallets (Aptos Connect's Google/Apple sign-in, Petra Web) open
+   * their signing window with window.open, which browsers only permit while
+   * transient user activation is alive — roughly five seconds after a click.
+   * Hashing and erasure coding take far longer, so by the time the old
+   * single-click flow asked for a signature the popup was blocked and the
+   * wallet reported "couldn't open prompt".
+   *
+   * Those wallets get a two-step flow: prepare on the first click, then request
+   * signatures from a second, fresh one. Extension wallets inject their UI
+   * rather than opening a window, so they are unaffected and keep the original
+   * one-click path untouched.
+   */
+  const needsFreshGesture = useMemo(() => {
+    const w = wallet.wallet;
+    if (!w) return false;
+    try {
+      return isAptosConnectWallet(w) || isPetraWebWallet(w);
+    } catch {
+      return false;
+    }
+  }, [wallet.wallet]);
+
+  /** Commitments held between the two clicks, popup-wallet path only. */
+  const [pending, setPending] = useState<{
+    hashBytes: Uint8Array;
+    hex: string;
+    blobName: string;
+    commitments: Awaited<
+      ReturnType<typeof prepareShelbyCommitments>
+    >["commitments"];
+    encoding: number;
+  } | null>(null);
+
   const [file, setFile] = useState<File | null>(null);
   const [hashHex, setHashHex] = useState<string | null>(null);
   const [customName, setCustomName] = useState<string | null>(null);
@@ -149,6 +192,9 @@ export default function UploadPage() {
   }
 
   function commitName() {
+    // The blob name embeds the display name, so renaming invalidates anything
+    // already prepared for signature.
+    setPending(null);
     const trimmed = draftName.trim();
     if (!trimmed) {
       // Empty → revert to original
@@ -189,6 +235,7 @@ export default function UploadPage() {
 
   async function handleFile(f: File | null) {
     setFile(f);
+    setPending(null);
     setHashHex(null);
     setCustomName(null);
     setEditingName(false);
@@ -245,6 +292,150 @@ export default function UploadPage() {
         );
       }
     }
+  }
+
+  /**
+   * Popup-wallet step 1: hash + erasure-code, no wallet contact. Ends with the
+   * commitments parked in state and an explicit button for step 2, so the
+   * signature request happens on a click the browser still counts as recent.
+   */
+  async function handlePrepare() {
+    if (!file || !connected || !account) return;
+    setError(null);
+    setErrorIsOrphaned(false);
+    setFileId(null);
+    setTxHash(null);
+    setPending(null);
+    try {
+      validateFile(file);
+
+      setStage("hashing");
+      const { bytes: hashBytes, hex } = await sha256File(file, (h) => {
+        if (h.totalBytes > 0) {
+          setHashPct(Math.round((h.hashedBytes / h.totalBytes) * 100));
+        }
+      });
+      setHashHex(hex);
+      setHashPct(null);
+
+      const blobName = blobNameFor(hex, displayName);
+      const { commitments, encoding } = await prepareShelbyCommitments({
+        source: file,
+        onProgress: handleProgress,
+      });
+
+      setPending({ hashBytes, hex, blobName, commitments, encoding });
+      setStage("idle");
+    } catch (e) {
+      console.error(e);
+      setStage("error");
+      setError((e as Error).message ?? String(e));
+    }
+  }
+
+  /**
+   * Popup-wallet step 2. Called straight from a click: the first thing it does
+   * is ask for a signature, so the popup opens while activation is still live.
+   */
+  async function handleSignAndUpload() {
+    if (!file || !connected || !account || !pending) return;
+    setError(null);
+    setPutPct(null);
+    setPutDetail(null);
+    const uploaderAddress = account.address.toString();
+    try {
+      setStage("shelby-sign");
+      const shelbyResult = await registerShelbyBlob({
+        uploaderAddress,
+        blobName: pending.blobName,
+        commitments: pending.commitments,
+        encoding: pending.encoding,
+        signAndSubmitTransaction,
+        expirationMicros,
+        onProgress: handleProgress,
+      });
+
+      setStage("registering");
+      const payload = buildRegisterFilePayload(network, {
+        contentHash: pending.hashBytes,
+        shelbyCid: pending.blobName,
+        mimeType: file.type || "application/octet-stream",
+        sizeBytes: file.size,
+        accessType: accessTypeNum,
+        priceOctas: 0n,
+        whitelist,
+      });
+      const submitted = await signWithTimeout(
+        signAndSubmitTransaction({ data: payload }),
+        "registry register_file"
+      );
+      const registryTxHash = (submitted as { hash: string }).hash;
+      setTxHash(registryTxHash);
+
+      const [, tx] = await Promise.all([
+        uploadShelbyBytes({
+          network,
+          uploaderAddress,
+          source: file,
+          blobName: pending.blobName,
+          onProgress: handleProgress,
+        }),
+        waitForTx(registryTxHash, { network }),
+      ]);
+
+      finishUpload(tx, uploaderAddress, pending.blobName, shelbyResult.registerTxHash, registryTxHash);
+      setPending(null);
+    } catch (e) {
+      handleUploadError(e);
+    }
+  }
+
+  /** Shared tail: record the new dataset id once both txs have landed. */
+  function finishUpload(
+    tx: unknown,
+    uploaderAddress: string,
+    blobName: string,
+    shelbyTxHash: string,
+    registryTxHash: string
+  ) {
+    const events =
+      (tx as { events?: { type: string; data: unknown }[] }).events ?? [];
+    const id = extractFileIdFromTx(
+      events as { type: string; data: Record<string, unknown> }[]
+    );
+    setFileId(id);
+    if (id !== null) {
+      trackUpload(uploaderAddress, id);
+      trackUploadRecord(uploaderAddress, {
+        fileId: id.toString(),
+        shelbyTxHash,
+        aptboxTxHash: registryTxHash,
+        blobName,
+        fileName: displayName,
+        uploadedAt: Date.now(),
+        network,
+      });
+    }
+    setStage("done");
+    logStage("upload", "✓ done");
+  }
+
+  function handleUploadError(e: unknown) {
+    if (isUserRejection(e)) {
+      setStage("cancelled");
+      setError(null);
+      setErrorIsOrphaned(false);
+      return;
+    }
+    console.error(e);
+    setStage("error");
+    const msg = (e as Error).message ?? String(e);
+    setError(msg);
+    setErrorIsOrphaned(
+      /Shelby storage timed out/i.test(msg) ||
+        /status:\s*408/.test(msg) ||
+        /Request Timed Out/i.test(msg)
+    );
   }
 
   async function handleUpload() {
@@ -640,15 +831,56 @@ export default function UploadPage() {
           )}
         </div>
 
-        {/* Upload button */}
-        <button
-          onClick={handleUpload}
-          disabled={!file || !connected || busy}
-          className="sticky bottom-3 z-10 w-full rounded-xl bg-zinc-900 px-5 py-3.5 text-sm font-semibold text-white shadow-lg transition hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-black dark:hover:bg-zinc-200 sm:static sm:w-auto sm:self-start sm:py-3 sm:shadow-sm"
-        >
-          {STAGE_LABEL[stage]}
-          {stage === "shelby-put" && putPct !== null && ` (${putPct}%)`}
-        </button>
+        {/*
+          Two buttons only for popup-based wallets. Extension wallets keep the
+          original single action — their signing UI is injected, not opened in a
+          window, so the activation timing that breaks Aptos Connect and Petra
+          Web doesn't apply to them.
+        */}
+        {needsFreshGesture && !pending ? (
+          <>
+            <button
+              onClick={handlePrepare}
+              disabled={!file || !connected || busy}
+              className={BTN_PRIMARY}
+            >
+              {stage === "hashing" || stage === "encoding"
+                ? STAGE_LABEL[stage]
+                : "Prepare dataset"}
+            </button>
+            <p className="-mt-2 text-[11px] leading-relaxed text-zinc-500">
+              Your wallet opens a popup to sign. Browsers only allow that right
+              after a click, so hashing and encoding run first — you&apos;ll get
+              a separate button for the two signatures.
+            </p>
+          </>
+        ) : needsFreshGesture && pending ? (
+          <>
+            <button
+              onClick={handleSignAndUpload}
+              disabled={busy}
+              className={BTN_PRIMARY}
+            >
+              {busy
+                ? STAGE_LABEL[stage] +
+                  (stage === "shelby-put" && putPct !== null ? ` (${putPct}%)` : "")
+                : "Approve in wallet — 2 signatures"}
+            </button>
+            <p className="-mt-2 text-[11px] leading-relaxed text-emerald-300/80">
+              Ready. Clicking now opens the wallet immediately, so the popup
+              won&apos;t be blocked.
+            </p>
+          </>
+        ) : (
+          <button
+            onClick={handleUpload}
+            disabled={!file || !connected || busy}
+            className={BTN_PRIMARY}
+          >
+            {STAGE_LABEL[stage]}
+            {stage === "shelby-put" && putPct !== null && ` (${putPct}%)`}
+          </button>
+        )}
 
         {/* Streaming-hash progress — the one stage that runs before any wallet
             prompt, and the slowest for very large datasets. */}

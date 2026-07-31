@@ -10,8 +10,12 @@
  * The flow is split into two phases so the upload page can sign the aptbox
  * register tx in parallel with the (slow on testnet) byte upload:
  *
- *   prepareAndRegisterShelby — sync erasure-code + sign register tx
+ *   prepareAndRegisterShelby — erasure-code + sign register tx
  *   uploadShelbyBytes        — putBlob with retry (no wallet signature)
+ *
+ * `prepareAndRegisterShelby` is additionally split into
+ * `prepareShelbyCommitments` + `registerShelbyBlob` for popup-based wallets,
+ * which must request their signature from a fresh click. See those functions.
  */
 
 import {
@@ -160,34 +164,49 @@ export function validateFile(file: File): void {
 }
 
 /**
- * Phase 1: erasure-code the data + submit the Shelby `register_blob` Move tx.
- * Returns the commitments needed for the bytes upload phase.
+ * Erasure-code only. No wallet interaction, so it can run before the user has
+ * been asked to sign anything.
+ *
+ * Split out because popup-based wallets (Aptos Connect, Petra Web) can only
+ * open their signing window while the browser still has transient user
+ * activation — about five seconds after a click. Encoding takes far longer than
+ * that, so a flow that hashes, encodes and *then* asks for a signature has its
+ * popup blocked. Callers on those wallets run this first and request the
+ * signature from a fresh click.
  */
-export async function prepareAndRegisterShelby(
-  args: PrepareAndRegisterArgs
-): Promise<PrepareAndRegisterResult> {
-  const {
-    uploaderAddress,
-    source,
-    blobName,
-    signAndSubmitTransaction,
-    onProgress,
-  } = args;
-
-  // 1. Erasure-code → commitments. Streamed: the SDK pulls one 10 MiB chunkset
-  //    at a time, so this is flat in memory no matter how big the dataset is.
-  onProgress?.({ stage: "encoding", message: "Erasure-coding dataset…" });
+export async function prepareShelbyCommitments(args: {
+  source: Blob;
+  onProgress?: (p: UploadProgress) => void;
+}): Promise<{ commitments: BlobCommitments; encoding: number }> {
+  args.onProgress?.({ stage: "encoding", message: "Erasure-coding dataset…" });
   const ecProvider = await createDefaultErasureCodingProvider();
   const encoding = ecProvider.config.enumIndex;
   if (typeof window !== "undefined") {
     console.log(
-      `[shelby] erasure scheme enumIndex=${encoding} (n=${ecProvider.config.erasure_n}, k=${ecProvider.config.erasure_k}, chunk=${ecProvider.config.chunkSizeBytes}B) streaming ${source.size}B`
+      `[shelby] erasure scheme enumIndex=${encoding} (n=${ecProvider.config.erasure_n}, k=${ecProvider.config.erasure_k}, chunk=${ecProvider.config.chunkSizeBytes}B) streaming ${args.source.size}B`
     );
   }
-  const commitments = await generateCommitments(ecProvider, source.stream());
+  const commitments = await generateCommitments(ecProvider, args.source.stream());
+  return { commitments, encoding };
+}
 
-  // 2. Build + sign registerBlob Move payload
-  onProgress?.({
+/**
+ * Sign the Shelby `register_blob` tx for commitments produced above. Kept free
+ * of async work before the signature request so it can be called directly from
+ * a click handler and stay inside the activation window.
+ */
+export async function registerShelbyBlob(args: {
+  uploaderAddress: string;
+  blobName: string;
+  commitments: BlobCommitments;
+  encoding: number;
+  signAndSubmitTransaction: SignAndSubmitFn;
+  expirationMicros?: number;
+  onProgress?: (p: UploadProgress) => void;
+}): Promise<PrepareAndRegisterResult> {
+  const { uploaderAddress, blobName, commitments, encoding } = args;
+
+  args.onProgress?.({
     stage: "registering",
     message: "Approve Shelby register in wallet…",
   });
@@ -204,7 +223,7 @@ export async function prepareAndRegisterShelby(
 
   logStage("uploadService", "→ Shelby register_blob sign requested");
   const { hash: registerTxHash } = await signWithTimeout(
-    signAndSubmitTransaction({ data: registerPayload }),
+    args.signAndSubmitTransaction({ data: registerPayload }),
     "Shelby register_blob"
   );
   logStage(
@@ -213,6 +232,29 @@ export async function prepareAndRegisterShelby(
   );
 
   return { blobName, commitments, registerTxHash };
+}
+
+/**
+ * Phase 1 for wallets that don't need a popup (browser extensions): encode and
+ * sign back-to-back. Behaviour is unchanged — this now just composes the two
+ * functions above.
+ */
+export async function prepareAndRegisterShelby(
+  args: PrepareAndRegisterArgs
+): Promise<PrepareAndRegisterResult> {
+  const { commitments, encoding } = await prepareShelbyCommitments({
+    source: args.source,
+    onProgress: args.onProgress,
+  });
+  return registerShelbyBlob({
+    uploaderAddress: args.uploaderAddress,
+    blobName: args.blobName,
+    commitments,
+    encoding,
+    signAndSubmitTransaction: args.signAndSubmitTransaction,
+    expirationMicros: args.expirationMicros,
+    onProgress: args.onProgress,
+  });
 }
 
 type UploadShelbyBytesArgs = {
