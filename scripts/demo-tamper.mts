@@ -13,7 +13,8 @@ const REGISTRY =
   "0x6e5c78b1b9fd0c729cc525529f012227bf3e0b4aff7f8af93539dd186668ec25";
 const GATEWAY = "https://api.testnet.shelby.xyz/shelby/v1/blobs";
 
-const fileId = process.argv[2] ?? "26";
+// Default must be a dataset whose bytes are still stored; blobs expire.
+const fileId = process.argv[2] ?? "22";
 
 const meta = await (
   await fetch(APTOS, {
@@ -35,7 +36,30 @@ const url = `${GATEWAY}/${rec.uploader}/${rec.shelby_cid
   .split("/")
   .map(encodeURIComponent)
   .join("/")}`;
-const bytes = new Uint8Array(await (await fetch(url)).arrayBuffer());
+const res = await fetch(url);
+if (!res.ok) {
+  // Without this the error body gets hashed as if it were the dataset, and the
+  // untouched case reports TAMPERED — a false positive that looks like the tool
+  // working when it is actually broken.
+  console.log(
+    `\nBYTES UNAVAILABLE — gateway returned ${res.status}. Shelby storage is a` +
+      ` lease and this blob has expired or been evicted.\n` +
+      `Pick a dataset whose bytes are still stored:\n` +
+      `  npm run verify:tamper <fileId>\n`
+  );
+  process.exit(2);
+}
+const bytes = new Uint8Array(await res.arrayBuffer());
+
+// Guard against a short read masquerading as tampering.
+const expected = Number(rec.size_bytes);
+if (bytes.length !== expected) {
+  console.log(
+    `\nSHORT READ — got ${bytes.length} bytes, chain says ${expected}. ` +
+      `Not a tamper result; the transfer was incomplete.\n`
+  );
+  process.exit(2);
+}
 console.log(`fetched ${bytes.length} bytes from Shelby\n`);
 
 // 1. Untouched — what every visitor gets today.
