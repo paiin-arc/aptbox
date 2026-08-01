@@ -42,6 +42,9 @@ export function ListingCard({
   const isPublic = file.accessType === ACCESS_PUBLIC;
   const name = listingName(file.shelbyCid);
   const [showDesc, setShowDesc] = useState(false);
+  // Blobs expire, so a listing can outlive its bytes. Without this the <img>
+  // renders as a broken-image glyph with the filename as alt text.
+  const [previewFailed, setPreviewFailed] = useState(false);
 
   // Fetched only when the reader asks. Loading every listing's description up
   // front would add one view call per card on a page that already makes one
@@ -56,14 +59,14 @@ export function ListingCard({
   // Only public datasets get a thumbnail. Withholding the preview is the point
   // of a paid listing — the description is what a buyer reads instead.
   const previewUrl =
-    isPublic && (cat === "picture" || cat === "video")
+    isPublic && !previewFailed && (cat === "picture" || cat === "video")
       ? buildShelbyBlobUrl(network, file.uploader, file.shelbyCid)
       : null;
 
   return (
     <div className="flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02] transition hover:border-violet-500/30">
       <Link href={`/f/${file.fileId}?n=${network}`} className="group block">
-        <div className="relative flex h-32 items-center justify-center overflow-hidden border-b border-white/5 bg-black/30">
+        <div className="relative flex h-24 items-center justify-center overflow-hidden border-b border-white/5 bg-black/30">
           {previewUrl && cat === "picture" ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -71,6 +74,7 @@ export function ListingCard({
               alt={name}
               loading="lazy"
               decoding="async"
+              onError={() => setPreviewFailed(true)}
               className="h-full w-full object-cover object-top transition-transform duration-300 group-hover:scale-[1.04]"
             />
           ) : previewUrl && cat === "video" ? (
@@ -79,11 +83,12 @@ export function ListingCard({
               muted
               playsInline
               preload="metadata"
+              onError={() => setPreviewFailed(true)}
               className="h-full w-full object-cover object-top"
             />
           ) : (
             <div className="flex flex-col items-center gap-2 text-zinc-600">
-              <CategoryIcon id={cat} className="h-9 w-9" />
+              <CategoryIcon id={cat} className="h-7 w-7" />
               {isPaid && (
                 <span
                   className="inline-flex items-center gap-1 text-[10px] font-medium uppercase tracking-wider text-amber-300/80"
@@ -98,7 +103,7 @@ export function ListingCard({
         </div>
       </Link>
 
-      <div className="flex flex-1 flex-col gap-2 p-3.5">
+      <div className="flex flex-1 flex-col gap-1.5 p-3">
         <div className="flex items-start justify-between gap-2">
           <Link
             href={`/f/${file.fileId}?n=${network}`}
@@ -120,26 +125,20 @@ export function ListingCard({
           </span>
         </div>
 
+        {!isPublic && (
+          <span
+            className="inline-flex w-fit items-center gap-1 rounded-md bg-orange-500/10 px-1.5 py-0.5 text-[10px] font-medium text-orange-300/90 ring-1 ring-orange-500/20"
+            title="Shelby stores blobs openly — anyone with the account and blob name can fetch these bytes without paying"
+          >
+            <LockIcon className="h-2.5 w-2.5" />
+            Not private
+          </span>
+        )}
+
         <div className="text-[11px] text-zinc-500">
           {formatBytes(file.sizeBytes)} · {file.mimeType || "unknown"} ·{" "}
           {new Date(file.createdAt * 1000).toLocaleDateString()}
         </div>
-
-        {!isPublic && (
-          <div className="text-[10px] leading-relaxed text-orange-300/70">
-            Stored unencrypted — the bytes are publicly retrievable from Shelby.
-          </div>
-        )}
-
-        {showPublisher && (
-          <Link
-            href={`/marketplace?publisher=${file.uploader}`}
-            className="truncate font-mono text-[11px] text-violet-300/80 hover:text-violet-200"
-            title={file.uploader}
-          >
-            {file.uploader.slice(0, 10)}…{file.uploader.slice(-6)}
-          </Link>
-        )}
 
         {/* Description: the only thing a paid listing offers before purchase,
             so it gets a real affordance rather than a tooltip. */}
@@ -178,12 +177,22 @@ export function ListingCard({
         )}
 
         <div className="mt-auto flex items-center justify-between gap-2 border-t border-white/5 pt-2.5">
-          <span
-            className="truncate font-mono text-[10px] text-zinc-600"
-            title={file.contentHash}
-          >
-            {file.contentHash.slice(0, 16)}…
-          </span>
+          {showPublisher ? (
+            <Link
+              href={`/marketplace?publisher=${file.uploader}`}
+              className="truncate font-mono text-[10px] text-violet-300/70 hover:text-violet-200"
+              title={`Published by ${file.uploader}`}
+            >
+              {file.uploader.slice(0, 8)}…{file.uploader.slice(-4)}
+            </Link>
+          ) : (
+            <span
+              className="truncate font-mono text-[10px] text-zinc-600"
+              title={file.contentHash}
+            >
+              {file.contentHash.slice(0, 14)}…
+            </span>
+          )}
           <Link
             href="/verify"
             className="shrink-0 text-[10px] font-medium text-zinc-500 underline-offset-2 hover:text-violet-300 hover:underline"

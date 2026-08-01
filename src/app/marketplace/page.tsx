@@ -79,7 +79,7 @@ function MarketplaceSkeleton() {
         {Array.from({ length: 6 }).map((_, i) => (
           <div
             key={i}
-            className="h-52 animate-pulse rounded-2xl border border-white/10 bg-white/[0.03]"
+            className="h-44 animate-pulse rounded-2xl border border-white/10 bg-white/[0.03]"
           />
         ))}
       </div>
@@ -184,7 +184,7 @@ function Marketplace() {
           {Array.from({ length: 6 }).map((_, i) => (
             <div
               key={i}
-              className="h-52 animate-pulse rounded-2xl border border-white/10 bg-white/[0.03]"
+              className="h-44 animate-pulse rounded-2xl border border-white/10 bg-white/[0.03]"
             />
           ))}
         </div>
