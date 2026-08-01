@@ -24,13 +24,7 @@ import {
   DocsIcon,
   LockIcon,
 } from "./CategoryIcon";
-
-function aptFromOctas(octas: bigint): string {
-  const apt = Number(octas) / 100_000_000;
-  if (apt === 0) return "0";
-  if (apt < 0.0001) return apt.toExponential(2);
-  return apt.toFixed(apt < 1 ? 4 : 2);
-}
+import { aptFromOctas } from "@/lib/registry";
 
 function listingName(cid: string): string {
   const tail = cid.split("/").pop() ?? cid;

@@ -4,13 +4,7 @@ import type { FileMeta } from "@/lib/files";
 import { formatBytes } from "@/lib/crypto";
 import { formatExpirationCountdown } from "@/lib/blobLifecycle";
 import { CheckIcon, LockIcon, WarningTriangleIcon } from "./CategoryIcon";
-
-function aptFromOctas(octas: bigint): string {
-  const apt = Number(octas) / 100_000_000;
-  if (apt === 0) return "0";
-  if (apt < 0.0001) return apt.toExponential(2);
-  return apt.toFixed(apt < 1 ? 4 : 2);
-}
+import { aptFromOctas } from "@/lib/registry";
 
 /** Warn when a dataset expires sooner than this. Receipts are permanent; bytes are not. */
 const EXPIRY_WARN_MS = 14 * 24 * 60 * 60 * 1000;

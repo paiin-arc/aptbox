@@ -21,10 +21,14 @@ import {
   LockIcon,
   PencilIcon,
   RefreshIcon,
+  TagIcon,
 } from "@/components/CategoryIcon";
 import {
+  ACCESS_PAID,
   ACCESS_PUBLIC,
   ACCESS_WHITELIST,
+  aptFromOctas,
+  aptToOctas,
   buildRegisterFilePayload,
   extractFileIdFromTx,
 } from "@/lib/registry";
@@ -47,7 +51,7 @@ import {
 const BTN_PRIMARY =
   "sticky bottom-3 z-10 w-full rounded-xl bg-zinc-900 px-5 py-3.5 text-sm font-semibold text-white shadow-lg transition hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-black dark:hover:bg-zinc-200 sm:static sm:w-auto sm:self-start sm:py-3 sm:shadow-sm";
 
-type AccessMode = "public" | "restricted";
+type AccessMode = "public" | "paid" | "restricted";
 
 type DurationPreset = "1d" | "7d" | "30d" | "90d" | "1y" | "custom";
 
@@ -75,6 +79,22 @@ function formatDurationHuman(hours: number): string {
   const years = Math.round((days / 365) * 100) / 100;
   return `${years} year${years === 1 ? "" : "s"}`;
 }
+
+const ACCESS_MODES: {
+  mode: AccessMode;
+  label: string;
+  hint: string;
+  Icon: (props: { className?: string }) => React.ReactElement;
+}[] = [
+  { mode: "public", label: "Public", hint: "Anyone with the link", Icon: GlobeIcon },
+  { mode: "paid", label: "Paid", hint: "Buyers pay you in APT", Icon: TagIcon },
+  {
+    mode: "restricted",
+    label: "Restricted",
+    hint: "Only wallets you list",
+    Icon: LockIcon,
+  },
+];
 
 type UploadStage =
   | "idle"
@@ -147,6 +167,7 @@ export default function UploadPage() {
   const [draftName, setDraftName] = useState("");
   const nameInputRef = useRef<HTMLInputElement>(null);
   const [accessMode, setAccessMode] = useState<AccessMode>("public");
+  const [priceApt, setPriceApt] = useState("");
   const [whitelistText, setWhitelistText] = useState("");
   const [durationPreset, setDurationPreset] = useState<DurationPreset>("30d");
   const [customHours, setCustomHours] = useState("48");
@@ -160,10 +181,25 @@ export default function UploadPage() {
   const [fileId, setFileId] = useState<bigint | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
 
-  const accessTypeNum = useMemo(
-    () => (accessMode === "restricted" ? ACCESS_WHITELIST : ACCESS_PUBLIC),
-    [accessMode]
+  const accessTypeNum = useMemo(() => {
+    if (accessMode === "paid") return ACCESS_PAID;
+    if (accessMode === "restricted") return ACCESS_WHITELIST;
+    return ACCESS_PUBLIC;
+  }, [accessMode]);
+
+  /**
+   * Price only means anything for ACCESS_PAID — registry::purchase_access
+   * rejects any other access type — so a price left over from switching modes
+   * is dropped rather than written to a record nobody can buy.
+   */
+  const priceOctas = useMemo(
+    () => (accessMode === "paid" ? aptToOctas(priceApt) : 0n),
+    [accessMode, priceApt]
   );
+
+  /** A paid listing with no price would be unbuyable: purchase_access would
+      transfer 0 APT and hand out a receipt for free. */
+  const priceMissing = accessMode === "paid" && priceOctas === 0n;
 
   const whitelist = useMemo(() => {
     if (accessMode !== "restricted") return [];
@@ -362,7 +398,7 @@ export default function UploadPage() {
         mimeType: file.type || "application/octet-stream",
         sizeBytes: file.size,
         accessType: accessTypeNum,
-        priceOctas: 0n,
+        priceOctas,
         whitelist,
       });
       const submitted = await signWithTimeout(
@@ -485,7 +521,7 @@ export default function UploadPage() {
         mimeType: file.type || "application/octet-stream",
         sizeBytes: file.size,
         accessType: accessTypeNum,
-        priceOctas: 0n,
+        priceOctas,
         whitelist,
       });
       const submitted = await signWithTimeout(
@@ -780,8 +816,9 @@ export default function UploadPage() {
         {/* Access mode */}
         <div className="space-y-3">
           <div className="text-sm font-semibold">Who can download it</div>
-          <div className="grid grid-cols-2 gap-2">
-            {(["public", "restricted"] as AccessMode[]).map((mode) => (
+          {/* Stacked below 384px so "Restricted" never truncates on a phone. */}
+          <div className="grid grid-cols-1 gap-2 xs:grid-cols-3">
+            {ACCESS_MODES.map(({ mode, label, hint, Icon }) => (
               <button
                 key={mode}
                 type="button"
@@ -794,21 +831,61 @@ export default function UploadPage() {
                 }`}
               >
                 <div className="flex items-center gap-1.5">
-                  {mode === "public" ? (
-                    <GlobeIcon className="h-4 w-4" />
-                  ) : (
-                    <LockIcon className="h-4 w-4" />
-                  )}
-                  <div className="font-medium capitalize">{mode}</div>
+                  <Icon className="h-4 w-4" />
+                  <div className="font-medium">{label}</div>
                 </div>
-                <div className="text-xs leading-snug text-zinc-500 sm:text-xs">
-                  {mode === "public"
-                    ? "Anyone with the link"
-                    : "Only wallets you list"}
-                </div>
+                <div className="text-xs leading-snug text-zinc-500">{hint}</div>
               </button>
             ))}
           </div>
+
+          {accessMode === "paid" && (
+            <div>
+              <label
+                htmlFor="price-apt"
+                className="block text-xs font-medium text-zinc-600 dark:text-zinc-400"
+              >
+                Price in APT
+              </label>
+              <div className="mt-1 flex items-center gap-2">
+                <input
+                  id="price-apt"
+                  // inputMode decimal brings up the numeric keypad without the
+                  // spinner and locale quirks of type="number".
+                  inputMode="decimal"
+                  value={priceApt}
+                  onChange={(e) => setPriceApt(e.target.value)}
+                  placeholder="0.50"
+                  disabled={busy}
+                  aria-invalid={priceMissing}
+                  className="w-36 rounded-lg border border-zinc-300 bg-white px-3 py-2 font-mono text-base tabular-nums dark:border-zinc-700 dark:bg-zinc-900"
+                />
+                <span className="text-sm text-zinc-500">APT</span>
+              </div>
+              <div className="mt-1.5 text-xs leading-relaxed text-zinc-500">
+                {priceMissing ? (
+                  <span className="text-amber-400">
+                    Set a price above zero — a paid dataset priced at 0 would
+                    hand out access receipts for free.
+                  </span>
+                ) : (
+                  <>
+                    Buyers pay {aptFromOctas(priceOctas)} APT (
+                    {priceOctas.toString()} octas) straight to your wallet
+                    on-chain. You stay the recorded owner.
+                  </>
+                )}
+              </div>
+              {/* Said plainly here as well as on the listing: Shelby has no
+                  per-reader access control yet, so payment buys the receipt and
+                  the listing, not exclusivity over the bytes. */}
+              <div className="mt-2 rounded-lg border border-amber-500/25 bg-amber-500/5 px-3 py-2 text-xs leading-relaxed text-amber-200/80">
+                Payment is enforced on Aptos, not on Shelby. Anyone who learns
+                the blob name can still fetch the bytes directly, so price
+                datasets on discovery and provenance — not secrecy.
+              </div>
+            </div>
+          )}
 
           {accessMode === "restricted" && (
             <div>
@@ -841,7 +918,7 @@ export default function UploadPage() {
           <>
             <button
               onClick={handlePrepare}
-              disabled={!file || !connected || busy}
+              disabled={!file || !connected || busy || priceMissing}
               className={BTN_PRIMARY}
             >
               {stage === "hashing" || stage === "encoding"
@@ -874,7 +951,7 @@ export default function UploadPage() {
         ) : (
           <button
             onClick={handleUpload}
-            disabled={!file || !connected || busy}
+            disabled={!file || !connected || busy || priceMissing}
             className={BTN_PRIMARY}
           >
             {STAGE_LABEL[stage]}

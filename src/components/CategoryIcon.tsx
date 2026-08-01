@@ -241,6 +241,15 @@ export function LockIcon({ className = "h-3.5 w-3.5" }: { className?: string }) 
   );
 }
 
+export function TagIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" {...COMMON} className={className} aria-hidden>
+      <path d="M20.6 13.4 12 4.8H4.8V12l8.6 8.6a1.7 1.7 0 0 0 2.4 0l4.8-4.8a1.7 1.7 0 0 0 0-2.4Z" />
+      <circle cx="8.6" cy="8.6" r="1.1" />
+    </svg>
+  );
+}
+
 export function FlagIcon({ className = "h-3 w-3" }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" {...COMMON} className={className} aria-hidden>
