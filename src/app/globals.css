@@ -32,7 +32,11 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  /* Geist is loaded by next/font in layout.tsx and exposed as --font-sans via
+     @theme. The create-next-app default hardcoded Arial here, which overrode it
+     — so the fonts were downloaded on every load and never used for body text,
+     while `font-mono` utilities still resolved to Geist Mono. */
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
 }
 
 /* Glass card — dashboard summary tiles */
