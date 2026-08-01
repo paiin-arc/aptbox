@@ -531,20 +531,20 @@ export default function FilePage({ params }: Props) {
                 replicate it across providers. We&apos;re auto-checking every 6
                 seconds.
               </div>
-              <div className="flex items-center justify-between text-[11px] text-violet-700/70 dark:text-violet-300/70">
+              <div className="flex items-center justify-between text-xs text-violet-700/70 dark:text-violet-300/70">
                 <span>
                   Attempt {propagationAttempts + 1} of{" "}
                   {MAX_PROPAGATION_ATTEMPTS}
                 </span>
                 <button
                   onClick={() => loadBlob(file)}
-                  className="rounded-md border border-violet-500/30 bg-violet-500/10 px-2.5 py-1 text-[11px] font-medium text-violet-700 hover:bg-violet-500/20 dark:text-violet-200"
+                  className="rounded-md border border-violet-500/30 bg-violet-500/10 px-2.5 py-1 text-xs font-medium text-violet-700 hover:bg-violet-500/20 dark:text-violet-200"
                 >
                   Check now
                 </button>
               </div>
               {propagationAttempts + 1 >= MAX_PROPAGATION_ATTEMPTS && (
-                <div className="rounded-md bg-amber-500/10 p-2 text-[11px] text-amber-800 ring-1 ring-amber-500/30 dark:text-amber-200">
+                <div className="rounded-md bg-amber-500/10 p-2 text-xs text-amber-800 ring-1 ring-amber-500/30 dark:text-amber-200">
                   Still not available after 2 minutes. Storage providers may be
                   slow today — try again later, or use{" "}
                   <Link href="/cleanup" className="underline">
@@ -800,7 +800,7 @@ function ExpirationBanner({
         </div>
       </div>
       <span
-        className={`shrink-0 rounded-md px-2 py-0.5 text-[10px] font-medium ${
+        className={`shrink-0 rounded-md px-2 py-0.5 text-2xs font-medium ${
           isWritten
             ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
             : "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300"

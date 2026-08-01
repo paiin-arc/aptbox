@@ -121,11 +121,11 @@ function HashRow({
         : "text-zinc-600 dark:text-zinc-400";
   return (
     <div className="mt-2.5">
-      <div className={`text-[10px] font-medium uppercase tracking-wide ${color}`}>
+      <div className={`text-2xs font-medium uppercase tracking-wide ${color}`}>
         {label}
       </div>
       <div
-        className={`mt-0.5 break-all font-mono text-[11px] leading-relaxed ${color}`}
+        className={`mt-0.5 break-all font-mono text-xs leading-relaxed ${color}`}
         title={hash}
       >
         {hash ? formatHashForDisplay(hash) : "—"}

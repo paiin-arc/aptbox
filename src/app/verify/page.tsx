@@ -94,7 +94,7 @@ export default function VerifyPage() {
         <div className="mx-auto flex w-full max-w-4xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <Link href="/" className="flex min-w-0 items-center gap-2">
             <AptboxIcon className="h-6 w-6 shrink-0 text-zinc-100" />
-            <span className="truncate text-[15px] font-bold tracking-tight">
+            <span className="truncate text-base font-bold tracking-tight">
               Dataset Locker
             </span>
           </Link>
@@ -109,13 +109,13 @@ export default function VerifyPage() {
         <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
           Check a dataset
         </h1>
-        <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-zinc-400">
+        <p className="mt-2 max-w-2xl text-base leading-relaxed text-zinc-400">
           Drop a file you were given. It&apos;s hashed in your browser and
           compared against every dataset registered on{" "}
           {NETWORK_LABEL[network]} — so you can tell whether it&apos;s the
           published version, a renamed copy, or something else wearing its name.
         </p>
-        <p className="mt-2 flex items-center gap-1.5 text-[13px] text-emerald-300/80">
+        <p className="mt-2 flex items-center gap-1.5 text-sm text-emerald-300/80">
           <LockIcon className="h-3.5 w-3.5" />
           Nothing is uploaded. No wallet required.
         </p>
@@ -188,7 +188,7 @@ function ScopePicker({
           </button>
         );
       })}
-      <span className="text-[11px] text-zinc-500">
+      <span className="text-xs text-zinc-500">
         comparing against {scoped} of {total} registered
       </span>
     </div>
@@ -260,10 +260,10 @@ function DropZone({
       ) : (
         <>
           <UploadArrowIcon className="mx-auto h-8 w-8 text-zinc-500" />
-          <div className="mt-3 text-[15px] font-medium text-zinc-200">
+          <div className="mt-3 text-base font-medium text-zinc-200">
             Drop a file here
           </div>
-          <div className="mt-1 text-[13px] text-zinc-500">
+          <div className="mt-1 text-sm text-zinc-500">
             or{" "}
             <button
               onClick={() => inputRef.current?.click()}
@@ -330,17 +330,17 @@ function Result({
             <div className={`text-base font-semibold ${v.title}`}>
               {v.heading}
             </div>
-            <div className="mt-1.5 text-[13px] leading-relaxed text-zinc-300/90">
+            <div className="mt-1.5 text-sm leading-relaxed text-zinc-300/90">
               {v.body}
             </div>
           </div>
         </div>
 
         <div className="mt-4 border-t border-white/10 pt-3">
-          <div className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">
+          <div className="text-2xs font-medium uppercase tracking-wide text-zinc-500">
             {report.fileName} · {formatBytes(report.sizeBytes)}
           </div>
-          <div className="mt-1 break-all font-mono text-[11px] leading-relaxed text-zinc-400">
+          <div className="mt-1 break-all font-mono text-xs leading-relaxed text-zinc-400">
             {formatHashForDisplay(report.hashHex)}
           </div>
         </div>
@@ -378,7 +378,7 @@ function Result({
         />
       )}
 
-      <p className="mt-6 text-[12px] leading-relaxed text-zinc-500">
+      <p className="mt-6 text-xs leading-relaxed text-zinc-500">
         Compared against {report.scanned} dataset
         {report.scanned === 1 ? "" : "s"}. Filenames are matched after the same
         sanitising applied at upload, so spaces and symbols become underscores
@@ -411,7 +411,7 @@ function MatchList({
   return (
     <div className={`mt-4 rounded-xl border ${ring} bg-white/[0.02] p-4`}>
       <div className="text-sm font-semibold text-zinc-100">{title}</div>
-      <div className="mt-1 text-[12px] leading-relaxed text-zinc-500">{note}</div>
+      <div className="mt-1 text-xs leading-relaxed text-zinc-500">{note}</div>
       <ul className="mt-3 space-y-2">
         {files.map((f) => (
           <li key={f.fileId}>
@@ -419,16 +419,16 @@ function MatchList({
               href={`/f/${f.fileId}?n=${network}`}
               className="group flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2 transition hover:border-violet-500/40"
             >
-              <span className="text-[13px] font-medium text-zinc-200">
+              <span className="text-sm font-medium text-zinc-200">
                 #{f.fileId}
               </span>
-              <span className="min-w-0 flex-1 truncate text-[13px] text-zinc-300">
+              <span className="min-w-0 flex-1 truncate text-sm text-zinc-300">
                 {registryFileName(f.shelbyCid)}
               </span>
-              <span className="text-[11px] text-zinc-500">
+              <span className="text-xs text-zinc-500">
                 {formatBytes(f.sizeBytes)}
               </span>
-              <span className="text-[11px] text-zinc-500">
+              <span className="text-xs text-zinc-500">
                 {new Date(f.createdAt * 1000).toLocaleDateString()}
               </span>
               <ArrowRightIcon className="h-3.5 w-3.5 text-zinc-600 transition group-hover:text-violet-300" />

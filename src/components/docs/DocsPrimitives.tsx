@@ -60,14 +60,14 @@ export function Section({
       data-revealed={revealed}
       className="ax-lift scroll-mt-24 border-t border-white/5 pt-10 sm:pt-14"
     >
-      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-violet-300">
+      <div className="text-xs font-semibold uppercase tracking-[0.18em] text-violet-300">
         {eyebrow}
       </div>
       <h2 className="mt-3 text-2xl font-semibold leading-tight tracking-tight text-zinc-50 sm:text-3xl">
         <Words text={title} />
       </h2>
       {lead && (
-        <p className="mt-4 max-w-3xl text-[15px] leading-relaxed text-zinc-400 sm:text-base">
+        <p className="mt-4 max-w-3xl text-base leading-relaxed text-zinc-400 sm:text-base">
           {lead}
         </p>
       )}
@@ -135,7 +135,7 @@ export function Callout({
   return (
     <div className={`mt-6 rounded-xl border p-4 ${TONES[tone]}`}>
       <div className="text-sm font-semibold">{title}</div>
-      <div className="mt-1.5 text-[13px] leading-relaxed opacity-90">
+      <div className="mt-1.5 text-sm leading-relaxed opacity-90">
         {children}
       </div>
     </div>
@@ -153,7 +153,7 @@ export function CodeBlock({
   return (
     <div className="mt-6">
       <div className="overflow-x-auto rounded-xl border border-white/10 bg-black/60 p-4">
-        <pre className="font-mono text-[12px] leading-relaxed text-zinc-300">
+        <pre className="font-mono text-xs leading-relaxed text-zinc-300">
           {lines.map((l, i) => (
             <div key={i} className={l.comment ? "text-zinc-500" : ""}>
               {l.text || " "}
@@ -202,7 +202,7 @@ export function CompareCard({
         {points.map((p) => (
           <li
             key={p}
-            className="flex gap-2 text-[13px] leading-relaxed text-zinc-400"
+            className="flex gap-2 text-sm leading-relaxed text-zinc-400"
           >
             <span
               aria-hidden

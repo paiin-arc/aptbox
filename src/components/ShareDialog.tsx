@@ -90,7 +90,7 @@ export function ShareDialog({ file, network, onClose }: Props) {
               <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
                 Share link
               </label>
-              <span className="text-[10px] text-zinc-500">
+              <span className="text-2xs text-zinc-500">
                 Works for all access modes (public, paid, whitelist)
               </span>
             </div>
@@ -116,7 +116,7 @@ export function ShareDialog({ file, network, onClose }: Props) {
                 )}
               </button>
             </div>
-            <p className="mt-1 text-[11px] text-zinc-500">
+            <p className="mt-1 text-xs text-zinc-500">
               Recipient&apos;s wallet doesn&apos;t need to be on the same network — the
               page auto-switches to <code>{NETWORK_LABEL[network]}</code>.
             </p>
@@ -129,14 +129,14 @@ export function ShareDialog({ file, network, onClose }: Props) {
                 <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
                   Direct file URL
                 </label>
-                <span className="text-[10px] text-zinc-500">For embedding</span>
+                <span className="text-2xs text-zinc-500">For embedding</span>
               </div>
               <div className="flex gap-1.5">
                 <input
                   readOnly
                   value={directUrl}
                   onClick={(e) => (e.target as HTMLInputElement).select()}
-                  className="flex-1 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 font-mono text-[10px] dark:border-zinc-800 dark:bg-zinc-900"
+                  className="flex-1 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 font-mono text-2xs dark:border-zinc-800 dark:bg-zinc-900"
                 />
                 <button
                   onClick={() => copy(directUrl, "direct")}
@@ -153,7 +153,7 @@ export function ShareDialog({ file, network, onClose }: Props) {
                   )}
                 </button>
               </div>
-              <p className="mt-1 text-[11px] text-zinc-500">
+              <p className="mt-1 text-xs text-zinc-500">
                 Goes straight to the Shelby gateway — drop into{" "}
                 <code>&lt;img src&gt;</code>, <code>&lt;video src&gt;</code>, or any
                 browser tab. No app required.

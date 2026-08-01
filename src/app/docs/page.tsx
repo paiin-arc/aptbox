@@ -47,10 +47,10 @@ export default function DocsPage() {
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <Link href="/" className="flex min-w-0 items-center gap-2">
             <AptboxIcon className="h-6 w-6 shrink-0 text-zinc-100" />
-            <span className="truncate text-[15px] font-bold tracking-tight">
+            <span className="truncate text-base font-bold tracking-tight">
               Dataset Locker
             </span>
-            <span className="hidden rounded-md bg-violet-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-violet-300 sm:inline">
+            <span className="hidden rounded-md bg-violet-500/15 px-1.5 py-0.5 text-2xs font-semibold uppercase tracking-wider text-violet-300 sm:inline">
               Docs
             </span>
           </Link>
@@ -69,7 +69,7 @@ export default function DocsPage() {
             <a
               key={t.id}
               href={`#${t.id}`}
-              className="shrink-0 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[11px] font-medium text-zinc-400 transition hover:border-violet-500/40 hover:text-violet-200"
+              className="shrink-0 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-zinc-400 transition hover:border-violet-500/40 hover:text-violet-200"
             >
               {t.label}
             </a>
@@ -87,14 +87,14 @@ export default function DocsPage() {
               aria-label="On this page"
               className="sticky top-24 flex flex-col gap-0.5"
             >
-              <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-600">
+              <div className="px-3 pb-2 text-2xs font-semibold uppercase tracking-[0.18em] text-zinc-600">
                 On this page
               </div>
               {TOC.map((t) => (
                 <a
                   key={t.id}
                   href={`#${t.id}`}
-                  className="rounded-lg px-3 py-1.5 text-[13px] text-zinc-500 transition hover:bg-white/5 hover:text-zinc-200"
+                  className="rounded-lg px-3 py-1.5 text-sm text-zinc-500 transition hover:bg-white/5 hover:text-zinc-200"
                 >
                   {t.label}
                 </a>
@@ -149,14 +149,14 @@ function Hero() {
   const { ref, revealed } = useReveal<HTMLDivElement>();
   return (
     <div ref={ref} data-revealed={revealed} className="ax-reveal max-w-3xl">
-      <div className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[11px] font-medium uppercase tracking-[0.16em] text-violet-300">
+      <div className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs font-medium uppercase tracking-[0.16em] text-violet-300">
         <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-violet-400" />
         Documentation
       </div>
       <h1 className="mt-5 text-3xl font-semibold leading-[1.08] tracking-tight sm:text-5xl">
         <Words text="Datasets you can prove weren't touched." />
       </h1>
-      <p className="mt-5 text-[15px] leading-relaxed text-zinc-400 sm:text-lg">
+      <p className="mt-5 text-base leading-relaxed text-zinc-400 sm:text-lg">
         The AI Dataset Locker stores training data on{" "}
         <span className="font-semibold text-orange-300">Shelby</span> and commits
         its SHA-256 to{" "}
@@ -194,7 +194,7 @@ function Introduction() {
       title="What this is."
       lead="A place to put an AI training dataset so that anyone who later downloads it can prove, without trusting you or us, that the bytes are exactly what was published."
     >
-      <p className="mt-4 max-w-3xl text-[15px] leading-relaxed text-zinc-400">
+      <p className="mt-4 max-w-3xl text-base leading-relaxed text-zinc-400">
         You upload a dataset — an image set, a text corpus, audio, or model
         weights. Three things happen: the bytes go to Shelby&apos;s decentralized
         object storage, the dataset&apos;s SHA-256 is written into an Aptos Move
@@ -219,7 +219,7 @@ function WhyWeBuilt() {
       title="Training data moves through links nobody can check."
       lead="Datasets get shared as Google Drive folders, S3 buckets with rotating permissions, and zip files passed around in chat. All of these answer 'where do I download it', and none of them answer 'is this the same data the paper used'."
     >
-      <p className="mt-4 max-w-3xl text-[15px] leading-relaxed text-zinc-400">
+      <p className="mt-4 max-w-3xl text-base leading-relaxed text-zinc-400">
         That gap is quiet until it isn&apos;t. A folder gets re-uploaded with 300
         rows removed. A bucket is silently re-generated with a different
         preprocessing script. A shared archive picks up a corrupted file
@@ -227,7 +227,7 @@ function WhyWeBuilt() {
         unchanged, and nothing downstream notices — the model just trains on
         something other than what everyone believes it trained on.
       </p>
-      <p className="mt-4 max-w-3xl text-[15px] leading-relaxed text-zinc-400">
+      <p className="mt-4 max-w-3xl text-base leading-relaxed text-zinc-400">
         Publishing a checksum alongside the file is the usual answer, and it is
         better than nothing. But it moves the problem rather than solving it,
         which is the subject of the{" "}
@@ -276,12 +276,12 @@ function HowVerificationWorks() {
           },
         ].map((s, i) => (
           <li key={s.t} className="flex gap-4">
-            <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-violet-500/40 bg-violet-500/10 text-[12px] font-semibold text-violet-200">
+            <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-violet-500/40 bg-violet-500/10 text-xs font-semibold text-violet-200">
               {i + 1}
             </span>
             <div className="min-w-0">
-              <div className="text-[15px] font-semibold text-zinc-100">{s.t}</div>
-              <div className="mt-1 text-[14px] leading-relaxed text-zinc-400">
+              <div className="text-base font-semibold text-zinc-100">{s.t}</div>
+              <div className="mt-1 text-sm leading-relaxed text-zinc-400">
                 {s.d}
               </div>
             </div>
@@ -323,7 +323,7 @@ function TrustArgument() {
         />
       </CompareGrid>
 
-      <p className="mt-8 max-w-3xl text-[15px] leading-relaxed text-zinc-400">
+      <p className="mt-8 max-w-3xl text-base leading-relaxed text-zinc-400">
         The property that matters is ordering. The hash is committed{" "}
         <em className="text-zinc-200 not-italic">before</em> anyone can fetch the
         data, by a key the storage layer doesn&apos;t hold. So there is no point
@@ -352,7 +352,7 @@ function OnShelby() {
         <ChunksetTree />
       </Figure>
 
-      <p className="mt-8 max-w-3xl text-[15px] leading-relaxed text-zinc-400">
+      <p className="mt-8 max-w-3xl text-base leading-relaxed text-zinc-400">
         This is what the locker is built on top of, and it is doing the part
         that&apos;s genuinely hard: keeping large objects durable and retrievable
         across independent operators. What the locker adds is the claim about{" "}
@@ -373,16 +373,16 @@ function TwoLayers() {
       title="Shelby checks the count. The hash checks the bytes."
       lead="These are two different guarantees, and the distinction is the reason this project exists rather than just pointing people at a gateway URL."
     >
-      <p className="mt-4 max-w-3xl text-[15px] leading-relaxed text-zinc-400">
+      <p className="mt-4 max-w-3xl text-base leading-relaxed text-zinc-400">
         Shelby&apos;s job is durability and retrievability: erasure-coded shards
         across independent providers, a blob merkle root committed on-chain at
         upload, and providers that must keep proving they still hold the data.
         That machinery is real and this app depends on it.
       </p>
-      <p className="mt-4 max-w-3xl text-[15px] leading-relaxed text-zinc-400">
+      <p className="mt-4 max-w-3xl text-base leading-relaxed text-zinc-400">
         What it doesn&apos;t do is verify bytes cryptographically on the read
         path. The client&apos;s download check, in{" "}
-        <code className="rounded bg-white/5 px-1 py-0.5 text-[13px]">
+        <code className="rounded bg-white/5 px-1 py-0.5 text-sm">
           ShelbyRPCClient.getBlob
         </code>
         , is a byte count:
@@ -410,21 +410,21 @@ function TwoLayers() {
 
       <IntegrityLayers />
 
-      <p className="mt-8 max-w-3xl text-[15px] leading-relaxed text-zinc-400">
+      <p className="mt-8 max-w-3xl text-base leading-relaxed text-zinc-400">
         The second row is the one that matters. Flipping a single byte in a
         196,882-byte dataset leaves it 196,882 bytes long — a content-length
         check passes it unchanged, while the digest becomes unrecognisable.
         That case is exercised against live registry data by{" "}
-        <code className="rounded bg-white/5 px-1 py-0.5 text-[13px]">
+        <code className="rounded bg-white/5 px-1 py-0.5 text-sm">
           npm run verify:tamper
         </code>
         .
       </p>
-      <p className="mt-4 max-w-3xl text-[15px] leading-relaxed text-zinc-400">
+      <p className="mt-4 max-w-3xl text-base leading-relaxed text-zinc-400">
         It also explains why the commitment is a plain SHA-256 in our own
         registry rather than Shelby&apos;s merkle root. The merkle root is
         internal to Shelby and needs their tooling to interpret; a SHA-256 can
-        be reproduced by anyone with <code className="rounded bg-white/5 px-1 py-0.5 text-[13px]">shasum</code>{" "}
+        be reproduced by anyone with <code className="rounded bg-white/5 px-1 py-0.5 text-sm">shasum</code>{" "}
         and no dependency on us or on Shelby.
       </p>
     </Section>
@@ -471,7 +471,7 @@ function ForAiTeams() {
             className="rounded-xl border border-white/10 bg-white/[0.02] p-4 transition hover:border-violet-500/30"
           >
             <div className="text-sm font-semibold text-zinc-100">{c.t}</div>
-            <div className="mt-1.5 text-[13px] leading-relaxed text-zinc-400">
+            <div className="mt-1.5 text-sm leading-relaxed text-zinc-400">
               {c.d}
             </div>
           </div>
@@ -509,7 +509,7 @@ function VerifyYourself() {
         caption="Nothing here depends on this app being honest, or even being online — the commitment is public chain state, readable by anyone."
       />
 
-      <p className="mt-8 max-w-3xl text-[15px] leading-relaxed text-zinc-400">
+      <p className="mt-8 max-w-3xl text-base leading-relaxed text-zinc-400">
         Worked example, against a real dataset in the testnet registry. Dataset{" "}
         <span className="font-mono text-zinc-200">#24</span> is a 34,145,930-byte
         video. The chain says its hash is:
@@ -533,7 +533,7 @@ function VerifyYourself() {
         still be verifiable by anyone with the hash and a copy of the bytes.
       </Callout>
 
-      <p className="mt-6 max-w-3xl text-[15px] leading-relaxed text-zinc-400">
+      <p className="mt-6 max-w-3xl text-base leading-relaxed text-zinc-400">
         If you&apos;d rather not do it by hand,{" "}
         <Link
           href="/verify"
@@ -557,7 +557,7 @@ function NoSizeLimit() {
       title="There is no maximum dataset size."
       lead="Shelby states none, its SDK enforces none, and the app buffers nothing. Peak memory is a flat ~26 MB whether the dataset is a kilobyte or a terabyte."
     >
-      <p className="mt-4 max-w-3xl text-[15px] leading-relaxed text-zinc-400">
+      <p className="mt-4 max-w-3xl text-base leading-relaxed text-zinc-400">
         Every stage reads the dataset as a stream rather than loading it: the
         SHA-256 pass, the erasure-coding pass, and the upload itself. The
         limiting factor is time and bandwidth, not memory. Hashing uses a
@@ -576,7 +576,7 @@ function NoSizeLimit() {
             className="rounded-xl border border-white/10 bg-white/[0.02] p-4"
           >
             <div className="text-lg font-semibold text-violet-200">{s.k}</div>
-            <div className="mt-0.5 text-[12px] text-zinc-500">{s.v}</div>
+            <div className="mt-0.5 text-xs text-zinc-500">{s.v}</div>
           </div>
         ))}
       </div>
@@ -625,7 +625,7 @@ function Limits() {
             className="rounded-xl border border-amber-500/20 bg-amber-500/[0.03] p-4"
           >
             <div className="text-sm font-semibold text-amber-100">{l.t}</div>
-            <div className="mt-1.5 text-[13px] leading-relaxed text-zinc-400">
+            <div className="mt-1.5 text-sm leading-relaxed text-zinc-400">
               {l.d}
             </div>
           </div>
@@ -646,7 +646,7 @@ function Closing() {
       <h2 className="text-xl font-semibold tracking-tight text-zinc-50 sm:text-2xl">
         Lock your first dataset
       </h2>
-      <p className="mt-2 max-w-2xl text-[14px] leading-relaxed text-zinc-400">
+      <p className="mt-2 max-w-2xl text-sm leading-relaxed text-zinc-400">
         Connect a wallet, pick a file, and sign twice — once to register storage
         on Shelby, once to commit the hash on Aptos. The share link works
         immediately, and verification runs for everyone who opens it.

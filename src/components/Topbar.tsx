@@ -85,7 +85,7 @@ export function Topbar({ search, onSearchChange, onMenuClick }: TopbarProps) {
           aria-label="Dataset Locker home"
         >
           <AptboxIcon className="h-6 w-6 shrink-0 text-zinc-900 dark:text-zinc-100" />
-          <span className="truncate text-[15px] font-bold tracking-tight">
+          <span className="truncate text-base font-bold tracking-tight">
             Locker
           </span>
         </Link>

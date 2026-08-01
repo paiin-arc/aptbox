@@ -60,7 +60,7 @@ export function FileCard({ file }: { file: FileMeta }) {
               className="h-full w-full object-cover object-top transition-transform duration-300 group-hover:scale-[1.04]"
             />
             <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-            <span className="pointer-events-none absolute right-2 top-2 rounded-md bg-white/85 px-1.5 py-0.5 text-[10px] font-medium text-zinc-800 backdrop-blur dark:bg-black/60 dark:text-zinc-100">
+            <span className="pointer-events-none absolute right-2 top-2 rounded-md bg-white/85 px-1.5 py-0.5 text-2xs font-medium text-zinc-800 backdrop-blur dark:bg-black/60 dark:text-zinc-100">
               Preview
             </span>
           </>
@@ -77,11 +77,11 @@ export function FileCard({ file }: { file: FileMeta }) {
               className="h-full w-full object-cover object-top"
             />
             <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-            <span className="pointer-events-none absolute left-2 top-2 inline-flex items-center gap-1 rounded-md bg-black/70 px-1.5 py-0.5 text-[10px] font-medium text-white">
+            <span className="pointer-events-none absolute left-2 top-2 inline-flex items-center gap-1 rounded-md bg-black/70 px-1.5 py-0.5 text-2xs font-medium text-white">
               <PlayIcon className="h-2.5 w-2.5" />
               Video
             </span>
-            <span className="pointer-events-none absolute right-2 top-2 rounded-md bg-white/85 px-1.5 py-0.5 text-[10px] font-medium text-zinc-800 backdrop-blur dark:bg-black/60 dark:text-zinc-100">
+            <span className="pointer-events-none absolute right-2 top-2 rounded-md bg-white/85 px-1.5 py-0.5 text-2xs font-medium text-zinc-800 backdrop-blur dark:bg-black/60 dark:text-zinc-100">
               Preview
             </span>
           </>
@@ -98,12 +98,12 @@ export function FileCard({ file }: { file: FileMeta }) {
 
       <div className="flex flex-1 flex-col gap-0.5 p-2.5 sm:p-3">
         <div
-          className="truncate text-[13px] font-medium text-zinc-900 dark:text-zinc-100 sm:text-sm"
+          className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100 sm:text-sm"
           title={display}
         >
           {display}
         </div>
-        <div className="truncate text-[11px] text-zinc-500 sm:text-xs">
+        <div className="truncate text-xs text-zinc-500 sm:text-xs">
           {formatBytes(file.sizeBytes)}
           <span className="hidden sm:inline">
             {" · "}
@@ -143,7 +143,7 @@ export function FileCard({ file }: { file: FileMeta }) {
             {access}
           </span>
           {file.flagCount > 0 && (
-            <span className="inline-flex items-center gap-1 rounded-md bg-red-50 px-1.5 py-0.5 text-[10px] font-medium text-red-700 dark:bg-red-950/40 dark:text-red-300">
+            <span className="inline-flex items-center gap-1 rounded-md bg-red-50 px-1.5 py-0.5 text-2xs font-medium text-red-700 dark:bg-red-950/40 dark:text-red-300">
               <FlagIcon className="h-2.5 w-2.5" />
               {file.flagCount}
             </span>
@@ -160,7 +160,7 @@ export function FileCard({ file }: { file: FileMeta }) {
             return (
               <span
                 // A comfortable expiry is noise on a phone; an urgent one isn't.
-                className={`items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium ${cls} ${
+                className={`items-center gap-1 rounded-md px-1.5 py-0.5 text-2xs font-medium ${cls} ${
                   urgent ? "inline-flex" : "hidden sm:inline-flex"
                 }`}
                 title={new Date(file.expirationMicros / 1000).toLocaleString()}

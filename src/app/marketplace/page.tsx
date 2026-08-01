@@ -58,7 +58,7 @@ function MarketplaceHeader() {
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
         <Link href="/" className="flex min-w-0 items-center gap-2">
           <AptboxIcon className="h-6 w-6 shrink-0 text-zinc-100" />
-          <span className="truncate text-[15px] font-bold tracking-tight">
+          <span className="truncate text-base font-bold tracking-tight">
             Dataset Locker
           </span>
         </Link>
@@ -77,7 +77,7 @@ function MarketplaceSkeleton() {
       <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
         Marketplace
       </h1>
-      <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-zinc-400">
+      <p className="mt-2 max-w-2xl text-base leading-relaxed text-zinc-400">
         Every dataset published to the registry, with a SHA-256 committed
         on-chain before it was ever served.
       </p>
@@ -208,7 +208,7 @@ function Marketplace() {
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
             Marketplace
           </h1>
-          <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-zinc-400">
+          <p className="mt-2 max-w-2xl text-base leading-relaxed text-zinc-400">
             Every dataset published on {NETWORK_LABEL[network]}, from{" "}
             {publishers.size} publisher{publishers.size === 1 ? "" : "s"}. Each
             one carries a SHA-256 committed on-chain before it was ever served,
@@ -275,7 +275,7 @@ function PublisherHeader({
     <div>
       <button
         onClick={onClear}
-        className="text-[13px] text-zinc-500 transition hover:text-zinc-300"
+        className="text-sm text-zinc-500 transition hover:text-zinc-300"
       >
         ← All publishers
       </button>
@@ -283,11 +283,11 @@ function PublisherHeader({
         Publisher
       </h1>
       {/* The wallet is the identity — no display names, nothing to spoof. */}
-      <div className="mt-1 break-all font-mono text-[13px] text-violet-300">
+      <div className="mt-1 break-all font-mono text-sm text-violet-300">
         {address}
       </div>
       {stats && (
-        <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-[13px] text-zinc-400">
+        <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm text-zinc-400">
           <span>
             <strong className="text-zinc-200">{stats.count}</strong> dataset
             {stats.count === 1 ? "" : "s"}
@@ -385,7 +385,7 @@ function Filters({
         >
           {hideGone ? "Retrievable only" : "Including expired"}
         </button>
-        <span className="ml-1 text-[11px] text-zinc-500">
+        <span className="ml-1 text-xs text-zinc-500">
           showing {shown} of {total}
         </span>
       </div>
@@ -406,7 +406,7 @@ function PublisherList({
       <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-500">
         Publishers
       </h2>
-      <p className="mt-1 text-[13px] text-zinc-500">
+      <p className="mt-1 text-sm text-zinc-500">
         Identity here is the wallet that signed the upload. It can&apos;t be
         renamed, transferred, or taken over — buying a dataset never changes it.
       </p>
@@ -418,10 +418,10 @@ function PublisherList({
             className="group flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 transition hover:border-violet-500/40"
           >
             <div className="min-w-0 flex-1">
-              <div className="truncate font-mono text-[12px] text-violet-300">
+              <div className="truncate font-mono text-xs text-violet-300">
                 {addr.slice(0, 18)}…{addr.slice(-6)}
               </div>
-              <div className="mt-0.5 text-[11px] text-zinc-500">
+              <div className="mt-0.5 text-xs text-zinc-500">
                 {s.count} dataset{s.count === 1 ? "" : "s"} ·{" "}
                 {formatBytes(s.bytes)}
               </div>
@@ -438,10 +438,10 @@ function EmptyState({ hasAny }: { hasAny: boolean }) {
   return (
     <div className="mt-8 flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-white/15 px-4 py-14 text-center">
       <CategoryIcon id="all" className="h-10 w-10 text-zinc-600" />
-      <div className="mt-3 text-[15px] font-medium text-zinc-300">
+      <div className="mt-3 text-base font-medium text-zinc-300">
         {hasAny ? "Nothing matches those filters" : "No datasets published yet"}
       </div>
-      <div className="mt-1 max-w-sm text-[13px] leading-relaxed text-zinc-500">
+      <div className="mt-1 max-w-sm text-sm leading-relaxed text-zinc-500">
         {hasAny
           ? "Try widening the type or access filter."
           : "Once someone uploads a dataset on this network it appears here automatically."}

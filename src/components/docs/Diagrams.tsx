@@ -63,7 +63,7 @@ function Node({
         x={x + w / 2}
         y={y + (sub ? 22 : 30)}
         textAnchor="middle"
-        className={`${LABEL_TONES[tone]} text-[12px] font-semibold`}
+        className={`${LABEL_TONES[tone]} text-xs font-semibold`}
       >
         {title}
       </text>
@@ -72,7 +72,7 @@ function Node({
           x={x + w / 2}
           y={y + 38}
           textAnchor="middle"
-          className="fill-zinc-500 text-[10px]"
+          className="fill-zinc-500 text-2xs"
         >
           {sub}
         </text>
@@ -147,7 +147,7 @@ export function VerificationFlow() {
     >
       <ArrowDefs />
 
-      <text x={20} y={16} className="fill-zinc-600 text-[10px] font-semibold tracking-[0.18em]">
+      <text x={20} y={16} className="fill-zinc-600 text-2xs font-semibold tracking-[0.18em]">
         UPLOAD · ONCE
       </text>
 
@@ -169,7 +169,7 @@ export function VerificationFlow() {
         strokeDasharray="4 6"
       />
 
-      <text x={20} y={196} className="fill-zinc-600 text-[10px] font-semibold tracking-[0.18em]">
+      <text x={20} y={196} className="fill-zinc-600 text-2xs font-semibold tracking-[0.18em]">
         DOWNLOAD · EVERY TIME
       </text>
 
@@ -187,10 +187,10 @@ export function VerificationFlow() {
       <Wire d="M 380 240 L 448 240" delay={3} />
       <Wire d="M 600 240 L 668 240" delay={3} tone="emerald" />
 
-      <text x={545} y={186} className="fill-zinc-600 text-[10px]">
+      <text x={545} y={186} className="fill-zinc-600 text-2xs">
         committed hash
       </text>
-      <text x={330} y={186} className="fill-zinc-600 text-[10px]">
+      <text x={330} y={186} className="fill-zinc-600 text-2xs">
         bytes
       </text>
     </svg>
@@ -228,7 +228,7 @@ export function ChunksetTree() {
       <Node x={310} y={106} w={140} h={44} title="Chunkset 2" sub="10 MiB" tone="orange" />
       <Node x={580} y={106} w={140} h={44} title="Chunkset n" sub="10 MiB" tone="orange" />
 
-      <text x={380} y={176} textAnchor="middle" className="fill-zinc-500 text-[11px]">
+      <text x={380} y={176} textAnchor="middle" className="fill-zinc-500 text-xs">
         each chunkset is erasure-coded into 16 shards
       </text>
 
@@ -256,7 +256,7 @@ export function ChunksetTree() {
               x={startX + i * (shardW + gap) + shardW / 2}
               y={236}
               textAnchor="middle"
-              className={`text-[10px] font-semibold ${
+              className={`text-2xs font-semibold ${
                 isData ? "fill-emerald-200" : "fill-violet-200"
               }`}
             >
@@ -266,18 +266,18 @@ export function ChunksetTree() {
         );
       })}
 
-      <text x={380} y={278} textAnchor="middle" className="fill-zinc-400 text-[12px] font-semibold">
+      <text x={380} y={278} textAnchor="middle" className="fill-zinc-400 text-xs font-semibold">
         any 10 of 16 shards rebuild the chunkset
       </text>
-      <text x={380} y={298} textAnchor="middle" className="fill-zinc-500 text-[11px]">
+      <text x={380} y={298} textAnchor="middle" className="fill-zinc-500 text-xs">
         6 shards can be lost with no data loss
       </text>
 
       <g>
         <rect x={230} y={314} width={12} height={12} rx={3} className="fill-emerald-500/25 stroke-emerald-400/50" strokeWidth={1.5} />
-        <text x={250} y={324} className="fill-zinc-500 text-[10px]">10 data shards</text>
+        <text x={250} y={324} className="fill-zinc-500 text-2xs">10 data shards</text>
         <rect x={370} y={314} width={12} height={12} rx={3} className="fill-violet-500/20 stroke-violet-400/40" strokeWidth={1.5} />
-        <text x={390} y={324} className="fill-zinc-500 text-[10px]">6 parity shards</text>
+        <text x={390} y={324} className="fill-zinc-500 text-2xs">6 parity shards</text>
       </g>
     </svg>
   );
@@ -325,8 +325,8 @@ export function LayerStack() {
           >
             {l.name}
           </div>
-          <div className="text-[13px] leading-relaxed text-zinc-400">{l.does}</div>
-          <div className="justify-self-start rounded-md bg-white/5 px-2 py-1 text-[11px] text-zinc-400 sm:justify-self-end">
+          <div className="text-sm leading-relaxed text-zinc-400">{l.does}</div>
+          <div className="justify-self-start rounded-md bg-white/5 px-2 py-1 text-xs text-zinc-400 sm:justify-self-end">
             {l.crosses}
           </div>
         </div>
@@ -359,13 +359,13 @@ export function TamperDiff() {
           <span className="text-xs font-semibold uppercase tracking-wider text-emerald-300">
             Original
           </span>
-          <span className="text-[11px] text-emerald-300/70">matches on-chain</span>
+          <span className="text-xs text-emerald-300/70">matches on-chain</span>
         </div>
-        <div className="mt-2 overflow-x-auto whitespace-nowrap font-mono text-[12px] text-zinc-300">
+        <div className="mt-2 overflow-x-auto whitespace-nowrap font-mono text-xs text-zinc-300">
           {SAMPLE_ORIGINAL.slice(0, -2)}
           <span className="rounded bg-emerald-500/25 px-1 text-emerald-100">98</span>
         </div>
-        <div className="mt-2 break-all font-mono text-[10px] leading-relaxed text-emerald-300/80">
+        <div className="mt-2 break-all font-mono text-2xs leading-relaxed text-emerald-300/80">
           {ORIGINAL_HASH}
         </div>
       </div>
@@ -375,18 +375,18 @@ export function TamperDiff() {
           <span className="text-xs font-semibold uppercase tracking-wider text-red-300">
             One digit changed
           </span>
-          <span className="text-[11px] text-red-300/80">download blocked</span>
+          <span className="text-xs text-red-300/80">download blocked</span>
         </div>
-        <div className="mt-2 overflow-x-auto whitespace-nowrap font-mono text-[12px] text-zinc-300">
+        <div className="mt-2 overflow-x-auto whitespace-nowrap font-mono text-xs text-zinc-300">
           {SAMPLE_TAMPERED.slice(0, -2)}
           <span className="rounded bg-red-500/30 px-1 text-red-100">97</span>
         </div>
-        <div className="mt-2 break-all font-mono text-[10px] leading-relaxed text-red-300/85">
+        <div className="mt-2 break-all font-mono text-2xs leading-relaxed text-red-300/85">
           {TAMPERED_HASH}
         </div>
       </div>
 
-      <p className="text-[13px] leading-relaxed text-zinc-500">
+      <p className="text-sm leading-relaxed text-zinc-500">
         A single edited label produces an unrecognisably different digest. There
         is no partial match and no near miss — the comparison is all or nothing,
         which is exactly why it can&apos;t be fudged.
@@ -438,7 +438,7 @@ export function IntegrityLayers() {
     <div className="mt-8 overflow-x-auto">
       <table className="w-full min-w-[34rem] border-separate border-spacing-0 text-left">
         <thead>
-          <tr className="text-[11px] uppercase tracking-wider text-zinc-500">
+          <tr className="text-xs uppercase tracking-wider text-zinc-500">
             <th className="pb-3 pr-4 font-semibold">Failure mode</th>
             <th className="pb-3 pr-4 text-center font-semibold">Shelby read check</th>
             <th className="pb-3 pr-4 text-center font-semibold">SHA-256 commitment</th>
@@ -448,8 +448,8 @@ export function IntegrityLayers() {
           {FAILURE_MODES.map((f) => (
             <tr key={f.mode} className="align-top">
               <td className="border-t border-white/10 py-3 pr-4">
-                <div className="text-[13px] font-medium text-zinc-200">{f.mode}</div>
-                <div className="mt-0.5 text-[11px] leading-relaxed text-zinc-500">
+                <div className="text-sm font-medium text-zinc-200">{f.mode}</div>
+                <div className="mt-0.5 text-xs leading-relaxed text-zinc-500">
                   {f.note}
                 </div>
               </td>
@@ -471,7 +471,7 @@ function Mark({ ok }: { ok: boolean }) {
   return (
     <span
       title={ok ? "Caught" : "Not covered by this layer"}
-      className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-[13px] font-semibold ${
+      className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-sm font-semibold ${
         ok
           ? "bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-500/30"
           : "bg-zinc-500/10 text-zinc-600 ring-1 ring-white/10"

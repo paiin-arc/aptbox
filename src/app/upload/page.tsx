@@ -682,7 +682,7 @@ export default function UploadPage() {
                 <div className="flex-1 truncate text-sm" title={displayName}>
                   {displayName}
                   {customName && (
-                    <span className="ml-2 rounded-md bg-indigo-50 px-1.5 py-0.5 text-[10px] font-medium text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300">
+                    <span className="ml-2 rounded-md bg-indigo-50 px-1.5 py-0.5 text-2xs font-medium text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300">
                       renamed
                     </span>
                   )}
@@ -701,13 +701,13 @@ export default function UploadPage() {
             )}
             {hashHex && (
               <div className="mt-2 rounded-lg border border-zinc-200 bg-white p-2.5 dark:border-zinc-800 dark:bg-zinc-900">
-                <div className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">
+                <div className="text-2xs font-medium uppercase tracking-wide text-zinc-500">
                   SHA-256 to be committed on-chain
                 </div>
-                <div className="mt-0.5 break-all font-mono text-[11px] leading-relaxed text-zinc-600 dark:text-zinc-400">
+                <div className="mt-0.5 break-all font-mono text-xs leading-relaxed text-zinc-600 dark:text-zinc-400">
                   {formatHashForDisplay(hashHex)}
                 </div>
-                <div className="mt-1.5 text-[10px] text-zinc-500">
+                <div className="mt-1.5 text-2xs text-zinc-500">
                   Computed from the file bytes — renaming the dataset
                   doesn&apos;t change it.
                 </div>
@@ -722,7 +722,7 @@ export default function UploadPage() {
         <div className="space-y-2">
           <div className="flex items-baseline justify-between gap-3">
             <div className="text-sm font-semibold">Storage duration</div>
-            <div className="text-[11px] text-zinc-500">
+            <div className="text-xs text-zinc-500">
               Larger windows cost more ShelbyUSD
             </div>
           </div>
@@ -801,7 +801,7 @@ export default function UploadPage() {
                   )}
                   <div className="font-medium capitalize">{mode}</div>
                 </div>
-                <div className="text-[11px] leading-snug text-zinc-500 sm:text-xs">
+                <div className="text-xs leading-snug text-zinc-500 sm:text-xs">
                   {mode === "public"
                     ? "Anyone with the link"
                     : "Only wallets you list"}
@@ -848,7 +848,7 @@ export default function UploadPage() {
                 ? STAGE_LABEL[stage]
                 : "Prepare dataset"}
             </button>
-            <p className="-mt-2 text-[11px] leading-relaxed text-zinc-500">
+            <p className="-mt-2 text-xs leading-relaxed text-zinc-500">
               Your wallet opens a popup to sign. Browsers only allow that right
               after a click, so hashing and encoding run first — you&apos;ll get
               a separate button for the two signatures.
@@ -866,7 +866,7 @@ export default function UploadPage() {
                   (stage === "shelby-put" && putPct !== null ? ` (${putPct}%)` : "")
                 : "Approve in wallet — 2 signatures"}
             </button>
-            <p className="-mt-2 text-[11px] leading-relaxed text-emerald-300/80">
+            <p className="-mt-2 text-xs leading-relaxed text-emerald-300/80">
               Ready. Clicking now opens the wallet immediately, so the popup
               won&apos;t be blocked.
             </p>
@@ -970,8 +970,8 @@ function StoragePlan({ sizeBytes }: { sizeBytes: number }) {
 
   return (
     <div className="mt-2 space-y-2">
-      <div className="rounded-lg border border-zinc-200 bg-white p-2.5 text-[11px] text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
-        <div className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">
+      <div className="rounded-lg border border-zinc-200 bg-white p-2.5 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
+        <div className="text-2xs font-medium uppercase tracking-wide text-zinc-500">
           Storage plan
         </div>
         <div className="mt-1">
@@ -984,7 +984,7 @@ function StoragePlan({ sizeBytes }: { sizeBytes: number }) {
       </div>
 
       {large && (
-        <div className="rounded-lg border border-amber-300 bg-amber-50 p-2.5 text-[11px] text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+        <div className="rounded-lg border border-amber-300 bg-amber-50 p-2.5 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
           <div className="font-semibold">Large dataset</div>
           <div className="mt-0.5">
             Memory stays flat at about{" "}
@@ -1069,7 +1069,7 @@ function UploadSteps({
                 </div>
                 {key === "shelby-put" && active && putDetail && (
                   <div
-                    className={`mt-0.5 text-[10px] font-normal ${
+                    className={`mt-0.5 text-2xs font-normal ${
                       isRetrying
                         ? "text-amber-600 dark:text-amber-400"
                         : "text-zinc-500"

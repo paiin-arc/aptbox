@@ -52,13 +52,13 @@ export function BalancePills() {
           target="_blank"
           rel="noopener noreferrer"
           title="APT balance is low — open the faucet docs"
-          className="rounded-md bg-red-50 px-2 py-1 text-[11px] font-medium text-red-700 ring-1 ring-red-200 transition hover:bg-red-100 dark:bg-red-950/40 dark:text-red-300 dark:ring-red-900 dark:hover:bg-red-900/40"
+          className="rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-700 ring-1 ring-red-200 transition hover:bg-red-100 dark:bg-red-950/40 dark:text-red-300 dark:ring-red-900 dark:hover:bg-red-900/40"
         >
           <span className="inline-flex items-center gap-1">{aptStr} APT · Get more <ExternalLinkIcon className="h-2.5 w-2.5" /></span>
         </a>
       ) : (
         <span
-          className="rounded-md bg-zinc-100 px-2 py-1 text-[11px] font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+          className="rounded-md bg-zinc-100 px-2 py-1 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
           title="APT balance"
         >
           {aptStr} APT
@@ -70,13 +70,13 @@ export function BalancePills() {
           target="_blank"
           rel="noopener noreferrer"
           title="No ShelbyUSD — open the faucet docs"
-          className="rounded-md bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-700 ring-1 ring-amber-200 transition hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-900 dark:hover:bg-amber-900/40"
+          className="rounded-md bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700 ring-1 ring-amber-200 transition hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-900 dark:hover:bg-amber-900/40"
         >
           <span className="inline-flex items-center gap-1">{susdStr} sUSD · Get some <ExternalLinkIcon className="h-2.5 w-2.5" /></span>
         </a>
       ) : (
         <span
-          className="rounded-md bg-zinc-100 px-2 py-1 text-[11px] font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+          className="rounded-md bg-zinc-100 px-2 py-1 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
           title="ShelbyUSD balance"
         >
           {susdStr} sUSD

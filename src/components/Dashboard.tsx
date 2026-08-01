@@ -169,7 +169,7 @@ function WorkspaceOverview({
         <h1 className="text-xl font-semibold tracking-tight text-zinc-100 sm:text-2xl">
           My datasets
         </h1>
-        <p className="mt-1 text-[13px] leading-relaxed text-zinc-500 sm:text-sm">
+        <p className="mt-1 text-sm leading-relaxed text-zinc-500 sm:text-sm">
           Stored on Shelby, each with its SHA-256 committed to Aptos so any
           downloader can prove the bytes are unaltered.
         </p>
@@ -255,7 +255,7 @@ function SummaryTile({
     accent === "verified" ? "text-emerald-300" : "text-zinc-100";
   return (
     <div className="ax-card p-2.5 sm:p-3">
-      <div className="truncate text-[10px] uppercase tracking-wider text-zinc-500 sm:text-[11px]">
+      <div className="truncate text-2xs uppercase tracking-wider text-zinc-500 sm:text-xs">
         {label}
       </div>
       {/* Values like "1.23 GB" must not wrap inside a 2-up mobile grid. */}
@@ -263,7 +263,7 @@ function SummaryTile({
         {value}
       </div>
       {sub && (
-        <div className="truncate text-[10px] text-zinc-500 sm:text-[11px]">
+        <div className="truncate text-2xs text-zinc-500 sm:text-xs">
           {sub}
         </div>
       )}

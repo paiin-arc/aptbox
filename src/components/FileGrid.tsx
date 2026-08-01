@@ -29,10 +29,10 @@ export function FileGrid({ files, loading, emptyHint }: Props) {
     return (
       <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-zinc-300 bg-white px-4 py-10 text-center dark:border-zinc-700 dark:bg-zinc-950 sm:py-16">
         <CategoryIcon id="all" className="h-10 w-10 text-zinc-400 sm:h-12 sm:w-12" />
-        <div className="mt-3 text-[15px] font-medium sm:text-base">
+        <div className="mt-3 text-base font-medium sm:text-base">
           No datasets here yet
         </div>
-        <div className="mt-1 max-w-xs text-[13px] leading-relaxed text-zinc-500 sm:text-sm">
+        <div className="mt-1 max-w-xs text-sm leading-relaxed text-zinc-500 sm:text-sm">
           {emptyHint ?? "Upload your first dataset to get started."}
         </div>
         {/* The one other upload CTA in the app. It can't collide with the

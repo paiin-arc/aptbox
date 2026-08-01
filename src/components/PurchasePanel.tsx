@@ -50,7 +50,7 @@ export function PurchasePanel({
           <LockIcon className="h-4 w-4" />
           Paid dataset — {price} APT
         </div>
-        <div className="mt-1.5 text-[13px] leading-relaxed text-zinc-300/90">
+        <div className="mt-1.5 text-sm leading-relaxed text-zinc-300/90">
           {formatBytes(file.sizeBytes)} · {file.mimeType || "unknown type"}. The
           preview is withheld until purchase; the publisher&apos;s description is
           above.
@@ -65,7 +65,7 @@ export function PurchasePanel({
       {expired ? (
         <div className="flex gap-2 rounded-lg border border-red-500/40 bg-red-500/[0.07] p-3">
           <WarningTriangleIcon className="mt-0.5 h-4 w-4 shrink-0 text-red-300" />
-          <div className="text-[13px] leading-relaxed text-red-100">
+          <div className="text-sm leading-relaxed text-red-100">
             <strong>Storage has already expired.</strong> Buying now would give
             you a permanent receipt for bytes the providers have garbage
             collected. Ask the publisher to re-upload before paying.
@@ -74,7 +74,7 @@ export function PurchasePanel({
       ) : expiringSoon ? (
         <div className="flex gap-2 rounded-lg border border-amber-500/40 bg-amber-500/[0.07] p-3">
           <WarningTriangleIcon className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" />
-          <div className="text-[13px] leading-relaxed text-amber-100">
+          <div className="text-sm leading-relaxed text-amber-100">
             <strong>{exp!.text}.</strong> Your receipt is permanent, but the
             bytes are not — download it promptly after buying.
           </div>
@@ -89,7 +89,7 @@ export function PurchasePanel({
       */}
       <div className="flex gap-2 rounded-lg border border-orange-500/40 bg-orange-500/[0.07] p-3">
         <WarningTriangleIcon className="mt-0.5 h-4 w-4 shrink-0 text-orange-300" />
-        <div className="text-[13px] leading-relaxed text-orange-100">
+        <div className="text-sm leading-relaxed text-orange-100">
           <strong>These bytes are not private.</strong> Shelby stores blobs
           openly, so anyone who reads this dataset&apos;s account and blob name
           from the registry can fetch it from the gateway without paying. Buying
@@ -99,7 +99,7 @@ export function PurchasePanel({
         </div>
       </div>
 
-      <ul className="space-y-1.5 rounded-lg border border-white/10 bg-black/20 p-3 text-[12px] leading-relaxed text-zinc-400">
+      <ul className="space-y-1.5 rounded-lg border border-white/10 bg-black/20 p-3 text-xs leading-relaxed text-zinc-400">
         <li className="flex gap-2">
           <span aria-hidden className="text-zinc-600">
             •
@@ -131,7 +131,7 @@ export function PurchasePanel({
       </ul>
 
       {!connected ? (
-        <div className="text-[13px] text-amber-100">
+        <div className="text-sm text-amber-100">
           Connect a wallet to purchase access.
         </div>
       ) : (
@@ -149,7 +149,7 @@ export function PurchasePanel({
       )}
 
       {stage === "done" && (
-        <div className="flex items-center gap-2 text-[13px] text-emerald-300">
+        <div className="flex items-center gap-2 text-sm text-emerald-300">
           <CheckIcon className="h-4 w-4" />
           Access granted. The dataset unlocks below — it will still be verified
           against its on-chain hash before you can download it.
@@ -157,7 +157,7 @@ export function PurchasePanel({
       )}
 
       {error && (
-        <div className="rounded-lg border border-red-500/30 bg-red-500/[0.06] p-3 text-[12px] text-red-200">
+        <div className="rounded-lg border border-red-500/30 bg-red-500/[0.06] p-3 text-xs text-red-200">
           {error}
         </div>
       )}

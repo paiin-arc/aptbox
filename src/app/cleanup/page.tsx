@@ -266,11 +266,11 @@ export default function CleanupPage() {
           </h1>
           <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400 sm:text-sm">
             Blobs registered on chain but never confirmed by storage providers
-            (<code className="rounded bg-zinc-100 px-1 py-0.5 text-[11px] dark:bg-zinc-800">is_written: 0</code>).
+            (<code className="rounded bg-zinc-100 px-1 py-0.5 text-xs dark:bg-zinc-800">is_written: 0</code>).
             Delete them to free up account slots. The atomic batch delete uses one
             wallet signature per {BATCH_SIZE} blobs.
           </p>
-          <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
             <span className="rounded-md bg-zinc-100 px-2 py-0.5 font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
               Network: {label(network)}
             </span>
@@ -372,15 +372,15 @@ export default function CleanupPage() {
                         >
                           {fileName}
                         </div>
-                        <div className="mt-0.5 truncate font-mono text-[10px] text-zinc-400" title={p.shelbyCid}>
+                        <div className="mt-0.5 truncate font-mono text-2xs text-zinc-400" title={p.shelbyCid}>
                           {p.shelbyCid}
                         </div>
-                        <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-zinc-500">
+                        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-zinc-500">
                           <span>{formatBytes(p.sizeBytes)}</span>
                           <span>·</span>
                           <span>{timeAgo(p.createdAtMicros / 1000)}</span>
                           <span>·</span>
-                          <span className="rounded-md bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
+                          <span className="rounded-md bg-amber-100 px-1.5 py-0.5 text-2xs font-medium text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
                             pending
                           </span>
                         </div>
@@ -450,7 +450,7 @@ export default function CleanupPage() {
                       }`}
                     .
                     {txHash && (
-                      <span className="ml-1 break-all font-mono text-[10px] opacity-75">
+                      <span className="ml-1 break-all font-mono text-2xs opacity-75">
                         last tx {txHash.slice(0, 10)}…
                       </span>
                     )}

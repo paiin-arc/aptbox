@@ -158,7 +158,7 @@ export default function Home() {
               provably unaltered.
             </span>
           </h1>
-          <p className="mx-auto max-w-2xl text-[15px] leading-relaxed text-zinc-300/90 sm:text-lg">
+          <p className="mx-auto max-w-2xl text-base leading-relaxed text-zinc-300/90 sm:text-lg">
             Stop shipping training data through Drive links and zip files nobody
             can verify. Store it on{" "}
             <span className="font-semibold text-orange-300">Shelby</span>, commit

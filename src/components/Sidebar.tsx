@@ -178,7 +178,7 @@ export function Sidebar({
             <span className="flex h-5 w-5 shrink-0 items-center justify-center">
               <AptboxIcon className="h-5 w-5 text-zinc-100" />
             </span>
-            <span className="truncate text-[15px] font-bold tracking-tight text-zinc-100">
+            <span className="truncate text-base font-bold tracking-tight text-zinc-100">
               Dataset Locker
             </span>
           </Link>
@@ -222,7 +222,7 @@ export function Sidebar({
           <div className="mt-5">
             <button
               onClick={() => setTypesOpen((v) => !v)}
-              className={`flex w-full items-center justify-between rounded-md ${ROW_PAD} py-1.5 text-[11px] font-semibold uppercase tracking-wider text-zinc-500 transition hover:bg-white/5 hover:text-zinc-300`}
+              className={`flex w-full items-center justify-between rounded-md ${ROW_PAD} py-1.5 text-xs font-semibold uppercase tracking-wider text-zinc-500 transition hover:bg-white/5 hover:text-zinc-300`}
               aria-expanded={typesOpen}
             >
               <span>Dataset type</span>
@@ -268,10 +268,10 @@ export function Sidebar({
         <div className={`shrink-0 border-t border-white/5 ${SECTION_PAD} py-3`}>
           <div className="rounded-lg bg-violet-500/[0.06] p-3 ring-1 ring-violet-500/20">
             <div className="flex items-baseline justify-between gap-2">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-300">
+              <span className="text-xs font-semibold uppercase tracking-wider text-zinc-300">
                 Stored
               </span>
-              <span className="shrink-0 text-[11px] text-zinc-500">
+              <span className="shrink-0 text-xs text-zinc-500">
                 {totalFiles} dataset{totalFiles === 1 ? "" : "s"}
               </span>
             </div>
@@ -284,7 +284,7 @@ export function Sidebar({
               href="https://shelby.xyz"
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-2 flex items-center gap-1 text-[10px] text-zinc-500 transition hover:text-orange-300"
+              className="mt-2 flex items-center gap-1 text-2xs text-zinc-500 transition hover:text-orange-300"
               title="Powered by Shelby — verified decentralized storage"
             >
               {/* Matches the landing page's wording so the attribution reads
