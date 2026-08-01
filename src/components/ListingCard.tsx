@@ -13,7 +13,17 @@ import { formatBytes } from "@/lib/crypto";
 import { ACCESS_PAID, ACCESS_PUBLIC } from "@/lib/registry";
 import { buildShelbyBlobUrl } from "@/lib/shelbyUrls";
 import type { SupportedNetwork } from "@/lib/networks";
-import { CategoryIcon, ChevronIcon, DocsIcon, LockIcon } from "./CategoryIcon";
+import {
+  formatExpirationCountdown,
+  type BlobLifecycle,
+} from "@/lib/blobLifecycle";
+import {
+  CategoryIcon,
+  ChevronIcon,
+  ClockIcon,
+  DocsIcon,
+  LockIcon,
+} from "./CategoryIcon";
 
 function aptFromOctas(octas: bigint): string {
   const apt = Number(octas) / 100_000_000;
@@ -32,10 +42,13 @@ export function ListingCard({
   file,
   network,
   showPublisher = true,
+  lifecycle,
 }: {
   file: FileMeta;
   network: SupportedNetwork;
   showPublisher?: boolean;
+  /** From the Shelby indexer. Absent means "unknown", not "fine". */
+  lifecycle?: BlobLifecycle;
 }) {
   const cat = categoryFor(file.mimeType);
   const isPaid = file.accessType === ACCESS_PAID;
@@ -45,6 +58,13 @@ export function ListingCard({
   // Blobs expire, so a listing can outlive its bytes. Without this the <img>
   // renders as a broken-image glyph with the filename as alt text.
   const [previewFailed, setPreviewFailed] = useState(false);
+
+  // The registry entry is permanent; the storage lease is not. Say so on the
+  // card rather than letting someone click through to a dead download.
+  const expiry = lifecycle
+    ? formatExpirationCountdown(lifecycle.expirationMicros)
+    : null;
+  const bytesGone = expiry?.severity === "expired" || lifecycle?.isDeleted === true;
 
   // Fetched only when the reader asks. Loading every listing's description up
   // front would add one view call per card on a page that already makes one
@@ -59,12 +79,18 @@ export function ListingCard({
   // Only public datasets get a thumbnail. Withholding the preview is the point
   // of a paid listing — the description is what a buyer reads instead.
   const previewUrl =
-    isPublic && !previewFailed && (cat === "picture" || cat === "video")
+    isPublic && !previewFailed && !bytesGone && (cat === "picture" || cat === "video")
       ? buildShelbyBlobUrl(network, file.uploader, file.shelbyCid)
       : null;
 
   return (
-    <div className="flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02] transition hover:border-violet-500/30">
+    <div
+      className={`flex flex-col overflow-hidden rounded-2xl border bg-white/[0.02] transition ${
+        bytesGone
+          ? "border-white/5 opacity-60 hover:opacity-100"
+          : "border-white/10 hover:border-violet-500/30"
+      }`}
+    >
       <Link href={`/f/${file.fileId}?n=${network}`} className="group block">
         <div className="relative flex h-24 items-center justify-center overflow-hidden border-b border-white/5 bg-black/30">
           {previewUrl && cat === "picture" ? (
@@ -89,6 +115,11 @@ export function ListingCard({
           ) : (
             <div className="flex flex-col items-center gap-2 text-zinc-600">
               <CategoryIcon id={cat} className="h-7 w-7" />
+              {bytesGone && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-medium uppercase tracking-wider text-zinc-500">
+                  Storage expired
+                </span>
+              )}
               {isPaid && (
                 <span
                   className="inline-flex items-center gap-1 text-[10px] font-medium uppercase tracking-wider text-amber-300/80"
@@ -125,7 +156,17 @@ export function ListingCard({
           </span>
         </div>
 
-        {!isPublic && (
+        {bytesGone && (
+          <span
+            className="inline-flex w-fit items-center gap-1 rounded-md bg-zinc-500/10 px-1.5 py-0.5 text-[10px] font-medium text-zinc-400 ring-1 ring-white/10"
+            title="The on-chain record and its hash are permanent, but the Shelby storage lease has ended — these bytes are no longer retrievable"
+          >
+            <ClockIcon className="h-2.5 w-2.5" />
+            Bytes unavailable
+          </span>
+        )}
+
+        {!isPublic && !bytesGone && (
           <span
             className="inline-flex w-fit items-center gap-1 rounded-md bg-orange-500/10 px-1.5 py-0.5 text-[10px] font-medium text-orange-300/90 ring-1 ring-orange-500/20"
             title="Shelby stores blobs openly — anyone with the account and blob name can fetch these bytes without paying"

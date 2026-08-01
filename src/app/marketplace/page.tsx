@@ -24,6 +24,12 @@ import {
 } from "@/lib/files";
 import { formatBytes } from "@/lib/crypto";
 import { ACCESS_PAID, ACCESS_PUBLIC } from "@/lib/registry";
+import {
+  fetchAccountBlobLifecycles,
+  formatExpirationCountdown,
+  type BlobLifecycle,
+} from "@/lib/blobLifecycle";
+import { getShelbyClient } from "@/lib/shelby";
 import { useNetwork } from "@/lib/networkContext";
 import { NETWORK_LABEL } from "@/lib/networks";
 
@@ -99,6 +105,9 @@ function Marketplace() {
   );
   const [access, setAccess] = useState<AccessFilter>("any");
   const [search, setSearch] = useState("");
+  // Default on: most of this registry's storage leases have lapsed, and a
+  // catalogue of dead listings is a worse first impression than a short one.
+  const [hideGone, setHideGone] = useState(true);
 
   // Same cache key /verify uses, so switching between them costs no refetch.
   const { data: all = [], isLoading } = useQuery({
@@ -113,6 +122,36 @@ function Marketplace() {
     return all.filter((f) => f.uploader.toLowerCase() === t);
   }, [all, publisher]);
 
+  /**
+   * Storage is a lease, so a listing can outlive its bytes — most of this
+   * registry expired within days of upload. The indexer answers this per
+   * account, so it costs one query per publisher rather than a HEAD request
+   * per card. Keyed by "uploader:cid" because blob names are only unique
+   * within an account.
+   */
+  const uploaders = useMemo(
+    () => [...new Set(all.map((f) => f.uploader))].sort(),
+    [all]
+  );
+
+  const { data: lifecycles } = useQuery({
+    queryKey: ["lifecycles", network, uploaders],
+    queryFn: async () => {
+      const client = getShelbyClient(network);
+      if (!client) return new Map<string, BlobLifecycle>();
+      const merged = new Map<string, BlobLifecycle>();
+      await Promise.all(
+        uploaders.map(async (u) => {
+          const m = await fetchAccountBlobLifecycles(client, u);
+          for (const [cid, lc] of m) merged.set(`${u}:${cid}`, lc);
+        })
+      );
+      return merged;
+    },
+    enabled: uploaders.length > 0,
+    staleTime: 60_000,
+  });
+
   const listings = useMemo(() => {
     let list = byPublisher;
     if (cat !== "all")
@@ -123,8 +162,18 @@ function Marketplace() {
       list = list.filter((f) => f.accessType === ACCESS_PAID);
     const q = search.trim().toLowerCase();
     if (q) list = list.filter((f) => f.shelbyCid.toLowerCase().includes(q));
+    if (hideGone && lifecycles) {
+      list = list.filter((f) => {
+        const lc = lifecycles.get(`${f.uploader}:${f.shelbyCid}`);
+        // Unknown lifecycle is not evidence of expiry — keep those listed.
+        if (!lc) return true;
+        // Same helper the cards use, so one definition of "expired" governs both.
+        const exp = formatExpirationCountdown(lc.expirationMicros);
+        return exp.severity !== "expired" && !lc.isDeleted;
+      });
+    }
     return list;
-  }, [byPublisher, cat, access, search]);
+  }, [byPublisher, cat, access, search, hideGone, lifecycles]);
 
   const publishers = useMemo(() => {
     const m = new Map<
@@ -175,6 +224,8 @@ function Marketplace() {
         setAccess={setAccess}
         search={search}
         setSearch={setSearch}
+        hideGone={hideGone}
+        setHideGone={setHideGone}
         shown={listings.length}
         total={byPublisher.length}
       />
@@ -198,6 +249,7 @@ function Marketplace() {
               file={f}
               network={network}
               showPublisher={!publisher}
+              lifecycle={lifecycles?.get(`${f.uploader}:${f.shelbyCid}`)}
             />
           ))}
         </div>
@@ -265,6 +317,8 @@ function Filters({
   setAccess,
   search,
   setSearch,
+  hideGone,
+  setHideGone,
   shown,
   total,
 }: {
@@ -274,6 +328,8 @@ function Filters({
   setAccess: (a: AccessFilter) => void;
   search: string;
   setSearch: (s: string) => void;
+  hideGone: boolean;
+  setHideGone: (v: boolean) => void;
   shown: number;
   total: number;
 }) {
@@ -322,6 +378,13 @@ function Filters({
             {a === "any" ? "Any access" : a === "free" ? "Free" : "Paid"}
           </button>
         ))}
+        <button
+          onClick={() => setHideGone(!hideGone)}
+          className={pill(hideGone)}
+          title="Shelby storage is a lease. Expired datasets keep their on-chain record and hash, but the bytes are gone."
+        >
+          {hideGone ? "Retrievable only" : "Including expired"}
+        </button>
         <span className="ml-1 text-[11px] text-zinc-500">
           showing {shown} of {total}
         </span>
