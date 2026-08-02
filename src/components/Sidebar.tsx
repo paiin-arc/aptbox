@@ -13,6 +13,7 @@ import {
   CloseIcon,
   DocsIcon,
   MarketplaceIcon,
+  TrainIcon,
   VerifyIcon,
   WorkspaceIcon,
 } from "./CategoryIcon";
@@ -34,6 +35,12 @@ type PrimaryItem = {
   label: string;
   href: string;
   icon: React.ReactNode;
+  /**
+   * Announced but not built yet. Renders as an inert row with a "Soon" pill
+   * rather than a Link — a nav entry that navigates nowhere reads as a bug,
+   * whereas one that is visibly disabled reads as a roadmap.
+   */
+  soon?: boolean;
 };
 
 /**
@@ -45,6 +52,12 @@ const PRIMARY_NAV: PrimaryItem[] = [
   { label: "My datasets", href: "/", icon: <WorkspaceIcon /> },
   { label: "Marketplace", href: "/marketplace", icon: <MarketplaceIcon /> },
   { label: "Check a file", href: "/verify", icon: <VerifyIcon /> },
+  {
+    label: "Train with AI",
+    href: "/docs#roadmap",
+    icon: <TrainIcon />,
+    soon: true,
+  },
   { label: "Docs", href: "/docs", icon: <DocsIcon /> },
 ];
 
@@ -62,6 +75,8 @@ const ROW_BASE = `group relative flex w-full items-center gap-2.5 rounded-lg ${R
 const ROW_INACTIVE = "text-ink-muted hover:bg-royal/8 hover:text-ink";
 const ROW_ACTIVE =
   "ax-active bg-royal/10 text-royal-deep ring-1 ring-royal/25";
+/** Muted, no hover fill — nothing happens on click, so nothing should invite one. */
+const ROW_SOON = "text-ink-subtle cursor-default";
 
 /**
  * Fixed icon box. Nav glyphs and type glyphs are drawn at different optical
@@ -198,8 +213,12 @@ export function Sidebar({
         >
           <div className="flex flex-col gap-0.5">
             {PRIMARY_NAV.map((item) => {
-              const isActive =
-                item.href === "/"
+              // A "soon" row still links — to the roadmap entry that explains
+              // it — but never renders as active, and carries the pill so the
+              // absence of a feature is obviously deliberate.
+              const isActive = item.soon
+                ? false
+                : item.href === "/"
                   ? pathname === "/"
                   : pathname?.startsWith(item.href);
               return (
@@ -207,12 +226,28 @@ export function Sidebar({
                   key={item.href}
                   href={item.href}
                   onClick={onDrawerClose}
-                  className={`${ROW_BASE} ${isActive ? ROW_ACTIVE : ROW_INACTIVE}`}
+                  className={`${ROW_BASE} ${
+                    item.soon
+                      ? ROW_SOON
+                      : isActive
+                        ? ROW_ACTIVE
+                        : ROW_INACTIVE
+                  }`}
                   aria-current={isActive ? "page" : undefined}
+                  title={
+                    item.soon
+                      ? "Planned — see the roadmap for what it depends on"
+                      : undefined
+                  }
                 >
                   {isActive && <ActiveRail />}
                   <IconSlot active={Boolean(isActive)}>{item.icon}</IconSlot>
                   <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                  {item.soon && (
+                    <span className="shrink-0 rounded-full bg-royal/10 px-1.5 py-0.5 text-2xs font-semibold uppercase tracking-wider text-royal ring-1 ring-royal/20">
+                      Soon
+                    </span>
+                  )}
                 </Link>
               );
             })}
