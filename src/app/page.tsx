@@ -20,33 +20,39 @@ export default function Home() {
 
   return (
     <div
-      className="relative flex min-h-screen flex-col overflow-hidden text-zinc-100"
-      style={{ backgroundColor: "#0a0a0a" }}
+      className="relative flex min-h-screen flex-col overflow-hidden text-surface"
+      style={{
+        // The reference board's hero: royal blue deepening toward the lower
+        // left, which is what the big display type sits on.
+        backgroundImage:
+          "linear-gradient(160deg, #244495 0%, #2c3f8c 45%, #1a2d72 100%)",
+      }}
     >
-      {/* Dotted texture overlay (Shelby brand pattern) */}
+      {/* The board's signature vertical banding — soft translucent columns of
+          uneven width sweeping across the blue. Two passes at different periods
+          keep it from reading as a regular stripe pattern. */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 opacity-50"
+        className="pointer-events-none absolute inset-0"
         style={{
           backgroundImage:
-            "radial-gradient(circle at 1.5px 1.5px, rgba(255, 110, 20, 0.18) 1px, transparent 0)",
-          backgroundSize: "22px 22px",
+            "repeating-linear-gradient(90deg, rgba(250,244,248,0.10) 0px, rgba(250,244,248,0.10) 62px, transparent 62px, transparent 148px), repeating-linear-gradient(90deg, rgba(161,184,207,0.12) 0px, rgba(161,184,207,0.12) 37px, transparent 37px, transparent 211px)",
         }}
       />
 
-      {/* Soft orange glow (blurred backdrop) */}
+      {/* Soft royal-blue glow (blurred backdrop) */}
       <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
         <svg
           viewBox="0 0 700 664"
-          className="ax-anim-drift absolute -right-[20%] top-[-15%] h-[140vmin] w-[140vmin] opacity-60 blur-3xl"
+          className="ax-anim-drift absolute -right-[20%] top-[-15%] h-[140vmin] w-[140vmin] opacity-35 blur-3xl"
           preserveAspectRatio="xMidYMid meet"
         >
           <defs>
             <linearGradient id="shelby-glow" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#ffae42" />
-              <stop offset="40%" stopColor="#ff6a14" />
-              <stop offset="80%" stopColor="#3b1500" />
-              <stop offset="100%" stopColor="#0a0a0a" />
+              <stop offset="0%" stopColor="#a1b8cf" />
+              <stop offset="40%" stopColor="#6f94bb" />
+              <stop offset="80%" stopColor="#244495" />
+              <stop offset="100%" stopColor="#1a2d72" />
             </linearGradient>
           </defs>
           <g fill="url(#shelby-glow)">
@@ -60,16 +66,19 @@ export default function Home() {
         {/* Sharper Shelby curves on top with edge highlight */}
         <svg
           viewBox="0 0 700 664"
-          className="ax-anim-drift absolute -right-[18%] top-[-12%] h-[130vmin] w-[130vmin] opacity-90"
+          // Reads as a sheen across the blue, not a shape on top of it. At the
+          // old opacity-90 the near-white end of this gradient bloomed into a
+          // pale diamond directly behind the headline and ate its contrast.
+          className="ax-anim-drift absolute -right-[18%] top-[-12%] h-[130vmin] w-[130vmin] opacity-20"
           preserveAspectRatio="xMidYMid meet"
           style={{ animationDuration: "36s", animationDirection: "reverse" }}
         >
           <defs>
             <linearGradient id="shelby-sharp" x1="10%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#ffd479" />
-              <stop offset="25%" stopColor="#ff7a14" />
-              <stop offset="65%" stopColor="#a83400" />
-              <stop offset="100%" stopColor="#1a0500" />
+              <stop offset="0%" stopColor="#c7d8e8" />
+              <stop offset="25%" stopColor="#6f94bb" />
+              <stop offset="65%" stopColor="#4c59a7" />
+              <stop offset="100%" stopColor="#1a2d72" />
             </linearGradient>
           </defs>
           <g fill="url(#shelby-sharp)">
@@ -80,22 +89,22 @@ export default function Home() {
           </g>
         </svg>
 
-        {/* Bottom-left orange accent blob (Shelby) */}
-        <div className="ax-anim-blob absolute -bottom-32 -left-32 h-96 w-96 rounded-full bg-orange-600/10 blur-3xl" />
+        {/* Bottom-left steel accent blob */}
+        <div className="ax-anim-blob absolute -bottom-32 -left-32 h-96 w-96 rounded-full bg-steel/20 blur-3xl" />
 
-        {/* Bottom-right violet accent */}
+        {/* Bottom-right periwinkle accent */}
         <div
           aria-hidden
-          className="ax-anim-blob absolute -bottom-40 right-[-10%] h-[26rem] w-[26rem] rounded-full bg-violet-600/[0.08] blur-3xl"
+          className="ax-anim-blob absolute -bottom-40 right-[-10%] h-[26rem] w-[26rem] rounded-full bg-peri/20 blur-3xl"
           style={{ animationDelay: "3s", animationDuration: "11s" }}
         />
 
-        {/* Vignette to focus content */}
+        {/* Vignette to focus content — deepens to the board's darkest indigo. */}
         <div
           className="absolute inset-0"
           style={{
             background:
-              "radial-gradient(ellipse at center, transparent 30%, rgba(10, 10, 10, 0.6) 90%)",
+              "radial-gradient(ellipse at center, transparent 30%, rgba(26, 45, 114, 0.55) 90%)",
           }}
         />
       </div>
@@ -108,9 +117,9 @@ export default function Home() {
         </div>
       )}
 
-      <header className="relative z-10 flex w-full items-center justify-between border-b border-white/5 bg-black/30 px-4 py-3 backdrop-blur-md sm:px-6 sm:py-4">
+      <header className="relative z-10 flex w-full items-center justify-between border-b border-surface/10 bg-royal-deep/25 px-4 py-3 backdrop-blur-md sm:px-6 sm:py-4">
         <Link href="/" className="flex items-center gap-2">
-          <AptboxIcon className="h-8 w-8 text-zinc-100" />
+          <AptboxIcon className="h-8 w-8 text-surface" />
           <span className="text-lg font-semibold tracking-tight">
             Dataset Locker
           </span>
@@ -120,50 +129,53 @@ export default function Home() {
 
       <main className="relative z-10 mx-auto flex w-full max-w-5xl flex-1 flex-col items-center justify-center gap-7 px-4 py-10 text-center sm:gap-10 sm:px-6 sm:py-20">
         <div className="space-y-5 sm:space-y-6">
-          <div className="inline-flex flex-wrap items-center justify-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-zinc-200 backdrop-blur">
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-violet-400 shadow-[0_0_8px_rgba(167,139,250,0.8)]" />
-            <span className="text-zinc-400">Powered by</span>
+          <div className="inline-flex flex-wrap items-center justify-center gap-2 rounded-full border border-surface/20 bg-surface/10 px-3 py-1.5 text-xs font-medium text-surface backdrop-blur">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-steel shadow-[0_0_8px_rgba(161,184,207,0.9)]" />
+            <span className="text-steel">Powered by</span>
             <a
               href="https://shelby.xyz"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 transition hover:text-orange-300"
+              className="inline-flex items-center gap-1 transition hover:text-steel"
               title="Verified storage by Shelby"
             >
-              <ShelbyLogo className="h-3.5 w-3.5 text-orange-400" />
+              <ShelbyLogo className="h-3.5 w-3.5 text-steel" />
               <span className="font-semibold">Shelby</span>
             </a>
-            <span className="text-zinc-600">·</span>
+            <span className="text-surface/40">·</span>
             <a
               href="https://aptosfoundation.org"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 transition hover:text-violet-300"
+              className="inline-flex items-center gap-1 transition hover:text-steel"
               title="Anchored on Aptos"
             >
               <span className="font-semibold">Aptos</span>
             </a>
           </div>
 
-          <h1 className="text-4xl font-bold leading-[1.02] tracking-tight text-white sm:text-6xl sm:leading-[0.95] md:text-7xl lg:text-8xl">
+          {/* The board sets its display type light-weight and tightly tracked,
+              not bold — that restraint is most of its character, so the weight
+              comes down here even though the typeface stays Geist. */}
+          <h1 className="text-4xl font-light leading-[1.02] tracking-tight text-surface sm:text-6xl sm:leading-[0.95] md:text-7xl lg:text-8xl">
             AI datasets,
             <br />
             <span
               className="bg-clip-text text-transparent"
               style={{
                 backgroundImage:
-                  "linear-gradient(120deg, #a78bfa 0%, #ff9333 38%, #ff5500 100%)",
+                  "linear-gradient(120deg, #faf4f8 0%, #c7d8e8 42%, #a1b8cf 100%)",
               }}
             >
               provably unaltered.
             </span>
           </h1>
-          <p className="mx-auto max-w-2xl text-base leading-relaxed text-zinc-300/90 sm:text-lg">
+          <p className="mx-auto max-w-2xl text-base leading-relaxed text-surface/75 sm:text-lg">
             Stop shipping training data through Drive links and zip files nobody
             can verify. Store it on{" "}
-            <span className="font-semibold text-orange-300">Shelby</span>, commit
+            <span className="font-semibold text-surface">Shelby</span>, commit
             its SHA-256 to{" "}
-            <span className="font-semibold text-violet-300">Aptos</span>, and
+            <span className="font-semibold text-surface">Aptos</span>, and
             every downloader gets the bytes checked against that hash
             automatically.
           </p>
@@ -194,13 +206,13 @@ export default function Home() {
           ].map(({ title, desc, icon }) => (
             <div
               key={title}
-              className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-sm transition hover:border-orange-500/50 hover:bg-orange-500/[0.07]"
+              className="group relative overflow-hidden rounded-2xl border border-surface/15 bg-surface/[0.07] p-4 backdrop-blur-sm transition hover:border-surface/35 hover:bg-surface/15"
             >
               <div className="ax-anim-breathe">{icon}</div>
-              <div className="mt-3 text-sm font-semibold text-white">
+              <div className="mt-3 text-sm font-semibold text-surface">
                 {title}
               </div>
-              <div className="mt-1 text-xs text-zinc-400 sm:text-sm">
+              <div className="mt-1 text-xs text-surface/65 sm:text-sm">
                 {desc}
               </div>
             </div>
@@ -208,55 +220,55 @@ export default function Home() {
         </div>
 
         {/* Stats / proof row */}
-        <div className="mt-2 flex flex-wrap items-center justify-center gap-x-5 gap-y-3 text-xs text-zinc-400 sm:gap-x-6">
+        <div className="mt-2 flex flex-wrap items-center justify-center gap-x-5 gap-y-3 text-xs text-surface/70 sm:gap-x-6">
           <div className="flex items-center gap-1.5">
-            <span className="ax-anim-dot-1 h-1 w-1 rounded-full bg-orange-400 shadow-[0_0_6px_rgba(255,140,40,0.7)]" />
+            <span className="ax-anim-dot-1 h-1 w-1 rounded-full bg-steel shadow-[0_0_6px_rgba(161,184,207,0.85)]" />
             <span>Sub-second reads</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="ax-anim-dot-2 h-1 w-1 rounded-full bg-orange-400 shadow-[0_0_6px_rgba(255,140,40,0.7)]" />
+            <span className="ax-anim-dot-2 h-1 w-1 rounded-full bg-steel shadow-[0_0_6px_rgba(161,184,207,0.85)]" />
             <span>On-chain provenance</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="ax-anim-dot-3 h-1 w-1 rounded-full bg-orange-400 shadow-[0_0_6px_rgba(255,140,40,0.7)]" />
+            <span className="ax-anim-dot-3 h-1 w-1 rounded-full bg-steel shadow-[0_0_6px_rgba(161,184,207,0.85)]" />
             <span>SHA-256 verified downloads</span>
           </div>
         </div>
       </main>
 
-      <footer className="relative z-10 flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1 border-t border-white/5 bg-black/30 px-4 py-3 text-xs text-zinc-500 backdrop-blur sm:py-4">
+      <footer className="relative z-10 flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1 border-t border-surface/10 bg-royal-deep/25 px-4 py-3 text-xs text-surface/60 backdrop-blur sm:py-4">
         {/* The sidebar only renders once a wallet is connected, so this is the
             only route to the docs for a first-time visitor. */}
         <Link
           href="/marketplace"
-          className="font-semibold text-zinc-300 transition hover:text-violet-400"
+          className="font-semibold text-surface/85 transition hover:text-surface"
         >
           Marketplace
         </Link>
-        <span className="text-zinc-600">·</span>
+        <span className="text-surface/30">·</span>
         <Link
           href="/docs"
-          className="font-semibold text-zinc-300 transition hover:text-violet-400"
+          className="font-semibold text-surface/85 transition hover:text-surface"
         >
           Docs
         </Link>
-        <span className="text-zinc-600">·</span>
+        <span className="text-surface/30">·</span>
         <span>AI Dataset Locker · verifiable dataset storage built on</span>
         <a
           href="https://shelby.xyz"
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 font-semibold text-zinc-300 transition hover:text-orange-400"
+          className="inline-flex items-center gap-1 font-semibold text-surface/85 transition hover:text-surface"
         >
-          <ShelbyLogo className="h-3 w-3 text-orange-400" />
+          <ShelbyLogo className="h-3 w-3 text-steel" />
           Shelby
         </a>
-        <span className="text-zinc-600">·</span>
+        <span className="text-surface/30">·</span>
         <a
           href="https://aptosfoundation.org"
           target="_blank"
           rel="noopener noreferrer"
-          className="font-semibold text-zinc-300 transition hover:text-violet-400"
+          className="font-semibold text-surface/85 transition hover:text-surface"
         >
           Aptos
         </a>
@@ -268,15 +280,15 @@ export default function Home() {
 /* ---------- Brand-aligned animated feature marks ---------- */
 
 /**
- * Shared 12×12 disc container with orange brand gradient + pulsing ring.
+ * Shared 12×12 disc container with the board's blue gradient + pulsing ring.
  * Children render inside the disc as the foreground glyph.
  */
 function BrandDisc({ children }: { children: React.ReactNode }) {
-  const ringColor = "rgba(255,140,40,0.55)";
-  const ringFade = "rgba(255,140,40,0)";
-  const gradientFrom = "rgba(255,140,40,0.18)";
-  const gradientTo = "rgba(195,48,0,0.18)";
-  const ringClass = "ring-orange-500/30";
+  const ringColor = "rgba(250,244,248,0.45)";
+  const ringFade = "rgba(250,244,248,0)";
+  const gradientFrom = "rgba(250,244,248,0.20)";
+  const gradientTo = "rgba(161,184,207,0.18)";
+  const ringClass = "ring-surface/30";
   return (
     <div className="relative h-12 w-12">
       <div
@@ -309,9 +321,9 @@ function AptboxSealMark() {
       >
         <defs>
           <linearGradient id="ax-seal-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#ffd479" />
-            <stop offset="60%" stopColor="#ff7a14" />
-            <stop offset="100%" stopColor="#c33000" />
+            <stop offset="0%" stopColor="#faf4f8" />
+            <stop offset="60%" stopColor="#c7d8e8" />
+            <stop offset="100%" stopColor="#a1b8cf" />
           </linearGradient>
         </defs>
         {/* Outer rounded box, brand orange */}
@@ -349,9 +361,9 @@ function CoinKeyMark() {
         <svg viewBox="0 0 64 64" className="h-8 w-8" aria-hidden>
           <defs>
             <linearGradient id="ax-coin-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#ffd479" />
-              <stop offset="60%" stopColor="#ff7a14" />
-              <stop offset="100%" stopColor="#c33000" />
+              <stop offset="0%" stopColor="#faf4f8" />
+              <stop offset="60%" stopColor="#c7d8e8" />
+              <stop offset="100%" stopColor="#a1b8cf" />
             </linearGradient>
           </defs>
           {/* Coin body */}
@@ -387,9 +399,9 @@ function ShelbyOrbitMark() {
         <svg viewBox="0 0 699.93 663.68" className="h-7 w-7" aria-hidden>
           <defs>
             <linearGradient id="ax-shelby-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#ffd479" />
-              <stop offset="60%" stopColor="#ff7a14" />
-              <stop offset="100%" stopColor="#c33000" />
+              <stop offset="0%" stopColor="#faf4f8" />
+              <stop offset="60%" stopColor="#c7d8e8" />
+              <stop offset="100%" stopColor="#a1b8cf" />
             </linearGradient>
           </defs>
           <g fill="url(#ax-shelby-grad)">

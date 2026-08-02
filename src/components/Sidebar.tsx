@@ -59,9 +59,9 @@ const ROW_PAD = "px-2.5";
 
 /** py-2.5 keeps mobile tap targets ≥40px; desktop tightens to ~34px. */
 const ROW_BASE = `group relative flex w-full items-center gap-2.5 rounded-lg ${ROW_PAD} py-2.5 text-sm font-medium transition active:scale-[0.99] min-w-0 md:py-2`;
-const ROW_INACTIVE = "text-zinc-400 hover:bg-white/5 hover:text-zinc-100";
+const ROW_INACTIVE = "text-ink-muted hover:bg-royal/8 hover:text-ink";
 const ROW_ACTIVE =
-  "ax-active bg-violet-500/10 text-violet-100 ring-1 ring-violet-500/30";
+  "ax-active bg-royal/10 text-royal-deep ring-1 ring-royal/25";
 
 /**
  * Fixed icon box. Nav glyphs and type glyphs are drawn at different optical
@@ -77,7 +77,7 @@ function IconSlot({
   return (
     <span
       className={`flex h-5 w-5 shrink-0 items-center justify-center ${
-        active ? "text-violet-300" : "text-zinc-500 group-hover:text-zinc-300"
+        active ? "text-royal" : "text-ink-subtle group-hover:text-ink-muted"
       }`}
     >
       {children}
@@ -89,7 +89,7 @@ function ActiveRail() {
   return (
     <span
       aria-hidden
-      className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-violet-400"
+      className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-royal"
     />
   );
 }
@@ -153,7 +153,7 @@ export function Sidebar({
     <>
       {/* Mobile backdrop */}
       <div
-        className={`fixed inset-0 z-30 bg-black/60 backdrop-blur-sm transition-opacity md:hidden ${
+        className={`fixed inset-0 z-30 bg-royal-deep/40 backdrop-blur-sm transition-opacity md:hidden ${
           drawerOpen ? "opacity-100" : "pointer-events-none opacity-0"
         }`}
         onClick={onDrawerClose}
@@ -161,7 +161,7 @@ export function Sidebar({
       />
 
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex w-[min(84vw,17.5rem)] flex-col border-r border-white/5 bg-zinc-950/95 backdrop-blur-md transition-transform duration-200 md:static md:z-0 md:w-60 md:translate-x-0 lg:w-64 ${
+        className={`fixed inset-y-0 left-0 z-40 flex w-[min(84vw,17.5rem)] flex-col border-r border-line bg-surface-raised/95 backdrop-blur-md transition-transform duration-200 md:static md:z-0 md:w-60 md:translate-x-0 lg:w-64 ${
           drawerOpen ? "translate-x-0" : "-translate-x-full"
         }`}
         aria-label="Primary navigation"
@@ -176,16 +176,16 @@ export function Sidebar({
             className={`flex min-w-0 items-center gap-2.5 rounded-lg ${ROW_PAD} py-1`}
           >
             <span className="flex h-5 w-5 shrink-0 items-center justify-center">
-              <AptboxIcon className="h-5 w-5 text-zinc-100" />
+              <AptboxIcon className="h-5 w-5 text-ink" />
             </span>
-            <span className="truncate text-base font-bold tracking-tight text-zinc-100">
+            <span className="truncate text-base font-bold tracking-tight text-ink">
               Dataset Locker
             </span>
           </Link>
           <button
             ref={closeButtonRef}
             onClick={onDrawerClose}
-            className="-mr-1 shrink-0 rounded-lg p-2 text-zinc-500 hover:bg-white/5 hover:text-zinc-200 md:hidden"
+            className="-mr-1 shrink-0 rounded-lg p-2 text-ink-subtle hover:bg-royal/8 hover:text-ink md:hidden"
             aria-label="Close menu"
           >
             <CloseIcon className="h-4 w-4" />
@@ -222,7 +222,7 @@ export function Sidebar({
           <div className="mt-5">
             <button
               onClick={() => setTypesOpen((v) => !v)}
-              className={`flex w-full items-center justify-between rounded-md ${ROW_PAD} py-1.5 text-xs font-semibold uppercase tracking-wider text-zinc-500 transition hover:bg-white/5 hover:text-zinc-300`}
+              className={`flex w-full items-center justify-between rounded-md ${ROW_PAD} py-1.5 text-xs font-semibold uppercase tracking-wider text-ink-subtle transition hover:bg-royal/8 hover:text-ink-muted`}
               aria-expanded={typesOpen}
             >
               <span>Dataset type</span>
@@ -265,33 +265,33 @@ export function Sidebar({
         </nav>
 
         {/* Storage footer — pinned, doesn't scroll with nav */}
-        <div className={`shrink-0 border-t border-white/5 ${SECTION_PAD} py-3`}>
-          <div className="rounded-lg bg-violet-500/[0.06] p-3 ring-1 ring-violet-500/20">
+        <div className={`shrink-0 border-t border-line ${SECTION_PAD} py-3`}>
+          <div className="rounded-lg bg-royal/6 p-3 ring-1 ring-royal/20">
             <div className="flex items-baseline justify-between gap-2">
-              <span className="text-xs font-semibold uppercase tracking-wider text-zinc-300">
+              <span className="text-xs font-semibold uppercase tracking-wider text-ink-muted">
                 Stored
               </span>
-              <span className="shrink-0 text-xs text-zinc-500">
+              <span className="shrink-0 text-xs text-ink-subtle">
                 {totalFiles} dataset{totalFiles === 1 ? "" : "s"}
               </span>
             </div>
             {/* No usage bar here: Shelby has no quota to fill, so any bar would
                 be decorative. Show the real number instead. */}
-            <div className="mt-0.5 truncate text-sm font-semibold text-zinc-100">
+            <div className="mt-0.5 truncate text-sm font-semibold text-ink">
               {formatBytes(totalBytes)}
             </div>
             <a
               href="https://shelby.xyz"
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-2 flex items-center gap-1 text-2xs text-zinc-500 transition hover:text-orange-300"
+              className="mt-2 flex items-center gap-1 text-2xs text-ink-subtle transition hover:text-royal"
               title="Powered by Shelby — verified decentralized storage"
             >
               {/* Matches the landing page's wording so the attribution reads
                   the same everywhere. */}
               <span>Powered by</span>
-              <ShelbyLogo className="h-3 w-3 text-orange-400" />
-              <span className="font-semibold tracking-tight text-zinc-300">
+              <ShelbyLogo className="h-3 w-3 text-sky" />
+              <span className="font-semibold tracking-tight text-ink-muted">
                 Shelby
               </span>
             </a>

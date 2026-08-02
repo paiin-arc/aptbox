@@ -345,12 +345,12 @@ export default function FilePage({ params }: Props) {
   if (error || !file) {
     return (
       <Shell>
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-900 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-900">
           Dataset not found. It may have been removed or never existed.
         </div>
         <Link
           href="/"
-          className="mt-4 inline-block rounded-lg bg-zinc-900 px-4 py-2 text-sm font-semibold text-white dark:bg-white dark:text-black"
+          className="mt-4 inline-block rounded-lg bg-royal px-4 py-2 text-sm font-semibold text-surface"
         >
           Back home
         </Link>
@@ -371,7 +371,7 @@ export default function FilePage({ params }: Props) {
           >
             {fileName}
           </div>
-          <div className="mt-1 text-xs text-zinc-500 sm:text-sm">
+          <div className="mt-1 text-xs text-ink-subtle sm:text-sm">
             Dataset #{file.fileId} · {formatBytes(file.sizeBytes)} ·{" "}
             <span className="break-all">{file.mimeType || "unknown"}</span>
           </div>
@@ -379,7 +379,7 @@ export default function FilePage({ params }: Props) {
         <div className="flex shrink-0 items-center gap-2">
           <button
             onClick={() => setShareOpen(true)}
-            className="flex-1 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-700 hover:bg-zinc-100 active:scale-95 sm:flex-none dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            className="flex-1 rounded-lg border border-line bg-surface-raised px-3 py-2 text-xs font-semibold text-ink-muted hover:bg-surface-sunken active:scale-95 sm:flex-none"
             title="Get a shareable link"
           >
             <span className="inline-flex items-center gap-1.5">
@@ -392,7 +392,7 @@ export default function FilePage({ params }: Props) {
       </div>
 
       {autoSwitchedFrom && (
-        <div className="mb-4 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs text-indigo-900 dark:border-indigo-900 dark:bg-indigo-950/30 dark:text-indigo-200">
+        <div className="mb-4 rounded-xl border border-royal/25 bg-royal/8 px-3 py-2 text-xs text-royal-deep">
           Switched network from <strong>{autoSwitchedFrom}</strong> to{" "}
           <strong>{NETWORK_LABEL[network]}</strong> because the share link
           targets it. Use the network switcher in the topbar to switch back.
@@ -407,17 +407,17 @@ export default function FilePage({ params }: Props) {
         />
       )}
 
-      <div className="mb-4 flex flex-wrap gap-2 text-xs text-zinc-500">
+      <div className="mb-4 flex flex-wrap gap-2 text-xs text-ink-subtle">
         <span>
           Uploaded by{" "}
-          <span className="font-mono text-zinc-700 dark:text-zinc-300">
+          <span className="font-mono text-ink-muted">
             {short(file.uploader)}
           </span>
         </span>
         {file.flagCount > 0 && (
           <>
             <span>·</span>
-            <span className="inline-flex items-center gap-1 text-red-600 dark:text-red-400">
+            <span className="inline-flex items-center gap-1 text-red-600">
               <FlagIcon className="h-3 w-3" />
               {file.flagCount} flags
             </span>
@@ -443,7 +443,7 @@ export default function FilePage({ params }: Props) {
       <div className="mb-6 space-y-2">
         <IntegrityPanel state={integrity} registryHash={file.contentHash} />
         {integrity.phase === "checking" && hashPct !== null && (
-          <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-3 text-xs text-indigo-900 dark:border-indigo-900 dark:bg-indigo-950/30 dark:text-indigo-200">
+          <div className="rounded-xl border border-royal/25 bg-royal/8 p-3 text-xs text-royal-deep">
             <div className="flex items-baseline justify-between">
               <span>
                 Streaming {formatBytes(file.sizeBytes)} through SHA-256 without
@@ -451,9 +451,9 @@ export default function FilePage({ params }: Props) {
               </span>
               <span className="font-medium">{hashPct}%</span>
             </div>
-            <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-indigo-200/60 dark:bg-indigo-900">
+            <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-royal/20">
               <div
-                className="h-full rounded-full bg-indigo-500 transition-[width] duration-200"
+                className="h-full rounded-full bg-royal transition-[width] duration-200"
                 style={{ width: `${hashPct}%` }}
               />
             </div>
@@ -463,7 +463,7 @@ export default function FilePage({ params }: Props) {
 
       {/* Access gate */}
       {!canAccess && (
-        <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-5 dark:border-amber-900 dark:bg-amber-950/30">
+        <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-5">
           {file.accessType === ACCESS_WHITELIST && (
             <RestrictedGate connected={connected} accessLoading={accessLoading} />
           )}
@@ -478,7 +478,7 @@ export default function FilePage({ params }: Props) {
             />
           )}
           {file.accessType === 3 && (
-            <div className="text-sm text-amber-900 dark:text-amber-200">
+            <div className="text-sm text-amber-900">
               Token-gated access — not supported.
             </div>
           )}
@@ -491,26 +491,26 @@ export default function FilePage({ params }: Props) {
           {downloadStage === "idle" && (
             <button
               onClick={() => loadBlob(file)}
-              className="w-full rounded-xl bg-indigo-600 px-5 py-3.5 text-sm font-semibold text-white hover:bg-indigo-700 sm:w-auto sm:py-3"
+              className="w-full rounded-xl bg-royal px-5 py-3.5 text-sm font-semibold text-surface hover:bg-royal-deep sm:w-auto sm:py-3"
             >
               Load &amp; verify dataset
             </button>
           )}
 
           {downloadStage === "fetching" && (
-            <div className="rounded-xl border border-zinc-200 bg-white p-4 text-sm text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
+            <div className="rounded-xl border border-line bg-surface-raised p-4 text-sm text-ink-muted">
               Fetching from Shelby…
             </div>
           )}
 
           {downloadStage === "error" && (
             <div className="space-y-2">
-              <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-900 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
+              <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-900">
                 {downloadError}
               </div>
               <button
                 onClick={() => loadBlob(file)}
-                className="rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                className="rounded-lg border border-line bg-surface-raised px-3 py-1.5 text-xs font-medium text-ink-muted hover:bg-surface-sunken"
               >
                 Retry
               </button>
@@ -518,33 +518,33 @@ export default function FilePage({ params }: Props) {
           )}
 
           {downloadStage === "propagating" && (
-            <div className="space-y-2 rounded-xl border border-violet-500/30 bg-violet-500/[0.06] p-4 text-sm">
-              <div className="flex items-center gap-2 font-semibold text-violet-700 dark:text-violet-200">
+            <div className="space-y-2 rounded-xl border border-royal/30 bg-royal/[0.06] p-4 text-sm">
+              <div className="flex items-center gap-2 font-semibold text-royal">
                 <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-violet-500/60" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-violet-400" />
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-royal/60" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-royal" />
                 </span>
                 Storage providers finalizing…
               </div>
-              <div className="text-xs text-violet-700/80 dark:text-violet-200/80">
+              <div className="text-xs text-royal/80">
                 The dataset is uploaded — the gateway just needs a moment to
                 replicate it across providers. We&apos;re auto-checking every 6
                 seconds.
               </div>
-              <div className="flex items-center justify-between text-xs text-violet-700/70 dark:text-violet-300/70">
+              <div className="flex items-center justify-between text-xs text-royal/70">
                 <span>
                   Attempt {propagationAttempts + 1} of{" "}
                   {MAX_PROPAGATION_ATTEMPTS}
                 </span>
                 <button
                   onClick={() => loadBlob(file)}
-                  className="rounded-md border border-violet-500/30 bg-violet-500/10 px-2.5 py-1 text-xs font-medium text-violet-700 hover:bg-violet-500/20 dark:text-violet-200"
+                  className="rounded-md border border-royal/30 bg-royal/10 px-2.5 py-1 text-xs font-medium text-royal hover:bg-royal/20"
                 >
                   Check now
                 </button>
               </div>
               {propagationAttempts + 1 >= MAX_PROPAGATION_ATTEMPTS && (
-                <div className="rounded-md bg-amber-500/10 p-2 text-xs text-amber-800 ring-1 ring-amber-500/30 dark:text-amber-200">
+                <div className="rounded-md bg-amber-500/10 p-2 text-xs text-amber-800 ring-1 ring-amber-500/30">
                   Still not available after 2 minutes. Storage providers may be
                   slow today — try again later, or use{" "}
                   <Link href="/cleanup" className="underline">
@@ -557,15 +557,15 @@ export default function FilePage({ params }: Props) {
           )}
 
           {downloadStage === "missing" && (
-            <div className="space-y-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm dark:border-amber-900 dark:bg-amber-950/30">
-              <div className="font-semibold text-amber-900 dark:text-amber-200">
+            <div className="space-y-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm">
+              <div className="font-semibold text-amber-900">
                 Bytes not available on Shelby gateway
               </div>
-              <div className="text-amber-800 dark:text-amber-300">
+              <div className="text-amber-800">
                 {downloadError ??
                   "Shelby's storage gateway returned 404 for this blob."}
               </div>
-              <ul className="ml-4 list-disc space-y-1 text-xs text-amber-800 dark:text-amber-300">
+              <ul className="ml-4 list-disc space-y-1 text-xs text-amber-800">
                 <li>
                   The blob may have <strong>expired</strong> — its storage window
                   passed and providers garbage-collected it.
@@ -579,14 +579,14 @@ export default function FilePage({ params }: Props) {
                   side — never on storage providers.
                 </li>
               </ul>
-              <div className="text-xs text-amber-800 dark:text-amber-300">
+              <div className="text-xs text-amber-800">
                 The on-chain entry (dataset #{file.fileId}) is intact, but the
                 original bytes aren&apos;t recoverable. If you own it, delete the
                 entry below and re-upload.
               </div>
               <button
                 onClick={() => loadBlob(file)}
-                className="rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-medium text-amber-900 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200"
+                className="rounded-lg border border-amber-300 bg-surface-raised px-3 py-1.5 text-xs font-medium text-amber-900 hover:bg-amber-100"
               >
                 Try again
               </button>
@@ -594,11 +594,11 @@ export default function FilePage({ params }: Props) {
           )}
 
           {downloadStage === "ready" && !previewUrl && (
-            <div className="space-y-3 rounded-xl border border-zinc-200 bg-white p-4 text-sm dark:border-zinc-800 dark:bg-zinc-900">
+            <div className="space-y-3 rounded-xl border border-line bg-surface-raised p-4 text-sm">
               <div className="font-semibold">
                 Verified — too large to open in the browser
               </div>
-              <div className="text-xs text-zinc-600 dark:text-zinc-400">
+              <div className="text-xs text-ink-muted">
                 This dataset is {formatBytes(file.sizeBytes)}. It was hashed
                 straight off the wire, so the integrity result above is complete
                 — but holding it in the tab to preview or re-download would
@@ -609,12 +609,12 @@ export default function FilePage({ params }: Props) {
                 <a
                   href={buildShelbyBlobUrl(network, file.uploader, file.shelbyCid)}
                   download={fileName}
-                  className="inline-block rounded-lg bg-zinc-900 px-4 py-2 text-xs font-semibold text-white hover:bg-zinc-700 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
+                  className="inline-block rounded-lg bg-royal px-4 py-2 text-xs font-semibold text-surface hover:bg-royal-deep"
                 >
                   Download via Shelby gateway
                 </a>
               ) : (
-                <div className="text-xs text-amber-700 dark:text-amber-300">
+                <div className="text-xs text-amber-700">
                   This dataset is access-controlled, so there is no public
                   gateway URL to hand you. Fetch it with the Shelby SDK or CLI
                   using your own credentials, then check its SHA-256 against the
@@ -627,14 +627,14 @@ export default function FilePage({ params }: Props) {
           {downloadStage === "ready" && previewUrl && (
             <>
               {isTampered && !tamperAcknowledged ? (
-                <div className="space-y-3 rounded-xl border border-red-300 bg-red-50 p-4 dark:border-red-800 dark:bg-red-950/30">
-                  <div className="text-sm text-red-900 dark:text-red-200">
+                <div className="space-y-3 rounded-xl border border-red-300 bg-red-50 p-4">
+                  <div className="text-sm text-red-900">
                     Preview and download are blocked because this dataset failed
                     integrity verification.
                   </div>
                   <button
                     onClick={() => setTamperAcknowledged(true)}
-                    className="rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-semibold text-red-800 hover:bg-red-100 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200"
+                    className="rounded-lg border border-red-300 bg-surface-raised px-3 py-1.5 text-xs font-semibold text-red-800 hover:bg-red-100"
                   >
                     I understand the risk — show it anyway
                   </button>
@@ -649,10 +649,10 @@ export default function FilePage({ params }: Props) {
                   />
                   <button
                     onClick={handleDownload}
-                    className={`w-full rounded-xl px-5 py-3.5 text-sm font-semibold text-white sm:w-auto sm:py-3 ${
+                    className={`w-full rounded-xl px-5 py-3.5 text-sm font-semibold text-surface sm:w-auto sm:py-3 ${
                       isTampered
                         ? "bg-red-600 hover:bg-red-700"
-                        : "bg-zinc-900 hover:bg-zinc-700 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
+                        : "bg-royal hover:bg-royal-deep"
                     }`}
                   >
                     {isTampered
@@ -668,22 +668,22 @@ export default function FilePage({ params }: Props) {
 
       {/* Owner controls */}
       {isOwner && (
-        <div className="mt-8 border-t border-zinc-200 pt-6 dark:border-zinc-800">
-          <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+        <div className="mt-8 border-t border-line pt-6">
+          <div className="text-xs font-semibold uppercase tracking-wide text-ink-subtle">
             Owner controls
           </div>
-          <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-4 dark:border-red-900/50 dark:bg-red-950/20">
+          <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
               <div className="min-w-0">
-                <div className="text-sm font-semibold text-red-900 dark:text-red-200">
+                <div className="text-sm font-semibold text-red-900">
                   Delete this dataset
                 </div>
-                <div className="mt-1 text-xs text-red-800 dark:text-red-300">
+                <div className="mt-1 text-xs text-red-800">
                   Removes the registry entry on Aptos. The Shelby blob expires on
                   its own at the original expiration time.
                 </div>
                 {deleteError && (
-                  <div className="mt-2 text-xs text-red-700 dark:text-red-300">
+                  <div className="mt-2 text-xs text-red-700">
                     {deleteError}
                   </div>
                 )}
@@ -692,7 +692,7 @@ export default function FilePage({ params }: Props) {
                 {deleteStage === "idle" && (
                   <button
                     onClick={() => setDeleteStage("confirming")}
-                    className="flex-1 rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white hover:bg-red-700 active:scale-95 sm:flex-none"
+                    className="flex-1 rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-surface hover:bg-red-700 active:scale-95 sm:flex-none"
                   >
                     Delete
                   </button>
@@ -701,13 +701,13 @@ export default function FilePage({ params }: Props) {
                   <>
                     <button
                       onClick={() => setDeleteStage("idle")}
-                      className="flex-1 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-100 active:scale-95 sm:flex-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
+                      className="flex-1 rounded-lg border border-line bg-surface-raised px-3 py-2 text-xs font-medium text-ink-muted hover:bg-surface-sunken active:scale-95 sm:flex-none"
                     >
                       Cancel
                     </button>
                     <button
                       onClick={handleDelete}
-                      className="flex-1 rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white hover:bg-red-700 active:scale-95 sm:flex-none"
+                      className="flex-1 rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-surface hover:bg-red-700 active:scale-95 sm:flex-none"
                     >
                       Yes, delete
                     </button>
@@ -716,13 +716,13 @@ export default function FilePage({ params }: Props) {
                 {(deleteStage === "signing" || deleteStage === "waiting") && (
                   <button
                     disabled
-                    className="flex-1 rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white opacity-70 sm:flex-none"
+                    className="flex-1 rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-surface opacity-70 sm:flex-none"
                   >
                     {deleteStage === "signing" ? "Signing…" : "Confirming…"}
                   </button>
                 )}
                 {deleteStage === "done" && (
-                  <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white">
+                  <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-surface">
                     <CheckIcon className="h-3 w-3" />
                     Deleted
                   </span>
@@ -730,7 +730,7 @@ export default function FilePage({ params }: Props) {
                 {deleteStage === "error" && (
                   <button
                     onClick={() => setDeleteStage("confirming")}
-                    className="flex-1 rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white hover:bg-red-700 active:scale-95 sm:flex-none"
+                    className="flex-1 rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-surface hover:bg-red-700 active:scale-95 sm:flex-none"
                   >
                     Retry
                   </button>
@@ -746,11 +746,11 @@ export default function FilePage({ params }: Props) {
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="relative flex min-h-dvh flex-col text-zinc-100">
+    <div className="relative flex min-h-dvh flex-col text-ink">
       <AppBackdrop />
-      <header className="sticky top-0 z-10 flex w-full items-center justify-between border-b border-zinc-200 bg-white/80 px-4 py-3 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/80 sm:px-6 sm:py-4">
+      <header className="sticky top-0 z-10 flex w-full items-center justify-between border-b border-line bg-surface/80 px-4 py-3 backdrop-blur-md sm:px-6 sm:py-4">
         <Link href="/" className="flex items-center gap-2">
-          <AptboxIcon className="h-8 w-8 text-zinc-900 dark:text-zinc-100" />
+          <AptboxIcon className="h-8 w-8 text-ink" />
           <span className="text-lg font-semibold tracking-tight">
             Dataset Locker
           </span>
@@ -779,10 +779,10 @@ function ExpirationBanner({
 
   const palette =
     exp.severity === "expired"
-      ? "border-red-200 bg-red-50 text-red-900 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200"
+      ? "border-red-200 bg-red-50 text-red-900"
       : exp.severity === "warn"
-        ? "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200"
-        : "border-zinc-200 bg-white text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300";
+        ? "border-amber-200 bg-amber-50 text-amber-900"
+        : "border-line bg-surface-raised text-ink-muted";
 
   return (
     <div
@@ -802,8 +802,8 @@ function ExpirationBanner({
       <span
         className={`shrink-0 rounded-md px-2 py-0.5 text-2xs font-medium ${
           isWritten
-            ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
-            : "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300"
+            ? "bg-emerald-100 text-emerald-800"
+            : "bg-amber-100 text-amber-800"
         }`}
         title={
           isWritten
@@ -821,8 +821,8 @@ function AccessBadge({ file }: { file: FileMeta }) {
   const label = accessLabel(file.accessType);
   const color =
     file.accessType === ACCESS_PUBLIC
-      ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
-      : "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300";
+      ? "bg-emerald-50 text-emerald-700"
+      : "bg-surface-sunken text-ink-muted";
   return (
     <span
       className={`shrink-0 rounded-md px-2 py-1 text-xs font-medium ${color}`}
@@ -841,13 +841,13 @@ function RestrictedGate({
 }) {
   if (!connected) {
     return (
-      <div className="text-sm text-amber-900 dark:text-amber-200">
+      <div className="text-sm text-amber-900">
         Restricted dataset — connect your wallet to check access.
       </div>
     );
   }
   return (
-    <div className="text-sm text-amber-900 dark:text-amber-200">
+    <div className="text-sm text-amber-900">
       {accessLoading
         ? "Checking access list…"
         : "This wallet isn't on the access list for this dataset."}
@@ -893,7 +893,7 @@ function Preview({
     return (
       <iframe
         src={url}
-        className="h-[600px] w-full rounded-xl border border-zinc-200 dark:border-zinc-800"
+        className="h-[600px] w-full rounded-xl border border-line"
         title={name}
       />
     );
@@ -902,7 +902,7 @@ function Preview({
     return <TextPreview url={url} />;
   }
   return (
-    <div className="flex items-center justify-center rounded-xl border border-dashed border-zinc-300 bg-white p-12 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:bg-zinc-900">
+    <div className="flex items-center justify-center rounded-xl border border-dashed border-line bg-surface-raised p-12 text-center text-sm text-ink-subtle">
       No inline preview for this dataset type — use download.
     </div>
   );
@@ -922,7 +922,7 @@ function TextPreview({ url }: { url: string }) {
     };
   }, [url]);
   return (
-    <pre className="max-h-[480px] overflow-auto rounded-xl border border-zinc-200 bg-white p-4 text-xs text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">
+    <pre className="max-h-[480px] overflow-auto rounded-xl border border-line bg-surface-raised p-4 text-xs text-ink-muted">
       {text ?? "Loading…"}
     </pre>
   );

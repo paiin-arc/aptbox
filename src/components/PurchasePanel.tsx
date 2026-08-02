@@ -40,11 +40,11 @@ export function PurchasePanel({
   return (
     <div className="space-y-4">
       <div>
-        <div className="flex items-center gap-2 text-sm font-semibold text-amber-100">
+        <div className="flex items-center gap-2 text-sm font-semibold text-amber-700">
           <LockIcon className="h-4 w-4" />
           Paid dataset — {price} APT
         </div>
-        <div className="mt-1.5 text-sm leading-relaxed text-zinc-300/90">
+        <div className="mt-1.5 text-sm leading-relaxed text-ink-muted/90">
           {formatBytes(file.sizeBytes)} · {file.mimeType || "unknown type"}. The
           preview is withheld until purchase; the publisher&apos;s description is
           above.
@@ -57,18 +57,18 @@ export function PurchasePanel({
         own expiry — so access can outlive the data it grants access to.
       */}
       {expired ? (
-        <div className="flex gap-2 rounded-lg border border-red-500/40 bg-red-500/[0.07] p-3">
-          <WarningTriangleIcon className="mt-0.5 h-4 w-4 shrink-0 text-red-300" />
-          <div className="text-sm leading-relaxed text-red-100">
+        <div className="flex gap-2 rounded-lg border border-red-600/30 bg-red-500/10 p-3">
+          <WarningTriangleIcon className="mt-0.5 h-4 w-4 shrink-0 text-red-700" />
+          <div className="text-sm leading-relaxed text-red-700">
             <strong>Storage has already expired.</strong> Buying now would give
             you a permanent receipt for bytes the providers have garbage
             collected. Ask the publisher to re-upload before paying.
           </div>
         </div>
       ) : expiringSoon ? (
-        <div className="flex gap-2 rounded-lg border border-amber-500/40 bg-amber-500/[0.07] p-3">
-          <WarningTriangleIcon className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" />
-          <div className="text-sm leading-relaxed text-amber-100">
+        <div className="flex gap-2 rounded-lg border border-amber-600/30 bg-amber-500/12 p-3">
+          <WarningTriangleIcon className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
+          <div className="text-sm leading-relaxed text-amber-700">
             <strong>{exp!.text}.</strong> Your receipt is permanent, but the
             bytes are not — download it promptly after buying.
           </div>
@@ -81,9 +81,9 @@ export function PurchasePanel({
         lives in our registry and gates this UI, not the bytes. Saying so is the
         only honest option until client-side encryption ships.
       */}
-      <div className="flex gap-2 rounded-lg border border-orange-500/40 bg-orange-500/[0.07] p-3">
-        <WarningTriangleIcon className="mt-0.5 h-4 w-4 shrink-0 text-orange-300" />
-        <div className="text-sm leading-relaxed text-orange-100">
+      <div className="flex gap-2 rounded-lg border border-sky/45 bg-sky/10 p-3">
+        <WarningTriangleIcon className="mt-0.5 h-4 w-4 shrink-0 text-sky" />
+        <div className="text-sm leading-relaxed text-sky">
           <strong>These bytes are not private.</strong> Shelby stores blobs
           openly, so anyone who reads this dataset&apos;s account and blob name
           from the registry can fetch it from the gateway without paying. Buying
@@ -93,46 +93,46 @@ export function PurchasePanel({
         </div>
       </div>
 
-      <ul className="space-y-1.5 rounded-lg border border-white/10 bg-black/20 p-3 text-xs leading-relaxed text-zinc-400">
+      <ul className="space-y-1.5 rounded-lg border border-line bg-surface-raised/70 p-3 text-xs leading-relaxed text-ink-muted">
         <li className="flex gap-2">
-          <span aria-hidden className="text-zinc-600">
+          <span aria-hidden className="text-ink-subtle">
             •
           </span>
           <span>
-            Payment goes <strong className="text-zinc-300">directly to the publisher</strong>{" "}
+            Payment goes <strong className="text-ink-muted">directly to the publisher</strong>{" "}
             in the same transaction that records your access. No escrow, no
             platform fee.
           </span>
         </li>
         <li className="flex gap-2">
-          <span aria-hidden className="text-zinc-600">
+          <span aria-hidden className="text-ink-subtle">
             •
           </span>
           <span>
-            This buys <strong className="text-zinc-300">access, not ownership</strong>. The
+            This buys <strong className="text-ink-muted">access, not ownership</strong>. The
             uploader keeps authorship permanently and can delete the dataset.
           </span>
         </li>
         <li className="flex gap-2">
-          <span aria-hidden className="text-zinc-600">
+          <span aria-hidden className="text-ink-subtle">
             •
           </span>
           <span>
-            Access is <strong className="text-zinc-300">permanent and non-refundable</strong>
+            Access is <strong className="text-ink-muted">permanent and non-refundable</strong>
             . The contract has no revocation or refund path.
           </span>
         </li>
       </ul>
 
       {!connected ? (
-        <div className="text-sm text-amber-100">
+        <div className="text-sm text-amber-700">
           Connect a wallet to purchase access.
         </div>
       ) : (
         <button
           onClick={onPurchase}
           disabled={busy || expired || stage === "done"}
-          className="w-full rounded-xl bg-amber-500 px-5 py-3 text-sm font-semibold text-black transition hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+          className="w-full rounded-xl bg-amber-500 px-5 py-3 text-sm font-semibold text-ink transition hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
         >
           {stage === "idle" && `Buy access · ${price} APT`}
           {stage === "signing" && "Approve in wallet…"}
@@ -143,7 +143,7 @@ export function PurchasePanel({
       )}
 
       {stage === "done" && (
-        <div className="flex items-center gap-2 text-sm text-emerald-300">
+        <div className="flex items-center gap-2 text-sm text-emerald-700">
           <CheckIcon className="h-4 w-4" />
           Access granted. The dataset unlocks below — it will still be verified
           against its on-chain hash before you can download it.
@@ -151,7 +151,7 @@ export function PurchasePanel({
       )}
 
       {error && (
-        <div className="rounded-lg border border-red-500/30 bg-red-500/[0.06] p-3 text-xs text-red-200">
+        <div className="rounded-lg border border-red-600/30 bg-red-500/10 p-3 text-xs text-red-700">
           {error}
         </div>
       )}

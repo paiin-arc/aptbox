@@ -25,7 +25,7 @@ function UploadButton() {
   return (
     <Link
       href="/upload"
-      className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-gradient-to-br from-indigo-600 to-violet-600 px-2.5 py-2 text-sm font-semibold text-white shadow-sm transition hover:from-indigo-700 hover:to-violet-700 active:scale-[0.98] sm:gap-2 sm:px-4"
+      className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-gradient-to-br from-royal to-royal-deep px-2.5 py-2 text-sm font-semibold text-surface shadow-sm transition hover:from-royal-deep hover:to-royal-deep active:scale-[0.98] sm:gap-2 sm:px-4"
     >
       <UploadArrowIcon className="h-4 w-4" />
       {/* Label drops on the narrowest phones so the wallet button keeps room. */}
@@ -46,7 +46,7 @@ function SearchField({
 }) {
   return (
     <div className={`relative ${className}`}>
-      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400">
+      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-subtle">
         <SearchIcon className="h-4 w-4" />
       </span>
       <input
@@ -56,7 +56,7 @@ function SearchField({
         placeholder="Search datasets"
         aria-label="Search datasets"
         // 16px text on mobile: anything smaller makes iOS Safari zoom on focus.
-        className="w-full rounded-lg border border-zinc-200 bg-zinc-50 py-2 pl-9 pr-3 text-base placeholder:text-zinc-400 focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-zinc-800 dark:bg-zinc-900 dark:focus:bg-zinc-950 sm:text-sm"
+        className="w-full rounded-lg border border-line bg-surface-sunken py-2 pl-9 pr-3 text-base text-ink placeholder:text-ink-subtle focus:border-royal focus:bg-surface-raised focus:outline-none focus:ring-2 focus:ring-royal/20 sm:text-sm"
       />
     </div>
   );
@@ -64,14 +64,14 @@ function SearchField({
 
 export function Topbar({ search, onSearchChange, onMenuClick }: TopbarProps) {
   return (
-    <div className="sticky top-0 z-20 border-b border-zinc-200 bg-white/80 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/80">
+    <div className="sticky top-0 z-20 border-b border-line bg-surface/80 backdrop-blur-md">
       <div className="flex items-center gap-2 px-3 py-2.5 sm:gap-3 sm:px-6 sm:py-3">
         {onMenuClick && (
           <button
             onClick={onMenuClick}
             // -ml-1 pulls the optical edge back in line with content below,
             // since the icon button carries its own padding.
-            className="-ml-1 shrink-0 rounded-lg p-2 text-zinc-700 hover:bg-zinc-100 active:scale-95 dark:text-zinc-200 dark:hover:bg-zinc-800 md:hidden"
+            className="-ml-1 shrink-0 rounded-lg p-2 text-ink hover:bg-royal/8 active:scale-95 md:hidden"
             aria-label="Open menu"
           >
             <MenuIcon className="h-5 w-5" />
@@ -84,7 +84,7 @@ export function Topbar({ search, onSearchChange, onMenuClick }: TopbarProps) {
           className="flex min-w-0 items-center gap-1.5 md:hidden"
           aria-label="Dataset Locker home"
         >
-          <AptboxIcon className="h-6 w-6 shrink-0 text-zinc-900 dark:text-zinc-100" />
+          <AptboxIcon className="h-6 w-6 shrink-0 text-ink" />
           <span className="truncate text-base font-bold tracking-tight">
             Locker
           </span>

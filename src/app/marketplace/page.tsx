@@ -42,7 +42,7 @@ type AccessFilter = "any" | "free" | "paid";
  */
 export default function MarketplacePage() {
   return (
-    <div className="relative flex min-h-dvh flex-col text-zinc-100">
+    <div className="relative flex min-h-dvh flex-col text-ink">
       <AppBackdrop />
       <MarketplaceHeader />
       <Suspense fallback={<MarketplaceSkeleton />}>
@@ -54,10 +54,10 @@ export default function MarketplacePage() {
 
 function MarketplaceHeader() {
   return (
-    <header className="sticky top-0 z-30 border-b border-white/5 bg-black/70 backdrop-blur-md">
+    <header className="sticky top-0 z-30 border-b border-line bg-surface/80 backdrop-blur-md">
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
         <Link href="/" className="flex min-w-0 items-center gap-2">
-          <AptboxIcon className="h-6 w-6 shrink-0 text-zinc-100" />
+          <AptboxIcon className="h-6 w-6 shrink-0 text-ink" />
           <span className="truncate text-base font-bold tracking-tight">
             Dataset Locker
           </span>
@@ -77,7 +77,7 @@ function MarketplaceSkeleton() {
       <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
         Marketplace
       </h1>
-      <p className="mt-2 max-w-2xl text-base leading-relaxed text-zinc-400">
+      <p className="mt-2 max-w-2xl text-base leading-relaxed text-ink-muted">
         Every dataset published to the registry, with a SHA-256 committed
         on-chain before it was ever served.
       </p>
@@ -85,7 +85,7 @@ function MarketplaceSkeleton() {
         {Array.from({ length: 6 }).map((_, i) => (
           <div
             key={i}
-            className="h-44 animate-pulse rounded-2xl border border-white/10 bg-white/[0.03]"
+            className="h-44 animate-pulse rounded-2xl border border-line bg-surface-raised/70"
           />
         ))}
       </div>
@@ -208,7 +208,7 @@ function Marketplace() {
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
             Marketplace
           </h1>
-          <p className="mt-2 max-w-2xl text-base leading-relaxed text-zinc-400">
+          <p className="mt-2 max-w-2xl text-base leading-relaxed text-ink-muted">
             Every dataset published on {NETWORK_LABEL[network]}, from{" "}
             {publishers.size} publisher{publishers.size === 1 ? "" : "s"}. Each
             one carries a SHA-256 committed on-chain before it was ever served,
@@ -235,7 +235,7 @@ function Marketplace() {
           {Array.from({ length: 6 }).map((_, i) => (
             <div
               key={i}
-              className="h-44 animate-pulse rounded-2xl border border-white/10 bg-white/[0.03]"
+              className="h-44 animate-pulse rounded-2xl border border-line bg-surface-raised/70"
             />
           ))}
         </div>
@@ -275,7 +275,7 @@ function PublisherHeader({
     <div>
       <button
         onClick={onClear}
-        className="text-sm text-zinc-500 transition hover:text-zinc-300"
+        className="text-sm text-ink-subtle transition hover:text-ink-muted"
       >
         ← All publishers
       </button>
@@ -283,24 +283,24 @@ function PublisherHeader({
         Publisher
       </h1>
       {/* The wallet is the identity — no display names, nothing to spoof. */}
-      <div className="mt-1 break-all font-mono text-sm text-violet-300">
+      <div className="mt-1 break-all font-mono text-sm text-royal">
         {address}
       </div>
       {stats && (
-        <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm text-zinc-400">
+        <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm text-ink-muted">
           <span>
-            <strong className="text-zinc-200">{stats.count}</strong> dataset
+            <strong className="text-ink">{stats.count}</strong> dataset
             {stats.count === 1 ? "" : "s"}
           </span>
           <span>
-            <strong className="text-zinc-200">
+            <strong className="text-ink">
               {formatBytes(stats.bytes)}
             </strong>{" "}
             published
           </span>
           <span>
             since{" "}
-            <strong className="text-zinc-200">
+            <strong className="text-ink">
               {new Date(stats.first * 1000).toLocaleDateString()}
             </strong>
           </span>
@@ -336,14 +336,14 @@ function Filters({
   const pill = (on: boolean) =>
     `rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
       on
-        ? "border-violet-500/50 bg-violet-500/15 text-violet-100"
-        : "border-white/10 bg-white/[0.03] text-zinc-400 hover:text-zinc-200"
+        ? "border-royal/35 bg-royal/15 text-royal"
+        : "border-line bg-surface-raised/70 text-ink-muted hover:text-ink"
     }`;
 
   return (
     <div className="mt-6 space-y-3">
       <div className="relative max-w-sm">
-        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500">
+        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-subtle">
           <SearchIcon className="h-4 w-4" />
         </span>
         <input
@@ -352,7 +352,7 @@ function Filters({
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search by filename"
           aria-label="Search datasets by filename"
-          className="w-full rounded-lg border border-white/10 bg-white/[0.03] py-2 pl-9 pr-3 text-base placeholder:text-zinc-500 focus:border-violet-500/50 focus:outline-none sm:text-sm"
+          className="w-full rounded-lg border border-line bg-surface-raised/70 py-2 pl-9 pr-3 text-base placeholder:text-ink-subtle focus:border-royal/35 focus:outline-none sm:text-sm"
         />
       </div>
 
@@ -385,7 +385,7 @@ function Filters({
         >
           {hideGone ? "Retrievable only" : "Including expired"}
         </button>
-        <span className="ml-1 text-xs text-zinc-500">
+        <span className="ml-1 text-xs text-ink-subtle">
           showing {shown} of {total}
         </span>
       </div>
@@ -402,11 +402,11 @@ function PublisherList({
     (a, b) => b[1].count - a[1].count,
   );
   return (
-    <section className="mt-12 border-t border-white/10 pt-8">
-      <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-500">
+    <section className="mt-12 border-t border-line pt-8">
+      <h2 className="text-sm font-semibold uppercase tracking-wider text-ink-subtle">
         Publishers
       </h2>
-      <p className="mt-1 text-sm text-zinc-500">
+      <p className="mt-1 text-sm text-ink-subtle">
         Identity here is the wallet that signed the upload. It can&apos;t be
         renamed, transferred, or taken over — buying a dataset never changes it.
       </p>
@@ -415,18 +415,18 @@ function PublisherList({
           <Link
             key={addr}
             href={`/marketplace?publisher=${addr}`}
-            className="group flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 transition hover:border-violet-500/40"
+            className="group flex items-center gap-3 rounded-xl border border-line bg-surface-raised/60 px-4 py-3 transition hover:border-royal/45"
           >
             <div className="min-w-0 flex-1">
-              <div className="truncate font-mono text-xs text-violet-300">
+              <div className="truncate font-mono text-xs text-royal">
                 {addr.slice(0, 18)}…{addr.slice(-6)}
               </div>
-              <div className="mt-0.5 text-xs text-zinc-500">
+              <div className="mt-0.5 text-xs text-ink-subtle">
                 {s.count} dataset{s.count === 1 ? "" : "s"} ·{" "}
                 {formatBytes(s.bytes)}
               </div>
             </div>
-            <ArrowRightIcon className="h-4 w-4 shrink-0 text-zinc-600 transition group-hover:text-violet-300" />
+            <ArrowRightIcon className="h-4 w-4 shrink-0 text-ink-subtle transition group-hover:text-royal" />
           </Link>
         ))}
       </div>
@@ -436,12 +436,12 @@ function PublisherList({
 
 function EmptyState({ hasAny }: { hasAny: boolean }) {
   return (
-    <div className="mt-8 flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-white/15 px-4 py-14 text-center">
-      <CategoryIcon id="all" className="h-10 w-10 text-zinc-600" />
-      <div className="mt-3 text-base font-medium text-zinc-300">
+    <div className="mt-8 flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-line px-4 py-14 text-center">
+      <CategoryIcon id="all" className="h-10 w-10 text-ink-subtle" />
+      <div className="mt-3 text-base font-medium text-ink-muted">
         {hasAny ? "Nothing matches those filters" : "No datasets published yet"}
       </div>
-      <div className="mt-1 max-w-sm text-sm leading-relaxed text-zinc-500">
+      <div className="mt-1 max-w-sm text-sm leading-relaxed text-ink-subtle">
         {hasAny
           ? "Try widening the type or access filter."
           : "Once someone uploads a dataset on this network it appears here automatically."}
@@ -449,7 +449,7 @@ function EmptyState({ hasAny }: { hasAny: boolean }) {
       {!hasAny && (
         <Link
           href="/upload"
-          className="mt-4 rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-violet-500"
+          className="mt-4 rounded-lg bg-royal px-4 py-2 text-sm font-semibold text-surface transition hover:bg-royal-deep"
         >
           Publish the first one
         </Link>

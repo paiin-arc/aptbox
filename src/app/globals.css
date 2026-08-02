@@ -1,14 +1,19 @@
 @import "tailwindcss";
 
-/* The app is dark by design — the sidebar, landing and docs are dark-only, and
-   the workspace/upload/share pages carry full `dark:` variants that were only
-   applying when the OS happened to prefer dark. Driving the variant off a class
-   lets us opt in once on <html> so the whole app is consistent. */
+/* The app is light by design, on the reference board's palette. The `dark:`
+   variant is kept pointed at an explicit `.dark` class — which nothing sets
+   any more — so that any stray `dark:` utility stays inert rather than firing
+   off the visitor's OS preference and punching a dark hole in a light page. */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* ---------- Reference palette ----------
+   Sampled from the HOME.svg design board: a royal-blue striped hero over a
+   warm off-white, dropping through steel blue into warm greige. Every colour
+   below is a measured pixel from that board, not an approximation, so the app
+   and the reference stay in the same family. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #faf4f8; /* the board's signature warm off-white */
+  --foreground: #1a2d72; /* deepest indigo — primary ink */
 }
 
 @theme inline {
@@ -16,6 +21,28 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* Surfaces, ink and lines. Semantic rather than a numeric ramp: the app only
+     ever needs a handful of steps, and naming them keeps the intent legible at
+     the call site (`bg-surface` beats `bg-royal-50`). */
+  --color-surface: #faf4f8;
+  --color-surface-raised: #ffffff;
+  --color-surface-sunken: #eceff5;
+  --color-ink: #1a2d72;
+  --color-ink-muted: #4a5478;
+  --color-ink-subtle: #737ab0;
+  --color-line: #d8dfeb;
+
+  /* Brand blues, straight off the board. */
+  --color-royal: #244495;      /* hero royal — primary action */
+  --color-royal-deep: #1a2d72; /* darkest band */
+  --color-royal-mid: #343c76;
+  --color-indigo-soft: #4c59a7;
+  --color-peri: #737ab0;       /* periwinkle stripe */
+  --color-sky: #6f94bb;        /* the eyebrow pill fill */
+  --color-steel: #a1b8cf;      /* steel-blue band */
+  --color-greige: #c8ccd2;     /* warm greige band */
+  --color-azure: #205182;      /* saturated accent */
   /* Tailwind's smallest default breakpoint is sm (40rem), which leaves no way
      to target the 320-390px phones where the topbar action row runs out of
      room. 24rem = 384px, just under an iPhone 14/15 at 390px. */
@@ -36,13 +63,6 @@
   --text-sm--line-height: 1.55;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
@@ -53,11 +73,14 @@ body {
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
 }
 
-/* Glass card — dashboard summary tiles */
+/* Glass card — dashboard summary tiles. On a light page the glass has to be a
+   white lift with an indigo hairline; the old white-on-white wash was invisible
+   once the background stopped being near-black. */
 .ax-card {
-  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
-  border: 1px solid rgba(255,255,255,0.06);
+  background: linear-gradient(180deg, rgba(255,255,255,0.92), rgba(255,255,255,0.72));
+  border: 1px solid rgba(26,45,114,0.10);
   border-radius: 1rem;
+  box-shadow: 0 1px 2px rgba(26,45,114,0.04), 0 8px 24px -12px rgba(26,45,114,0.16);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
 }
@@ -78,12 +101,12 @@ body {
 
 @keyframes ax-glow-breathe {
   0%, 100% {
-    filter: drop-shadow(0 0 6px rgba(255, 140, 40, 0.35))
-      drop-shadow(0 0 16px rgba(255, 140, 40, 0.18));
+    filter: drop-shadow(0 0 6px rgba(36, 68, 149, 0.28))
+      drop-shadow(0 0 16px rgba(36, 68, 149, 0.14));
   }
   50% {
-    filter: drop-shadow(0 0 14px rgba(255, 170, 70, 0.65))
-      drop-shadow(0 0 28px rgba(255, 140, 40, 0.4));
+    filter: drop-shadow(0 0 14px rgba(76, 89, 167, 0.45))
+      drop-shadow(0 0 28px rgba(36, 68, 149, 0.28));
   }
 }
 
@@ -280,7 +303,11 @@ body {
   50%      { transform: scale(1.12) translate3d(-1.2%, -0.8%, 0); }
 }
 .ax-hero-image {
-  opacity: 0.5;
+  /* Was 0.5 against a near-black base, where a heavy vignette buried it behind
+     the copy. The light page has no such veil, and the artwork is itself bright,
+     so it has to come most of the way down to stay a backdrop rather than
+     something body text has to compete with. */
+  opacity: 0.07;
   animation: ax-hero-drift 32s ease-in-out infinite;
   will-change: transform;
 }
@@ -303,21 +330,21 @@ body {
 .ax-ray-1 {
   --ax-ray-rot: -20deg;
   right: 8%;
-  background: linear-gradient(180deg, rgba(96,165,250,0.30), rgba(59,130,246,0.10) 45%, transparent 78%);
+  background: linear-gradient(180deg, rgba(36,68,149,0.22), rgba(36,68,149,0.07) 45%, transparent 78%);
 }
 .ax-ray-2 {
   --ax-ray-rot: -12deg;
   right: 26%;
   width: 14rem;
   animation-delay: 3.5s;
-  background: linear-gradient(180deg, rgba(167,139,250,0.26), rgba(139,92,246,0.08) 50%, transparent 80%);
+  background: linear-gradient(180deg, rgba(115,122,176,0.20), rgba(76,89,167,0.06) 50%, transparent 80%);
 }
 .ax-ray-3 {
   --ax-ray-rot: -26deg;
   right: 46%;
   width: 10rem;
   animation-delay: 7s;
-  background: linear-gradient(180deg, rgba(147,197,253,0.18), transparent 72%);
+  background: linear-gradient(180deg, rgba(161,184,207,0.24), transparent 72%);
 }
 
 /* ---------- Scroll reveal: lift + settle ---------- */

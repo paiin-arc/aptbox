@@ -53,13 +53,13 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  // Let the dark page bleed into the iOS safe areas instead of leaving white
+  // Let the page bleed into the iOS safe areas instead of leaving mismatched
   // bars beside the notch / home indicator.
   viewportFit: "cover",
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
-  ],
+  // One colour for both schemes: the app is light-only now, so handing Safari a
+  // near-black for OS-dark would tint the status bar against a warm off-white
+  // page.
+  themeColor: "#faf4f8",
 };
 
 export default function RootLayout({
@@ -70,9 +70,9 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`dark ${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-      // color-scheme keeps native controls, scrollbars and form widgets dark too
-      style={{ colorScheme: "dark" }}
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      // color-scheme keeps native controls, scrollbars and form widgets light too
+      style={{ colorScheme: "light" }}
     >
       <head>
         {/*

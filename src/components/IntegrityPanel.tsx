@@ -23,11 +23,11 @@ export function IntegrityPanel({
 }) {
   if (state.phase === "idle") {
     return (
-      <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-        <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+      <div className="rounded-xl border border-line bg-surface-raised p-4">
+        <div className="text-xs font-semibold uppercase tracking-wide text-ink-subtle">
           Integrity
         </div>
-        <div className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+        <div className="mt-2 text-sm text-ink-muted">
           Load the dataset to verify it against the hash recorded on Aptos.
         </div>
         <HashRow label="On-chain SHA-256" hash={registryHash} />
@@ -37,11 +37,11 @@ export function IntegrityPanel({
 
   if (state.phase === "checking") {
     return (
-      <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-4 dark:border-indigo-900 dark:bg-indigo-950/30">
-        <div className="flex items-center gap-2 text-sm font-semibold text-indigo-900 dark:text-indigo-200">
+      <div className="rounded-xl border border-royal/25 bg-royal/8 p-4">
+        <div className="flex items-center gap-2 text-sm font-semibold text-royal-deep">
           <span className="relative flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-indigo-500/60" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-indigo-500" />
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-royal/60" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-royal" />
           </span>
           Recomputing SHA-256 from downloaded bytes…
         </div>
@@ -53,14 +53,14 @@ export function IntegrityPanel({
 
   if (result.status === "verified") {
     return (
-      <div className="rounded-xl border border-emerald-300 bg-emerald-50 p-4 dark:border-emerald-800 dark:bg-emerald-950/30">
+      <div className="rounded-xl border border-emerald-300 bg-emerald-50 p-4">
         <div className="flex items-center gap-2">
-          <CheckIcon className="h-4 w-4 shrink-0 text-emerald-700 dark:text-emerald-300" />
-          <div className="text-sm font-semibold text-emerald-900 dark:text-emerald-200">
+          <CheckIcon className="h-4 w-4 shrink-0 text-emerald-700" />
+          <div className="text-sm font-semibold text-emerald-900">
             Integrity verified
           </div>
         </div>
-        <div className="mt-1.5 text-xs text-emerald-800 dark:text-emerald-300">
+        <div className="mt-1.5 text-xs text-emerald-800">
           The {formatBytes(result.sizeBytes)} returned by Shelby hash to exactly
           the digest committed on Aptos at upload time. This dataset is
           byte-for-byte identical to what the uploader registered.
@@ -72,14 +72,14 @@ export function IntegrityPanel({
 
   if (result.status === "tampered") {
     return (
-      <div className="rounded-xl border-2 border-red-400 bg-red-50 p-4 dark:border-red-700 dark:bg-red-950/40">
+      <div className="rounded-xl border-2 border-red-400 bg-red-50 p-4">
         <div className="flex items-center gap-2">
-          <WarningTriangleIcon className="h-4 w-4 shrink-0 text-red-600 dark:text-red-400" />
-          <div className="text-sm font-semibold text-red-900 dark:text-red-200">
+          <WarningTriangleIcon className="h-4 w-4 shrink-0 text-red-600" />
+          <div className="text-sm font-semibold text-red-900">
             Integrity check FAILED — do not trust this dataset
           </div>
         </div>
-        <div className="mt-1.5 text-xs text-red-800 dark:text-red-300">
+        <div className="mt-1.5 text-xs text-red-800">
           The bytes Shelby returned do not match the hash committed on-chain.
           The dataset has been altered, truncated, or replaced since it was
           registered. Do not use it for training.
@@ -91,11 +91,11 @@ export function IntegrityPanel({
   }
 
   return (
-    <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/30">
-      <div className="text-sm font-semibold text-amber-900 dark:text-amber-200">
+    <div className="rounded-xl border border-amber-300 bg-amber-50 p-4">
+      <div className="text-sm font-semibold text-amber-900">
         Cannot verify
       </div>
-      <div className="mt-1.5 text-xs text-amber-800 dark:text-amber-300">
+      <div className="mt-1.5 text-xs text-amber-800">
         This registry entry has no valid SHA-256 commitment, so integrity
         can&apos;t be proven. Treat the contents as unverified.
       </div>
@@ -115,10 +115,10 @@ function HashRow({
 }) {
   const color =
     tone === "ok"
-      ? "text-emerald-800 dark:text-emerald-300"
+      ? "text-emerald-800"
       : tone === "bad"
-        ? "text-red-800 dark:text-red-300"
-        : "text-zinc-600 dark:text-zinc-400";
+        ? "text-red-800"
+        : "text-ink-muted";
   return (
     <div className="mt-2.5">
       <div className={`text-2xs font-medium uppercase tracking-wide ${color}`}>

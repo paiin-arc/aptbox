@@ -58,16 +58,16 @@ export function Section({
       id={id}
       ref={ref}
       data-revealed={revealed}
-      className="ax-lift scroll-mt-24 border-t border-white/5 pt-10 sm:pt-14"
+      className="ax-lift scroll-mt-24 border-t border-line pt-10 sm:pt-14"
     >
-      <div className="text-xs font-semibold uppercase tracking-[0.18em] text-violet-300">
+      <div className="text-xs font-semibold uppercase tracking-[0.18em] text-royal">
         {eyebrow}
       </div>
-      <h2 className="mt-3 text-2xl font-semibold leading-tight tracking-tight text-zinc-50 sm:text-3xl">
+      <h2 className="mt-3 text-2xl font-semibold leading-tight tracking-tight text-ink sm:text-3xl">
         <Words text={title} />
       </h2>
       {lead && (
-        <p className="mt-4 max-w-3xl text-base leading-relaxed text-zinc-400 sm:text-base">
+        <p className="mt-4 max-w-3xl text-base leading-relaxed text-ink-muted sm:text-base">
           {lead}
         </p>
       )}
@@ -101,7 +101,7 @@ export function Figure({
       style={{ ["--ax-lift-delay" as string]: "120ms" }}
     >
       <div
-        className={`rounded-2xl border border-white/10 bg-white/[0.02] p-4 backdrop-blur-sm sm:p-6 ${
+        className={`rounded-2xl border border-line bg-surface-raised/60 p-4 backdrop-blur-sm sm:p-6 ${
           scroll ? "overflow-x-auto" : ""
         }`}
       >
@@ -109,7 +109,7 @@ export function Figure({
           {children}
         </div>
       </div>
-      <figcaption className="mt-2.5 text-xs leading-relaxed text-zinc-500">
+      <figcaption className="mt-2.5 text-xs leading-relaxed text-ink-subtle">
         {caption}
       </figcaption>
     </figure>
@@ -117,10 +117,10 @@ export function Figure({
 }
 
 const TONES = {
-  violet: "border-violet-500/30 bg-violet-500/[0.07] text-violet-100",
-  emerald: "border-emerald-500/30 bg-emerald-500/[0.07] text-emerald-100",
-  amber: "border-amber-500/30 bg-amber-500/[0.07] text-amber-100",
-  red: "border-red-500/30 bg-red-500/[0.07] text-red-100",
+  violet: "border-royal/35 bg-royal/[0.07] text-royal",
+  emerald: "border-emerald-600/30 bg-emerald-500/12 text-emerald-700",
+  amber: "border-amber-600/30 bg-amber-500/12 text-amber-700",
+  red: "border-red-600/30 bg-red-500/10 text-red-700",
 } as const;
 
 export function Callout({
@@ -152,17 +152,17 @@ export function CodeBlock({
 }) {
   return (
     <div className="mt-6">
-      <div className="overflow-x-auto rounded-xl border border-white/10 bg-black/60 p-4">
-        <pre className="font-mono text-xs leading-relaxed text-zinc-300">
+      <div className="overflow-x-auto rounded-xl border border-line bg-surface-sunken p-4">
+        <pre className="font-mono text-xs leading-relaxed text-ink-muted">
           {lines.map((l, i) => (
-            <div key={i} className={l.comment ? "text-zinc-500" : ""}>
+            <div key={i} className={l.comment ? "text-ink-subtle" : ""}>
               {l.text || " "}
             </div>
           ))}
         </pre>
       </div>
       {caption && (
-        <div className="mt-2 text-xs leading-relaxed text-zinc-500">
+        <div className="mt-2 text-xs leading-relaxed text-ink-subtle">
           {caption}
         </div>
       )}
@@ -189,12 +189,12 @@ export function CompareCard({
     <div
       className={`rounded-2xl border p-5 ${
         good
-          ? "border-emerald-500/30 bg-emerald-500/[0.05]"
-          : "border-red-500/25 bg-red-500/[0.04]"
+          ? "border-emerald-600/30 bg-emerald-500/12"
+          : "border-red-600/30 bg-red-500/10"
       }`}
     >
       <div
-        className={`text-sm font-semibold ${good ? "text-emerald-200" : "text-red-200"}`}
+        className={`text-sm font-semibold ${good ? "text-emerald-700" : "text-red-700"}`}
       >
         {title}
       </div>
@@ -202,7 +202,7 @@ export function CompareCard({
         {points.map((p) => (
           <li
             key={p}
-            className="flex gap-2 text-sm leading-relaxed text-zinc-400"
+            className="flex gap-2 text-sm leading-relaxed text-ink-muted"
           >
             <span
               aria-hidden

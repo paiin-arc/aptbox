@@ -87,13 +87,13 @@ export default function VerifyPage() {
   );
 
   return (
-    <div className="relative flex min-h-dvh flex-col text-zinc-100">
+    <div className="relative flex min-h-dvh flex-col text-ink">
       <AppBackdrop />
 
-      <header className="sticky top-0 z-30 border-b border-white/5 bg-black/70 backdrop-blur-md">
+      <header className="sticky top-0 z-30 border-b border-line bg-surface/80 backdrop-blur-md">
         <div className="mx-auto flex w-full max-w-4xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <Link href="/" className="flex min-w-0 items-center gap-2">
-            <AptboxIcon className="h-6 w-6 shrink-0 text-zinc-100" />
+            <AptboxIcon className="h-6 w-6 shrink-0 text-ink" />
             <span className="truncate text-base font-bold tracking-tight">
               Dataset Locker
             </span>
@@ -109,13 +109,13 @@ export default function VerifyPage() {
         <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
           Check a dataset
         </h1>
-        <p className="mt-2 max-w-2xl text-base leading-relaxed text-zinc-400">
+        <p className="mt-2 max-w-2xl text-base leading-relaxed text-ink-muted">
           Drop a file you were given. It&apos;s hashed in your browser and
           compared against every dataset registered on{" "}
           {NETWORK_LABEL[network]} — so you can tell whether it&apos;s the
           published version, a renamed copy, or something else wearing its name.
         </p>
-        <p className="mt-2 flex items-center gap-1.5 text-sm text-emerald-300/80">
+        <p className="mt-2 flex items-center gap-1.5 text-sm text-emerald-700/80">
           <LockIcon className="h-3.5 w-3.5" />
           Nothing is uploaded. No wallet required.
         </p>
@@ -139,7 +139,7 @@ export default function VerifyPage() {
         />
 
         {error && (
-          <div className="mt-4 rounded-xl border border-red-500/30 bg-red-500/[0.06] p-4 text-sm text-red-200">
+          <div className="mt-4 rounded-xl border border-red-600/30 bg-red-500/10 p-4 text-sm text-red-700">
             {error}
           </div>
         )}
@@ -180,15 +180,15 @@ function ScopePicker({
             }
             className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
               active
-                ? "border-violet-500/50 bg-violet-500/15 text-violet-100"
-                : "border-white/10 bg-white/[0.03] text-zinc-400 hover:text-zinc-200"
+                ? "border-royal/35 bg-royal/15 text-royal"
+                : "border-line bg-surface-raised/70 text-ink-muted hover:text-ink"
             } ${disabled ? "cursor-not-allowed opacity-40" : ""}`}
           >
             {s === "all" ? "All datasets" : "Only mine"}
           </button>
         );
       })}
-      <span className="text-xs text-zinc-500">
+      <span className="text-xs text-ink-subtle">
         comparing against {scoped} of {total} registered
       </span>
     </div>
@@ -227,8 +227,8 @@ function DropZone({
       }}
       className={`mt-5 rounded-2xl border-2 border-dashed p-8 text-center transition sm:p-12 ${
         dragging
-          ? "border-violet-400 bg-violet-500/[0.08]"
-          : "border-white/15 bg-white/[0.02] hover:border-violet-500/40"
+          ? "border-royal/35 bg-royal/[0.08]"
+          : "border-line bg-surface-raised/60 hover:border-royal/45"
       }`}
     >
       <input
@@ -245,13 +245,13 @@ function DropZone({
 
       {busy ? (
         <div className="space-y-3">
-          <div className="text-sm font-medium text-zinc-200">
+          <div className="text-sm font-medium text-ink">
             Hashing locally…{hashPct !== null ? ` ${hashPct}%` : ""}
           </div>
           {hashPct !== null && (
-            <div className="mx-auto h-1 w-full max-w-xs overflow-hidden rounded-full bg-white/10">
+            <div className="mx-auto h-1 w-full max-w-xs overflow-hidden rounded-full bg-surface-raised/90">
               <div
-                className="h-full rounded-full bg-violet-500 transition-[width] duration-200"
+                className="h-full rounded-full bg-royal transition-[width] duration-200"
                 style={{ width: `${hashPct}%` }}
               />
             </div>
@@ -259,15 +259,15 @@ function DropZone({
         </div>
       ) : (
         <>
-          <UploadArrowIcon className="mx-auto h-8 w-8 text-zinc-500" />
-          <div className="mt-3 text-base font-medium text-zinc-200">
+          <UploadArrowIcon className="mx-auto h-8 w-8 text-ink-subtle" />
+          <div className="mt-3 text-base font-medium text-ink">
             Drop a file here
           </div>
-          <div className="mt-1 text-sm text-zinc-500">
+          <div className="mt-1 text-sm text-ink-subtle">
             or{" "}
             <button
               onClick={() => inputRef.current?.click()}
-              className="text-violet-300 underline-offset-2 hover:underline"
+              className="text-royal underline-offset-2 hover:underline"
             >
               choose one
             </button>
@@ -281,26 +281,26 @@ function DropZone({
 
 const VERDICTS = {
   authentic: {
-    tone: "border-emerald-500/40 bg-emerald-500/[0.07]",
-    title: "text-emerald-200",
+    tone: "border-emerald-600/30 bg-emerald-500/12",
+    title: "text-emerald-700",
     heading: "This is the published dataset",
     body: "The bytes and the filename both match a registered entry. Nothing about this file has changed since it was published.",
   },
   conflict: {
-    tone: "border-red-500/50 bg-red-500/[0.07]",
-    title: "text-red-200",
+    tone: "border-red-600/30 bg-red-500/10",
+    title: "text-red-700",
     heading: "A different dataset owns this filename",
     body: "These bytes are not what was published under this name. Treat the file as unverified — the legitimate entry is listed below.",
   },
   renamed: {
-    tone: "border-amber-500/40 bg-amber-500/[0.07]",
-    title: "text-amber-100",
+    tone: "border-amber-600/30 bg-amber-500/12",
+    title: "text-amber-700",
     heading: "Registered, under a different name",
     body: "The bytes match a registered dataset exactly, but it was published with a different filename. The content is genuine; the name is not the published one.",
   },
   unknown: {
-    tone: "border-white/15 bg-white/[0.03]",
-    title: "text-zinc-200",
+    tone: "border-line bg-surface-raised/70",
+    title: "text-ink",
     heading: "Not in this registry",
     body: "No dataset here shares these bytes or this filename. That is not evidence of tampering — it simply was never registered on this network.",
   },
@@ -330,17 +330,17 @@ function Result({
             <div className={`text-base font-semibold ${v.title}`}>
               {v.heading}
             </div>
-            <div className="mt-1.5 text-sm leading-relaxed text-zinc-300/90">
+            <div className="mt-1.5 text-sm leading-relaxed text-ink-muted/90">
               {v.body}
             </div>
           </div>
         </div>
 
-        <div className="mt-4 border-t border-white/10 pt-3">
-          <div className="text-2xs font-medium uppercase tracking-wide text-zinc-500">
+        <div className="mt-4 border-t border-line pt-3">
+          <div className="text-2xs font-medium uppercase tracking-wide text-ink-subtle">
             {report.fileName} · {formatBytes(report.sizeBytes)}
           </div>
-          <div className="mt-1 break-all font-mono text-xs leading-relaxed text-zinc-400">
+          <div className="mt-1 break-all font-mono text-xs leading-relaxed text-ink-muted">
             {formatHashForDisplay(report.hashHex)}
           </div>
         </div>
@@ -378,7 +378,7 @@ function Result({
         />
       )}
 
-      <p className="mt-6 text-xs leading-relaxed text-zinc-500">
+      <p className="mt-6 text-xs leading-relaxed text-ink-subtle">
         Compared against {report.scanned} dataset
         {report.scanned === 1 ? "" : "s"}. Filenames are matched after the same
         sanitising applied at upload, so spaces and symbols become underscores
@@ -404,34 +404,34 @@ function MatchList({
 }) {
   const ring =
     tone === "red"
-      ? "border-red-500/25"
+      ? "border-red-600/30"
       : tone === "amber"
-        ? "border-amber-500/25"
-        : "border-emerald-500/25";
+        ? "border-amber-600/30"
+        : "border-emerald-600/30";
   return (
-    <div className={`mt-4 rounded-xl border ${ring} bg-white/[0.02] p-4`}>
-      <div className="text-sm font-semibold text-zinc-100">{title}</div>
-      <div className="mt-1 text-xs leading-relaxed text-zinc-500">{note}</div>
+    <div className={`mt-4 rounded-xl border ${ring} bg-surface-raised/60 p-4`}>
+      <div className="text-sm font-semibold text-ink">{title}</div>
+      <div className="mt-1 text-xs leading-relaxed text-ink-subtle">{note}</div>
       <ul className="mt-3 space-y-2">
         {files.map((f) => (
           <li key={f.fileId}>
             <Link
               href={`/f/${f.fileId}?n=${network}`}
-              className="group flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2 transition hover:border-violet-500/40"
+              className="group flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-line bg-surface-raised/60 px-3 py-2 transition hover:border-royal/45"
             >
-              <span className="text-sm font-medium text-zinc-200">
+              <span className="text-sm font-medium text-ink">
                 #{f.fileId}
               </span>
-              <span className="min-w-0 flex-1 truncate text-sm text-zinc-300">
+              <span className="min-w-0 flex-1 truncate text-sm text-ink-muted">
                 {registryFileName(f.shelbyCid)}
               </span>
-              <span className="text-xs text-zinc-500">
+              <span className="text-xs text-ink-subtle">
                 {formatBytes(f.sizeBytes)}
               </span>
-              <span className="text-xs text-zinc-500">
+              <span className="text-xs text-ink-subtle">
                 {new Date(f.createdAt * 1000).toLocaleDateString()}
               </span>
-              <ArrowRightIcon className="h-3.5 w-3.5 text-zinc-600 transition group-hover:text-violet-300" />
+              <ArrowRightIcon className="h-3.5 w-3.5 text-ink-subtle transition group-hover:text-royal" />
             </Link>
           </li>
         ))}

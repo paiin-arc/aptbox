@@ -4,11 +4,13 @@
  *
  * Lighter than DocsBackdrop — no canvas, no hero image, no per-frame work,
  * because these screens carry dense content and an animated starfield behind a
- * dataset grid competes with it. But it deliberately uses the *same palette* as
- * the landing page: a warm Shelby-orange bloom from the upper right over a
- * near-black base, with a violet counterweight. An earlier version was a flat
- * blue-black with two faint blobs, which read as a different product from the
- * hero and docs pages.
+ * dataset grid competes with it. It takes the reference board's palette: a warm
+ * off-white base lit by a royal-blue bloom from the upper right, with a steel
+ * counterweight, so the app reads as the same product as the hero.
+ *
+ * On a light page the blooms have to stay far weaker than their dark-page
+ * ancestors — tint on white shows at a fraction of the alpha that the same
+ * colour needed to register against near-black.
  *
  * Purely decorative, so it is aria-hidden and pointer-events:none. Callers
  * render it first and give their own content `relative z-10`.
@@ -17,47 +19,47 @@ export function AppBackdrop() {
   return (
     <div
       aria-hidden
-      className="pointer-events-none fixed inset-0 overflow-hidden bg-[#0a0a0a]"
+      className="pointer-events-none fixed inset-0 overflow-hidden bg-surface"
     >
-      {/* Shelby's dotted brand pattern, at the landing page's weight. */}
+      {/* Dotted brand pattern, re-tinted indigo. */}
       <div
-        className="absolute inset-0 opacity-50"
+        className="absolute inset-0 opacity-60"
         style={{
           backgroundImage:
-            "radial-gradient(circle at 1.5px 1.5px, rgba(255,110,20,0.16) 1px, transparent 0)",
+            "radial-gradient(circle at 1.5px 1.5px, rgba(36,68,149,0.10) 1px, transparent 0)",
           backgroundSize: "22px 22px",
         }}
       />
 
-      {/* The signature warm glow. Large and soft so it reads as light in the
-          room rather than a coloured shape. */}
+      {/* The signature glow, now royal rather than warm. Large and soft so it
+          reads as light in the room rather than a coloured shape. */}
       <div
         className="ax-anim-blob absolute -top-[30%] right-[-20%] h-[46rem] w-[46rem] rounded-full blur-3xl"
         style={{
           background:
-            "radial-gradient(circle, rgba(255,122,20,0.20), rgba(255,106,20,0.07) 45%, transparent 72%)",
+            "radial-gradient(circle, rgba(36,68,149,0.16), rgba(76,89,167,0.06) 45%, transparent 72%)",
         }}
       />
 
-      {/* Violet counterweight, bottom-left, so the page isn't lit from one side
+      {/* Steel counterweight, bottom-left, so the page isn't lit from one side
           only. Offset timing keeps the two from pulsing together. */}
       <div
         className="ax-anim-blob absolute bottom-[-28%] left-[-18%] h-[40rem] w-[40rem] rounded-full blur-3xl"
         style={{
           background:
-            "radial-gradient(circle, rgba(167,139,250,0.16), rgba(139,92,246,0.05) 45%, transparent 72%)",
+            "radial-gradient(circle, rgba(161,184,207,0.34), rgba(115,122,176,0.10) 45%, transparent 72%)",
           animationDelay: "3s",
           animationDuration: "11s",
         }}
       />
 
-      {/* Vignette. Lighter than before — the old 0.75 flattened the glow it was
-          supposed to frame. */}
+      {/* Vignette, inverted for a light page: the board darkens to greige at the
+          edges rather than to black. */}
       <div
         className="absolute inset-0"
         style={{
           background:
-            "radial-gradient(ellipse at 60% 35%, transparent 32%, rgba(6,5,10,0.62) 88%)",
+            "radial-gradient(ellipse at 60% 35%, transparent 34%, rgba(200,204,210,0.42) 88%)",
         }}
       />
     </div>
