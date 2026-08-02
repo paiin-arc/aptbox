@@ -15,12 +15,18 @@ import {
   PlayIcon,
 } from "./CategoryIcon";
 
+/**
+ * Placeholder tint behind a thumbnail-less card, one per media type. The board
+ * is a single blue family, so these separate by value and temperature within it
+ * rather than by hue — enough to tell the types apart in a grid without
+ * importing colours the reference never uses.
+ */
 const CATEGORY_BG: Record<string, string> = {
-  picture: "from-pink-100 to-rose-100 dark:from-pink-950/40 dark:to-rose-950/40",
-  video: "from-blue-100 to-indigo-100 dark:from-blue-950/40 dark:to-indigo-950/40",
-  audio: "from-purple-100 to-fuchsia-100 dark:from-purple-950/40 dark:to-fuchsia-950/40",
-  document: "from-amber-100 to-yellow-100 dark:from-amber-950/40 dark:to-yellow-950/40",
-  other: "from-zinc-100 to-slate-100 dark:from-zinc-900 dark:to-slate-900",
+  picture: "from-sky/35 to-steel/25",
+  video: "from-steel/40 to-royal/20",
+  audio: "from-peri/35 to-indigo-soft/20",
+  document: "from-steel/30 to-greige/45",
+  other: "from-greige/50 to-steel/30",
 };
 
 export function FileCard({ file }: { file: FileMeta }) {
@@ -43,7 +49,7 @@ export function FileCard({ file }: { file: FileMeta }) {
   return (
     <Link
       href={`/f/${file.fileId}`}
-      className="group flex flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white transition active:scale-[0.98] hover:border-indigo-300 hover:shadow-lg hover:-translate-y-0.5 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-indigo-700"
+      className="group flex flex-col overflow-hidden rounded-xl border border-line bg-surface-raised transition active:scale-[0.98] hover:border-royal/45 hover:shadow-lg hover:-translate-y-0.5"
     >
       <div
         className={`relative flex h-24 items-center justify-center overflow-hidden bg-gradient-to-br sm:h-32 ${CATEGORY_BG[cat]}`}
@@ -60,7 +66,7 @@ export function FileCard({ file }: { file: FileMeta }) {
               className="h-full w-full object-cover object-top transition-transform duration-300 group-hover:scale-[1.04]"
             />
             <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-            <span className="pointer-events-none absolute right-2 top-2 rounded-md bg-white/85 px-1.5 py-0.5 text-2xs font-medium text-zinc-800 backdrop-blur dark:bg-black/60 dark:text-zinc-100">
+            <span className="pointer-events-none absolute right-2 top-2 rounded-md bg-surface/85 px-1.5 py-0.5 text-2xs font-medium text-ink backdrop-blur">
               Preview
             </span>
           </>
@@ -77,11 +83,11 @@ export function FileCard({ file }: { file: FileMeta }) {
               className="h-full w-full object-cover object-top"
             />
             <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-            <span className="pointer-events-none absolute left-2 top-2 inline-flex items-center gap-1 rounded-md bg-black/70 px-1.5 py-0.5 text-2xs font-medium text-white">
+            <span className="pointer-events-none absolute left-2 top-2 inline-flex items-center gap-1 rounded-md bg-royal-deep/70 px-1.5 py-0.5 text-2xs font-medium text-surface">
               <PlayIcon className="h-2.5 w-2.5" />
               Video
             </span>
-            <span className="pointer-events-none absolute right-2 top-2 rounded-md bg-white/85 px-1.5 py-0.5 text-2xs font-medium text-zinc-800 backdrop-blur dark:bg-black/60 dark:text-zinc-100">
+            <span className="pointer-events-none absolute right-2 top-2 rounded-md bg-surface/85 px-1.5 py-0.5 text-2xs font-medium text-ink backdrop-blur">
               Preview
             </span>
           </>
@@ -90,7 +96,7 @@ export function FileCard({ file }: { file: FileMeta }) {
         {!previewUrl && (
           <CategoryIcon
             id={cat}
-            className="h-12 w-12 text-zinc-700/70 dark:text-zinc-300/70"
+            className="h-12 w-12 text-ink-muted/70"
             animate
           />
         )}
@@ -98,12 +104,12 @@ export function FileCard({ file }: { file: FileMeta }) {
 
       <div className="flex flex-1 flex-col gap-0.5 p-2.5 sm:p-3">
         <div
-          className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100 sm:text-sm"
+          className="truncate text-sm font-medium text-ink sm:text-sm"
           title={display}
         >
           {display}
         </div>
-        <div className="truncate text-xs text-zinc-500 sm:text-xs">
+        <div className="truncate text-xs text-ink-subtle sm:text-xs">
           {formatBytes(file.sizeBytes)}
           <span className="hidden sm:inline">
             {" · "}
@@ -121,7 +127,7 @@ export function FileCard({ file }: { file: FileMeta }) {
               acknowledged the blob — the steady state is silent. */}
           {file.isWritten === false && (
             <span
-              className="ax-badge bg-amber-500/10 text-amber-300 ring-1 ring-amber-500/25"
+              className="ax-badge bg-amber-500/12 text-amber-800 ring-1 ring-amber-600/30"
               title="Uploaded to the gateway but not yet acknowledged by storage providers"
             >
               Pending
@@ -130,8 +136,8 @@ export function FileCard({ file }: { file: FileMeta }) {
           <span
             className={`ax-badge inline-flex items-center gap-1 ring-1 ${
               isPublic
-                ? "bg-emerald-500/10 text-emerald-300 ring-emerald-500/25"
-                : "bg-violet-500/10 text-violet-300 ring-violet-500/25"
+                ? "bg-emerald-500/12 text-emerald-700 ring-emerald-600/30"
+                : "bg-royal/10 text-royal ring-royal/25"
             }`}
             title={
               isPublic
@@ -143,7 +149,7 @@ export function FileCard({ file }: { file: FileMeta }) {
             {access}
           </span>
           {file.flagCount > 0 && (
-            <span className="inline-flex items-center gap-1 rounded-md bg-red-50 px-1.5 py-0.5 text-2xs font-medium text-red-700 dark:bg-red-950/40 dark:text-red-300">
+            <span className="inline-flex items-center gap-1 rounded-md bg-red-50 px-1.5 py-0.5 text-2xs font-medium text-red-700">
               <FlagIcon className="h-2.5 w-2.5" />
               {file.flagCount}
             </span>
@@ -153,10 +159,10 @@ export function FileCard({ file }: { file: FileMeta }) {
             const urgent = exp.severity === "expired" || exp.severity === "warn";
             const cls =
               exp.severity === "expired"
-                ? "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300"
+                ? "bg-red-50 text-red-700"
                 : exp.severity === "warn"
-                  ? "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
-                  : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400";
+                  ? "bg-amber-50 text-amber-700"
+                  : "bg-surface-sunken text-ink-muted";
             return (
               <span
                 // A comfortable expiry is noise on a phone; an urgent one isn't.

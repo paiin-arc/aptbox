@@ -79,14 +79,14 @@ export function ListingCard({
 
   return (
     <div
-      className={`flex flex-col overflow-hidden rounded-2xl border bg-white/[0.02] transition ${
+      className={`flex flex-col overflow-hidden rounded-2xl border bg-surface-raised/60 transition ${
         bytesGone
-          ? "border-white/5 opacity-60 hover:opacity-100"
-          : "border-white/10 hover:border-violet-500/30"
+          ? "border-line opacity-60 hover:opacity-100"
+          : "border-line hover:border-royal/45"
       }`}
     >
       <Link href={`/f/${file.fileId}?n=${network}`} className="group block">
-        <div className="relative flex h-24 items-center justify-center overflow-hidden border-b border-white/5 bg-black/30">
+        <div className="relative flex h-24 items-center justify-center overflow-hidden border-b border-line bg-surface-sunken">
           {previewUrl && cat === "picture" ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -107,16 +107,16 @@ export function ListingCard({
               className="h-full w-full object-cover object-top"
             />
           ) : (
-            <div className="flex flex-col items-center gap-2 text-zinc-600">
+            <div className="flex flex-col items-center gap-2 text-ink-subtle">
               <CategoryIcon id={cat} className="h-7 w-7" />
               {bytesGone && (
-                <span className="inline-flex items-center gap-1 text-2xs font-medium uppercase tracking-wider text-zinc-500">
+                <span className="inline-flex items-center gap-1 text-2xs font-medium uppercase tracking-wider text-ink-subtle">
                   Storage expired
                 </span>
               )}
               {isPaid && (
                 <span
-                  className="inline-flex items-center gap-1 text-2xs font-medium uppercase tracking-wider text-amber-300/80"
+                  className="inline-flex items-center gap-1 text-2xs font-medium uppercase tracking-wider text-amber-700/80"
                   title="The preview is withheld in this UI, but the stored bytes are public on Shelby"
                 >
                   <LockIcon className="h-3 w-3" />
@@ -132,7 +132,7 @@ export function ListingCard({
         <div className="flex items-start justify-between gap-2">
           <Link
             href={`/f/${file.fileId}?n=${network}`}
-            className="min-w-0 flex-1 truncate text-sm font-medium text-zinc-100 hover:text-violet-200"
+            className="min-w-0 flex-1 truncate text-sm font-medium text-ink hover:text-royal"
             title={name}
           >
             {name}
@@ -140,10 +140,10 @@ export function ListingCard({
           <span
             className={`ax-badge shrink-0 ring-1 ${
               isPublic
-                ? "bg-emerald-500/10 text-emerald-300 ring-emerald-500/25"
+                ? "bg-emerald-500/12 text-emerald-700 ring-emerald-600/30"
                 : isPaid
-                  ? "bg-amber-500/10 text-amber-200 ring-amber-500/25"
-                  : "bg-violet-500/10 text-violet-300 ring-violet-500/25"
+                  ? "bg-amber-500/12 text-amber-700 ring-amber-600/30"
+                  : "bg-royal/10 text-royal ring-royal/25"
             }`}
           >
             {isPaid ? `${aptFromOctas(file.priceOctas)} APT` : accessLabel(file.accessType)}
@@ -152,7 +152,7 @@ export function ListingCard({
 
         {bytesGone && (
           <span
-            className="inline-flex w-fit items-center gap-1 rounded-md bg-zinc-500/10 px-1.5 py-0.5 text-2xs font-medium text-zinc-400 ring-1 ring-white/10"
+            className="inline-flex w-fit items-center gap-1 rounded-md bg-ink/6 px-1.5 py-0.5 text-2xs font-medium text-ink-muted ring-1 ring-line"
             title="The on-chain record and its hash are permanent, but the Shelby storage lease has ended — these bytes are no longer retrievable"
           >
             <ClockIcon className="h-2.5 w-2.5" />
@@ -162,7 +162,7 @@ export function ListingCard({
 
         {!isPublic && !bytesGone && (
           <span
-            className="inline-flex w-fit items-center gap-1 rounded-md bg-orange-500/10 px-1.5 py-0.5 text-2xs font-medium text-orange-300/90 ring-1 ring-orange-500/20"
+            className="inline-flex w-fit items-center gap-1 rounded-md bg-sky/12 px-1.5 py-0.5 text-2xs font-medium text-sky/90 ring-1 ring-sky/25"
             title="Shelby stores blobs openly — anyone with the account and blob name can fetch these bytes without paying"
           >
             <LockIcon className="h-2.5 w-2.5" />
@@ -170,7 +170,7 @@ export function ListingCard({
           </span>
         )}
 
-        <div className="text-xs text-zinc-500">
+        <div className="text-xs text-ink-subtle">
           {formatBytes(file.sizeBytes)} · {file.mimeType || "unknown"} ·{" "}
           {new Date(file.createdAt * 1000).toLocaleDateString()}
         </div>
@@ -179,7 +179,7 @@ export function ListingCard({
             so it gets a real affordance rather than a tooltip. */}
         <button
           onClick={() => setShowDesc((v) => !v)}
-          className="mt-0.5 flex items-center gap-1.5 self-start rounded-md border border-white/10 bg-white/[0.03] px-2 py-1 text-xs font-medium text-zinc-300 transition hover:border-violet-500/40 hover:text-violet-200"
+          className="mt-0.5 flex items-center gap-1.5 self-start rounded-md border border-line bg-surface-raised/70 px-2 py-1 text-xs font-medium text-ink-muted transition hover:border-royal/45 hover:text-royal"
           aria-expanded={showDesc}
         >
           <DocsIcon className="h-3 w-3" />
@@ -188,41 +188,41 @@ export function ListingCard({
         </button>
 
         {showDesc && (
-          <div className="rounded-lg border border-white/10 bg-black/30 p-2.5">
+          <div className="rounded-lg border border-line bg-surface-raised/70 p-2.5">
             {descLoading ? (
-              <div className="text-xs text-zinc-500">Reading from chain…</div>
+              <div className="text-xs text-ink-subtle">Reading from chain…</div>
             ) : description ? (
               <>
-                <p className="whitespace-pre-wrap text-xs leading-relaxed text-zinc-300">
+                <p className="whitespace-pre-wrap text-xs leading-relaxed text-ink-muted">
                   {description}
                 </p>
                 {/* Uploader-supplied text is a claim, not a verified fact. Say so
                     next to it, or a good description becomes a way to make a
                     masquerade listing look legitimate. */}
-                <div className="mt-2 text-2xs text-zinc-600">
+                <div className="mt-2 text-2xs text-ink-subtle">
                   Written by the publisher. Not verified — check the hash.
                 </div>
               </>
             ) : (
-              <div className="text-xs text-zinc-500">
+              <div className="text-xs text-ink-subtle">
                 The publisher hasn&apos;t described this dataset.
               </div>
             )}
           </div>
         )}
 
-        <div className="mt-auto flex items-center justify-between gap-2 border-t border-white/5 pt-2.5">
+        <div className="mt-auto flex items-center justify-between gap-2 border-t border-line pt-2.5">
           {showPublisher ? (
             <Link
               href={`/marketplace?publisher=${file.uploader}`}
-              className="truncate font-mono text-2xs text-violet-300/70 hover:text-violet-200"
+              className="truncate font-mono text-2xs text-royal/70 hover:text-royal"
               title={`Published by ${file.uploader}`}
             >
               {file.uploader.slice(0, 8)}…{file.uploader.slice(-4)}
             </Link>
           ) : (
             <span
-              className="truncate font-mono text-2xs text-zinc-600"
+              className="truncate font-mono text-2xs text-ink-subtle"
               title={file.contentHash}
             >
               {file.contentHash.slice(0, 14)}…
@@ -230,7 +230,7 @@ export function ListingCard({
           )}
           <Link
             href="/verify"
-            className="shrink-0 text-2xs font-medium text-zinc-500 underline-offset-2 hover:text-violet-300 hover:underline"
+            className="shrink-0 text-2xs font-medium text-ink-subtle underline-offset-2 hover:text-royal hover:underline"
           >
             verify
           </Link>

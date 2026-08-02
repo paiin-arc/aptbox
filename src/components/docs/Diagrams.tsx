@@ -16,17 +16,17 @@ import { CheckIcon } from "@/components/CategoryIcon";
  */
 
 const NODE_TONES = {
-  violet: "fill-violet-500/10 stroke-violet-400/50",
-  orange: "fill-orange-500/10 stroke-orange-400/50",
-  emerald: "fill-emerald-500/10 stroke-emerald-400/50",
-  zinc: "fill-white/[0.04] stroke-white/20",
+  violet: "fill-royal/10 stroke-royal/45",
+  orange: "fill-sky/12 stroke-sky/55",
+  emerald: "fill-emerald-600/10 stroke-emerald-600/55",
+  zinc: "fill-royal/5 stroke-royal/15",
 } as const;
 
 const LABEL_TONES = {
-  violet: "fill-violet-200",
-  orange: "fill-orange-200",
-  emerald: "fill-emerald-200",
-  zinc: "fill-zinc-200",
+  violet: "fill-royal/30",
+  orange: "fill-sky/35",
+  emerald: "fill-emerald-600/30",
+  zinc: "fill-ink-subtle",
 } as const;
 
 function Node({
@@ -72,7 +72,7 @@ function Node({
           x={x + w / 2}
           y={y + 38}
           textAnchor="middle"
-          className="fill-zinc-500 text-2xs"
+          className="fill-ink-subtle text-2xs"
         >
           {sub}
         </text>
@@ -94,10 +94,10 @@ function Wire({
 }) {
   const stroke =
     tone === "emerald"
-      ? "stroke-emerald-400/60"
+      ? "stroke-emerald-600/55"
       : tone === "orange"
-        ? "stroke-orange-400/60"
-        : "stroke-white/25";
+        ? "stroke-sky/55"
+        : "stroke-royal/15";
   return (
     <path
       d={d}
@@ -127,7 +127,7 @@ function ArrowDefs() {
         markerHeight="5"
         orient="auto-start-reverse"
       >
-        <path d="M 0 1 L 9 5 L 0 9 z" className="fill-white/40" />
+        <path d="M 0 1 L 9 5 L 0 9 z" className="fill-ink-subtle/40" />
       </marker>
     </defs>
   );
@@ -147,7 +147,7 @@ export function VerificationFlow() {
     >
       <ArrowDefs />
 
-      <text x={20} y={16} className="fill-zinc-600 text-2xs font-semibold tracking-[0.18em]">
+      <text x={20} y={16} className="fill-ink-subtle text-2xs font-semibold tracking-[0.18em]">
         UPLOAD · ONCE
       </text>
 
@@ -165,11 +165,11 @@ export function VerificationFlow() {
         y1={168}
         x2={840}
         y2={168}
-        className="stroke-white/10"
+        className="stroke-royal/15"
         strokeDasharray="4 6"
       />
 
-      <text x={20} y={196} className="fill-zinc-600 text-2xs font-semibold tracking-[0.18em]">
+      <text x={20} y={196} className="fill-ink-subtle text-2xs font-semibold tracking-[0.18em]">
         DOWNLOAD · EVERY TIME
       </text>
 
@@ -187,10 +187,10 @@ export function VerificationFlow() {
       <Wire d="M 380 240 L 448 240" delay={3} />
       <Wire d="M 600 240 L 668 240" delay={3} tone="emerald" />
 
-      <text x={545} y={186} className="fill-zinc-600 text-2xs">
+      <text x={545} y={186} className="fill-ink-subtle text-2xs">
         committed hash
       </text>
-      <text x={330} y={186} className="fill-zinc-600 text-2xs">
+      <text x={330} y={186} className="fill-ink-subtle text-2xs">
         bytes
       </text>
     </svg>
@@ -228,7 +228,7 @@ export function ChunksetTree() {
       <Node x={310} y={106} w={140} h={44} title="Chunkset 2" sub="10 MiB" tone="orange" />
       <Node x={580} y={106} w={140} h={44} title="Chunkset n" sub="10 MiB" tone="orange" />
 
-      <text x={380} y={176} textAnchor="middle" className="fill-zinc-500 text-xs">
+      <text x={380} y={176} textAnchor="middle" className="fill-ink-subtle text-xs">
         each chunkset is erasure-coded into 16 shards
       </text>
 
@@ -248,8 +248,8 @@ export function ChunksetTree() {
               strokeWidth={1.5}
               className={
                 isData
-                  ? "fill-emerald-500/15 stroke-emerald-400/50"
-                  : "fill-violet-500/12 stroke-violet-400/40"
+                  ? "fill-emerald-600/15 stroke-emerald-600/55"
+                  : "fill-royal/12 stroke-royal/45"
               }
             />
             <text
@@ -257,7 +257,7 @@ export function ChunksetTree() {
               y={236}
               textAnchor="middle"
               className={`text-2xs font-semibold ${
-                isData ? "fill-emerald-200" : "fill-violet-200"
+                isData ? "fill-emerald-600/30" : "fill-royal/30"
               }`}
             >
               {i + 1}
@@ -266,18 +266,18 @@ export function ChunksetTree() {
         );
       })}
 
-      <text x={380} y={278} textAnchor="middle" className="fill-zinc-400 text-xs font-semibold">
+      <text x={380} y={278} textAnchor="middle" className="fill-ink-subtle text-xs font-semibold">
         any 10 of 16 shards rebuild the chunkset
       </text>
-      <text x={380} y={298} textAnchor="middle" className="fill-zinc-500 text-xs">
+      <text x={380} y={298} textAnchor="middle" className="fill-ink-subtle text-xs">
         6 shards can be lost with no data loss
       </text>
 
       <g>
-        <rect x={230} y={314} width={12} height={12} rx={3} className="fill-emerald-500/25 stroke-emerald-400/50" strokeWidth={1.5} />
-        <text x={250} y={324} className="fill-zinc-500 text-2xs">10 data shards</text>
-        <rect x={370} y={314} width={12} height={12} rx={3} className="fill-violet-500/20 stroke-violet-400/40" strokeWidth={1.5} />
-        <text x={390} y={324} className="fill-zinc-500 text-2xs">6 parity shards</text>
+        <rect x={230} y={314} width={12} height={12} rx={3} className="fill-emerald-600/25 stroke-emerald-600/55" strokeWidth={1.5} />
+        <text x={250} y={324} className="fill-ink-subtle text-2xs">10 data shards</text>
+        <rect x={370} y={314} width={12} height={12} rx={3} className="fill-royal/20 stroke-royal/45" strokeWidth={1.5} />
+        <text x={390} y={324} className="fill-ink-subtle text-2xs">6 parity shards</text>
       </g>
     </svg>
   );
@@ -316,17 +316,17 @@ export function LayerStack() {
       {LAYERS.map((l) => (
         <div
           key={l.name}
-          className="grid gap-3 rounded-xl border border-white/10 bg-white/[0.02] p-4 transition hover:border-white/20 sm:grid-cols-[8.5rem_1fr_auto] sm:items-center"
+          className="grid gap-3 rounded-xl border border-line bg-surface-raised/60 p-4 transition hover:border-line sm:grid-cols-[8.5rem_1fr_auto] sm:items-center"
         >
           <div
             className={`text-sm font-semibold ${
-              l.tone === "orange" ? "text-orange-200" : "text-violet-200"
+              l.tone === "orange" ? "text-sky" : "text-royal"
             }`}
           >
             {l.name}
           </div>
-          <div className="text-sm leading-relaxed text-zinc-400">{l.does}</div>
-          <div className="justify-self-start rounded-md bg-white/5 px-2 py-1 text-xs text-zinc-400 sm:justify-self-end">
+          <div className="text-sm leading-relaxed text-ink-muted">{l.does}</div>
+          <div className="justify-self-start rounded-md bg-surface-raised/70 px-2 py-1 text-xs text-ink-muted sm:justify-self-end">
             {l.crosses}
           </div>
         </div>
@@ -354,39 +354,39 @@ const TAMPERED_HASH =
 export function TamperDiff() {
   return (
     <div className="mt-8 space-y-3">
-      <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-4">
+      <div className="rounded-xl border border-emerald-600/30 bg-emerald-500/12 p-4">
         <div className="flex items-center justify-between gap-3">
-          <span className="text-xs font-semibold uppercase tracking-wider text-emerald-300">
+          <span className="text-xs font-semibold uppercase tracking-wider text-emerald-700">
             Original
           </span>
-          <span className="text-xs text-emerald-300/70">matches on-chain</span>
+          <span className="text-xs text-emerald-700/70">matches on-chain</span>
         </div>
-        <div className="mt-2 overflow-x-auto whitespace-nowrap font-mono text-xs text-zinc-300">
+        <div className="mt-2 overflow-x-auto whitespace-nowrap font-mono text-xs text-ink-muted">
           {SAMPLE_ORIGINAL.slice(0, -2)}
-          <span className="rounded bg-emerald-500/25 px-1 text-emerald-100">98</span>
+          <span className="rounded bg-emerald-500/12 px-1 text-emerald-700">98</span>
         </div>
-        <div className="mt-2 break-all font-mono text-2xs leading-relaxed text-emerald-300/80">
+        <div className="mt-2 break-all font-mono text-2xs leading-relaxed text-emerald-700/80">
           {ORIGINAL_HASH}
         </div>
       </div>
 
-      <div className="rounded-xl border-2 border-red-500/40 bg-red-500/[0.05] p-4">
+      <div className="rounded-xl border-2 border-red-600/30 bg-red-500/10 p-4">
         <div className="flex items-center justify-between gap-3">
-          <span className="text-xs font-semibold uppercase tracking-wider text-red-300">
+          <span className="text-xs font-semibold uppercase tracking-wider text-red-700">
             One digit changed
           </span>
-          <span className="text-xs text-red-300/80">download blocked</span>
+          <span className="text-xs text-red-700/80">download blocked</span>
         </div>
-        <div className="mt-2 overflow-x-auto whitespace-nowrap font-mono text-xs text-zinc-300">
+        <div className="mt-2 overflow-x-auto whitespace-nowrap font-mono text-xs text-ink-muted">
           {SAMPLE_TAMPERED.slice(0, -2)}
-          <span className="rounded bg-red-500/30 px-1 text-red-100">97</span>
+          <span className="rounded bg-red-500/15 px-1 text-red-700">97</span>
         </div>
-        <div className="mt-2 break-all font-mono text-2xs leading-relaxed text-red-300/85">
+        <div className="mt-2 break-all font-mono text-2xs leading-relaxed text-red-700/85">
           {TAMPERED_HASH}
         </div>
       </div>
 
-      <p className="text-sm leading-relaxed text-zinc-500">
+      <p className="text-sm leading-relaxed text-ink-subtle">
         A single edited label produces an unrecognisably different digest. There
         is no partial match and no near miss — the comparison is all or nothing,
         which is exactly why it can&apos;t be fudged.
@@ -438,7 +438,7 @@ export function IntegrityLayers() {
     <div className="mt-8 overflow-x-auto">
       <table className="w-full min-w-[34rem] border-separate border-spacing-0 text-left">
         <thead>
-          <tr className="text-xs uppercase tracking-wider text-zinc-500">
+          <tr className="text-xs uppercase tracking-wider text-ink-subtle">
             <th className="pb-3 pr-4 font-semibold">Failure mode</th>
             <th className="pb-3 pr-4 text-center font-semibold">Shelby read check</th>
             <th className="pb-3 pr-4 text-center font-semibold">SHA-256 commitment</th>
@@ -447,16 +447,16 @@ export function IntegrityLayers() {
         <tbody>
           {FAILURE_MODES.map((f) => (
             <tr key={f.mode} className="align-top">
-              <td className="border-t border-white/10 py-3 pr-4">
-                <div className="text-sm font-medium text-zinc-200">{f.mode}</div>
-                <div className="mt-0.5 text-xs leading-relaxed text-zinc-500">
+              <td className="border-t border-line py-3 pr-4">
+                <div className="text-sm font-medium text-ink">{f.mode}</div>
+                <div className="mt-0.5 text-xs leading-relaxed text-ink-subtle">
                   {f.note}
                 </div>
               </td>
-              <td className="border-t border-white/10 py-3 pr-4 text-center">
+              <td className="border-t border-line py-3 pr-4 text-center">
                 <Mark ok={f.shelby} />
               </td>
-              <td className="border-t border-white/10 py-3 pr-4 text-center">
+              <td className="border-t border-line py-3 pr-4 text-center">
                 <Mark ok={f.locker} />
               </td>
             </tr>
@@ -473,8 +473,8 @@ function Mark({ ok }: { ok: boolean }) {
       title={ok ? "Caught" : "Not covered by this layer"}
       className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-sm font-semibold ${
         ok
-          ? "bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-500/30"
-          : "bg-zinc-500/10 text-zinc-600 ring-1 ring-white/10"
+          ? "bg-emerald-500/12 text-emerald-700 ring-1 ring-emerald-600/30"
+          : "bg-ink/6 text-ink-subtle ring-1 ring-line"
       }`}
       aria-label={ok ? "caught" : "not covered"}
     >

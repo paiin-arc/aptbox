@@ -49,7 +49,7 @@ import {
 } from "@/services/uploadService";
 
 const BTN_PRIMARY =
-  "sticky bottom-3 z-10 w-full rounded-xl bg-zinc-900 px-5 py-3.5 text-sm font-semibold text-white shadow-lg transition hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-black dark:hover:bg-zinc-200 sm:static sm:w-auto sm:self-start sm:py-3 sm:shadow-sm";
+  "sticky bottom-3 z-10 w-full rounded-xl bg-royal px-5 py-3.5 text-sm font-semibold text-surface shadow-lg transition hover:bg-royal-deep disabled:cursor-not-allowed disabled:opacity-50 sm:static sm:w-auto sm:self-start sm:py-3 sm:shadow-sm";
 
 type AccessMode = "public" | "paid" | "restricted";
 
@@ -601,11 +601,11 @@ export default function UploadPage() {
     stage === "registering";
 
   return (
-    <div className="relative flex min-h-dvh flex-col text-zinc-100">
+    <div className="relative flex min-h-dvh flex-col text-ink">
       <AppBackdrop />
-      <header className="sticky top-0 z-10 flex w-full items-center justify-between border-b border-zinc-200 bg-white/80 px-4 py-3 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/80 sm:px-6 sm:py-4">
+      <header className="sticky top-0 z-10 flex w-full items-center justify-between border-b border-line bg-surface/80 px-4 py-3 backdrop-blur-md sm:px-6 sm:py-4">
         <Link href="/" className="flex items-center gap-2">
-          <AptboxIcon className="h-8 w-8 text-zinc-900 dark:text-zinc-100" />
+          <AptboxIcon className="h-8 w-8 text-ink" />
           <span className="text-lg font-semibold tracking-tight">
             Dataset Locker
           </span>
@@ -621,7 +621,7 @@ export default function UploadPage() {
           <h1 className="text-xl font-bold tracking-tight sm:text-3xl">
             Upload a dataset
           </h1>
-          <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400 sm:text-sm">
+          <p className="mt-1 text-xs text-ink-muted sm:text-sm">
             Image sets, text corpora, audio data, or model files. Stored on
             Shelby, with its SHA-256 committed to Aptos so anyone can prove the
             bytes were never altered. No size limit — datasets stream straight
@@ -630,13 +630,13 @@ export default function UploadPage() {
         </div>
 
         {!connected && (
-          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
             Connect your wallet first to upload.
           </div>
         )}
 
         {/* File picker */}
-        <label className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-zinc-300 bg-white p-6 text-center transition hover:border-indigo-400 hover:bg-indigo-50/40 active:scale-[0.99] dark:border-zinc-700 dark:bg-zinc-900 dark:hover:border-indigo-500 dark:hover:bg-indigo-950/20 sm:p-10">
+        <label className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-line bg-surface-raised p-6 text-center transition hover:border-royal/45 hover:bg-royal/8/40 active:scale-[0.99] sm:p-10">
           <input
             type="file"
             className="hidden"
@@ -645,16 +645,16 @@ export default function UploadPage() {
           />
           {file ? (
             <div className="space-y-1">
-              <div className="font-medium text-zinc-700 dark:text-zinc-300">
+              <div className="font-medium text-ink-muted">
                 {displayName}
               </div>
-              <div className="text-xs text-zinc-500">
+              <div className="text-xs text-ink-subtle">
                 {formatBytes(file.size)} · {file.type || "unknown type"} · click
                 to replace
               </div>
             </div>
           ) : (
-            <div className="space-y-1 text-zinc-500">
+            <div className="space-y-1 text-ink-subtle">
               <div className="text-base font-medium">
                 Click to choose a dataset
               </div>
@@ -668,7 +668,7 @@ export default function UploadPage() {
         {/* Dataset name editor (outside the dropzone label so click doesn't reopen the picker) */}
         {file && (
           <div className="space-y-1">
-            <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+            <label className="text-xs font-medium text-ink-muted">
               Dataset name
             </label>
             {editingName ? (
@@ -690,13 +690,13 @@ export default function UploadPage() {
                   disabled={busy}
                   maxLength={120}
                   placeholder={file.name}
-                  className="flex-1 rounded-lg border border-indigo-400 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/40 dark:border-indigo-500 dark:bg-zinc-900"
+                  className="flex-1 rounded-lg border border-royal/45 bg-surface-raised px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-royal/40"
                 />
                 <button
                   type="button"
                   onClick={commitName}
                   disabled={busy}
-                  className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
+                  className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-surface hover:bg-emerald-700"
                   title="Save"
                   aria-label="Save dataset name"
                 >
@@ -706,7 +706,7 @@ export default function UploadPage() {
                   type="button"
                   onClick={cancelEditName}
                   disabled={busy}
-                  className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-xs font-semibold text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                  className="rounded-lg border border-line bg-surface-raised px-3 py-2 text-xs font-semibold text-ink-muted hover:bg-surface-sunken"
                   title="Cancel"
                   aria-label="Cancel rename"
                 >
@@ -714,11 +714,11 @@ export default function UploadPage() {
                 </button>
               </div>
             ) : (
-              <div className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-2 dark:border-zinc-800 dark:bg-zinc-900">
+              <div className="flex items-center gap-2 rounded-lg border border-line bg-surface-raised px-3 py-2">
                 <div className="flex-1 truncate text-sm" title={displayName}>
                   {displayName}
                   {customName && (
-                    <span className="ml-2 rounded-md bg-indigo-50 px-1.5 py-0.5 text-2xs font-medium text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300">
+                    <span className="ml-2 rounded-md bg-royal/8 px-1.5 py-0.5 text-2xs font-medium text-royal">
                       renamed
                     </span>
                   )}
@@ -727,7 +727,7 @@ export default function UploadPage() {
                   type="button"
                   onClick={startEditingName}
                   disabled={busy}
-                  className="rounded-md p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 disabled:opacity-50 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+                  className="rounded-md p-1.5 text-ink-subtle hover:bg-surface-sunken hover:text-ink disabled:opacity-50"
                   title="Rename dataset"
                   aria-label="Rename dataset"
                 >
@@ -736,14 +736,14 @@ export default function UploadPage() {
               </div>
             )}
             {hashHex && (
-              <div className="mt-2 rounded-lg border border-zinc-200 bg-white p-2.5 dark:border-zinc-800 dark:bg-zinc-900">
-                <div className="text-2xs font-medium uppercase tracking-wide text-zinc-500">
+              <div className="mt-2 rounded-lg border border-line bg-surface-raised p-2.5">
+                <div className="text-2xs font-medium uppercase tracking-wide text-ink-subtle">
                   SHA-256 to be committed on-chain
                 </div>
-                <div className="mt-0.5 break-all font-mono text-xs leading-relaxed text-zinc-600 dark:text-zinc-400">
+                <div className="mt-0.5 break-all font-mono text-xs leading-relaxed text-ink-muted">
                   {formatHashForDisplay(hashHex)}
                 </div>
-                <div className="mt-1.5 text-2xs text-zinc-500">
+                <div className="mt-1.5 text-2xs text-ink-subtle">
                   Computed from the file bytes — renaming the dataset
                   doesn&apos;t change it.
                 </div>
@@ -758,7 +758,7 @@ export default function UploadPage() {
         <div className="space-y-2">
           <div className="flex items-baseline justify-between gap-3">
             <div className="text-sm font-semibold">Storage duration</div>
-            <div className="text-xs text-zinc-500">
+            <div className="text-xs text-ink-subtle">
               Larger windows cost more ShelbyUSD
             </div>
           </div>
@@ -773,8 +773,8 @@ export default function UploadPage() {
                   disabled={busy}
                   className={`rounded-lg border px-3 py-2 text-xs font-medium transition sm:py-1.5 ${
                     active
-                      ? "border-indigo-500 bg-indigo-50 text-indigo-900 dark:bg-indigo-950/40 dark:text-indigo-200"
-                      : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                      ? "border-royal bg-royal/8 text-royal-deep"
+                      : "border-line bg-surface-raised text-ink-muted hover:bg-surface-sunken"
                   }`}
                 >
                   {PRESET_LABEL[key]}
@@ -791,14 +791,14 @@ export default function UploadPage() {
                 value={customHours}
                 onChange={(e) => setCustomHours(e.target.value)}
                 disabled={busy}
-                className="w-28 rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+                className="w-28 rounded-lg border border-line bg-surface-raised px-3 py-1.5 text-sm"
               />
-              <span className="text-xs text-zinc-500">hours</span>
+              <span className="text-xs text-ink-subtle">hours</span>
             </div>
           )}
-          <div className="text-xs text-zinc-500">
+          <div className="text-xs text-ink-subtle">
             Expires{" "}
-            <span className="font-medium text-zinc-700 dark:text-zinc-300">
+            <span className="font-medium text-ink-muted">
               {expirationDate.toLocaleString(undefined, {
                 year: "numeric",
                 month: "short",
@@ -807,7 +807,7 @@ export default function UploadPage() {
                 minute: "2-digit",
               })}
             </span>{" "}
-            <span className="text-zinc-400">
+            <span className="text-ink-subtle">
               · {formatDurationHuman(durationHours)} from now
             </span>
           </div>
@@ -826,15 +826,15 @@ export default function UploadPage() {
                 disabled={busy}
                 className={`flex flex-col items-start gap-1 rounded-xl border px-3 py-2.5 text-left text-sm transition active:scale-[0.98] sm:py-3 ${
                   accessMode === mode
-                    ? "border-indigo-500 bg-indigo-50 text-indigo-900 ring-2 ring-indigo-500/20 dark:bg-indigo-950/40 dark:text-indigo-200"
-                    : "border-zinc-200 bg-white hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:bg-zinc-800"
+                    ? "border-royal bg-royal/8 text-royal-deep ring-2 ring-royal/20"
+                    : "border-line bg-surface-raised hover:bg-surface-sunken"
                 }`}
               >
                 <div className="flex items-center gap-1.5">
                   <Icon className="h-4 w-4" />
                   <div className="font-medium">{label}</div>
                 </div>
-                <div className="text-xs leading-snug text-zinc-500">{hint}</div>
+                <div className="text-xs leading-snug text-ink-subtle">{hint}</div>
               </button>
             ))}
           </div>
@@ -843,7 +843,7 @@ export default function UploadPage() {
             <div>
               <label
                 htmlFor="price-apt"
-                className="block text-xs font-medium text-zinc-600 dark:text-zinc-400"
+                className="block text-xs font-medium text-ink-muted"
               >
                 Price in APT
               </label>
@@ -858,11 +858,11 @@ export default function UploadPage() {
                   placeholder="0.50"
                   disabled={busy}
                   aria-invalid={priceMissing}
-                  className="w-36 rounded-lg border border-zinc-300 bg-white px-3 py-2 font-mono text-base tabular-nums dark:border-zinc-700 dark:bg-zinc-900"
+                  className="w-36 rounded-lg border border-line bg-surface-raised px-3 py-2 font-mono text-base tabular-nums"
                 />
-                <span className="text-sm text-zinc-500">APT</span>
+                <span className="text-sm text-ink-subtle">APT</span>
               </div>
-              <div className="mt-1.5 text-xs leading-relaxed text-zinc-500">
+              <div className="mt-1.5 text-xs leading-relaxed text-ink-subtle">
                 {priceMissing ? (
                   <span className="text-amber-400">
                     Set a price above zero — a paid dataset priced at 0 would
@@ -879,7 +879,7 @@ export default function UploadPage() {
               {/* Said plainly here as well as on the listing: Shelby has no
                   per-reader access control yet, so payment buys the receipt and
                   the listing, not exclusivity over the bytes. */}
-              <div className="mt-2 rounded-lg border border-amber-500/25 bg-amber-500/5 px-3 py-2 text-xs leading-relaxed text-amber-200/80">
+              <div className="mt-2 rounded-lg border border-amber-600/30 bg-amber-500/12 px-3 py-2 text-xs leading-relaxed text-amber-800">
                 Payment is enforced on Aptos, not on Shelby. Anyone who learns
                 the blob name can still fetch the bytes directly, so price
                 datasets on discovery and provenance — not secrecy.
@@ -889,7 +889,7 @@ export default function UploadPage() {
 
           {accessMode === "restricted" && (
             <div>
-              <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
+              <label className="block text-xs font-medium text-ink-muted">
                 Allowed addresses (space or comma separated)
               </label>
               <textarea
@@ -898,9 +898,9 @@ export default function UploadPage() {
                 onChange={(e) => setWhitelistText(e.target.value)}
                 placeholder="0xabc... 0xdef..."
                 disabled={busy}
-                className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 font-mono text-xs dark:border-zinc-700 dark:bg-zinc-900"
+                className="mt-1 w-full rounded-lg border border-line bg-surface-raised px-3 py-2 font-mono text-xs"
               />
-              <div className="mt-1 text-xs text-zinc-500">
+              <div className="mt-1 text-xs text-ink-subtle">
                 {whitelist.length} valid address
                 {whitelist.length === 1 ? "" : "es"}
               </div>
@@ -925,7 +925,7 @@ export default function UploadPage() {
                 ? STAGE_LABEL[stage]
                 : "Prepare dataset"}
             </button>
-            <p className="-mt-2 text-xs leading-relaxed text-zinc-500">
+            <p className="-mt-2 text-xs leading-relaxed text-ink-subtle">
               Your wallet opens a popup to sign. Browsers only allow that right
               after a click, so hashing and encoding run first — you&apos;ll get
               a separate button for the two signatures.
@@ -943,7 +943,7 @@ export default function UploadPage() {
                   (stage === "shelby-put" && putPct !== null ? ` (${putPct}%)` : "")
                 : "Approve in wallet — 2 signatures"}
             </button>
-            <p className="-mt-2 text-xs leading-relaxed text-emerald-300/80">
+            <p className="-mt-2 text-xs leading-relaxed text-emerald-700">
               Ready. Clicking now opens the wallet immediately, so the popup
               won&apos;t be blocked.
             </p>
@@ -962,14 +962,14 @@ export default function UploadPage() {
         {/* Streaming-hash progress — the one stage that runs before any wallet
             prompt, and the slowest for very large datasets. */}
         {stage === "hashing" && hashPct !== null && (
-          <div className="rounded-xl border border-zinc-200 bg-white p-3 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
+          <div className="rounded-xl border border-line bg-surface-raised p-3 text-xs text-ink-muted">
             <div className="flex items-baseline justify-between">
               <span>Hashing dataset (SHA-256)…</span>
               <span className="font-medium">{hashPct}%</span>
             </div>
-            <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800">
+            <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-greige/50">
               <div
-                className="h-full rounded-full bg-indigo-500 transition-[width] duration-200"
+                className="h-full rounded-full bg-royal transition-[width] duration-200"
                 style={{ width: `${hashPct}%` }}
               />
             </div>
@@ -983,16 +983,16 @@ export default function UploadPage() {
 
         {/* Status */}
         {error && (
-          <div className="space-y-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-900 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
+          <div className="space-y-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-900">
             <div>{error}</div>
             {errorIsOrphaned && (
-              <div className="flex flex-wrap items-center gap-2 border-t border-red-200 pt-2 dark:border-red-900">
-                <span className="text-xs text-red-800 dark:text-red-300">
+              <div className="flex flex-wrap items-center gap-2 border-t border-red-200 pt-2">
+                <span className="text-xs text-red-800">
                   Recover the locked ShelbyUSD + free your account slot:
                 </span>
                 <Link
                   href="/cleanup"
-                  className="rounded-md bg-red-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-red-700"
+                  className="rounded-md bg-red-600 px-2.5 py-1 text-xs font-semibold text-surface hover:bg-red-700"
                 >
                   <span className="inline-flex items-center gap-1">Open Cleanup <ArrowRightIcon className="h-3 w-3" /></span>
                 </Link>
@@ -1002,12 +1002,12 @@ export default function UploadPage() {
         )}
 
         {stage === "done" && fileId !== null && (
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm dark:border-emerald-900 dark:bg-emerald-950/40">
-            <div className="flex items-center gap-1.5 font-semibold text-emerald-900 dark:text-emerald-200">
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm">
+            <div className="flex items-center gap-1.5 font-semibold text-emerald-900">
               <CheckIcon className="h-4 w-4" />
               Dataset locked
             </div>
-            <div className="mt-2 space-y-1 text-emerald-800 dark:text-emerald-300">
+            <div className="mt-2 space-y-1 text-emerald-800">
               <div>
                 Dataset ID:{" "}
                 <span className="font-mono">{fileId.toString()}</span>
@@ -1021,7 +1021,7 @@ export default function UploadPage() {
               </div>
               <Link
                 href={`/f/${fileId.toString()}`}
-                className="mt-2 inline-block rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
+                className="mt-2 inline-block rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-surface hover:bg-emerald-700"
               >
                 <span className="inline-flex items-center gap-1">
                   Open share page <ArrowRightIcon className="h-3 w-3" />
@@ -1047,8 +1047,8 @@ function StoragePlan({ sizeBytes }: { sizeBytes: number }) {
 
   return (
     <div className="mt-2 space-y-2">
-      <div className="rounded-lg border border-zinc-200 bg-white p-2.5 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
-        <div className="text-2xs font-medium uppercase tracking-wide text-zinc-500">
+      <div className="rounded-lg border border-line bg-surface-raised p-2.5 text-xs text-ink-muted">
+        <div className="text-2xs font-medium uppercase tracking-wide text-ink-subtle">
           Storage plan
         </div>
         <div className="mt-1">
@@ -1061,7 +1061,7 @@ function StoragePlan({ sizeBytes }: { sizeBytes: number }) {
       </div>
 
       {large && (
-        <div className="rounded-lg border border-amber-300 bg-amber-50 p-2.5 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+        <div className="rounded-lg border border-amber-300 bg-amber-50 p-2.5 text-xs text-amber-900">
           <div className="font-semibold">Large dataset</div>
           <div className="mt-0.5">
             Memory stays flat at about{" "}
@@ -1107,7 +1107,7 @@ function UploadSteps({
   const idx = (STEP_ORDER as readonly string[]).indexOf(effectiveStage);
   const isRetrying = stage === "shelby-retry";
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white p-3 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
+    <div className="rounded-xl border border-line bg-surface-raised p-3 text-xs text-ink-muted">
       <ul className="space-y-1">
         {STEP_ORDER.map((key, i) => {
           const active = idx === i;
@@ -1128,10 +1128,10 @@ function UploadSteps({
               key={key}
               className={`flex items-start gap-2 ${
                 active
-                  ? "font-medium text-indigo-700 dark:text-indigo-300"
+                  ? "font-medium text-royal"
                   : done
-                    ? "text-emerald-700 dark:text-emerald-300"
-                    : "text-zinc-400 dark:text-zinc-600"
+                    ? "text-emerald-700"
+                    : "text-ink-subtle"
               }`}
             >
               <span className="mt-0.5 flex w-3 shrink-0 items-center justify-center">
@@ -1148,17 +1148,17 @@ function UploadSteps({
                   <div
                     className={`mt-0.5 text-2xs font-normal ${
                       isRetrying
-                        ? "text-amber-600 dark:text-amber-400"
-                        : "text-zinc-500"
+                        ? "text-amber-600"
+                        : "text-ink-subtle"
                     }`}
                   >
                     {putDetail}
                   </div>
                 )}
                 {key === "shelby-put" && active && putPct !== null && (
-                  <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800">
+                  <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-greige/50">
                     <div
-                      className="h-full rounded-full bg-indigo-500 transition-[width] duration-200"
+                      className="h-full rounded-full bg-royal transition-[width] duration-200"
                       style={{ width: `${putPct}%` }}
                     />
                   </div>

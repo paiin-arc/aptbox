@@ -98,7 +98,7 @@ export function Dashboard() {
   return (
     // h-dvh, not h-screen: on iOS Safari h-screen (100vh) is taller than the
     // visible area, which pushed the scroll container under the address bar.
-    <div className="flex h-dvh overflow-hidden text-zinc-100">
+    <div className="flex h-dvh overflow-hidden text-ink">
       <AppBackdrop />
       <Sidebar
         active={activeCat}
@@ -166,10 +166,10 @@ function WorkspaceOverview({
   return (
     <div className="space-y-5 sm:space-y-6">
       <header>
-        <h1 className="text-xl font-semibold tracking-tight text-zinc-100 sm:text-2xl">
+        <h1 className="text-xl font-semibold tracking-tight text-ink sm:text-2xl">
           My datasets
         </h1>
-        <p className="mt-1 text-sm leading-relaxed text-zinc-500 sm:text-sm">
+        <p className="mt-1 text-sm leading-relaxed text-ink-subtle sm:text-sm">
           Stored on Shelby, each with its SHA-256 committed to Aptos so any
           downloader can prove the bytes are unaltered.
         </p>
@@ -197,12 +197,12 @@ function WorkspaceOverview({
         and it shouldn't compete with upload for attention.
       */}
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 sm:text-sm">
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-subtle sm:text-sm">
           Recent datasets
         </h2>
         <Link
           href="/cleanup"
-          className="text-xs font-medium text-zinc-500 underline-offset-2 transition hover:text-zinc-300 hover:underline"
+          className="text-xs font-medium text-ink-subtle underline-offset-2 transition hover:text-ink-muted hover:underline"
         >
           Recover a failed upload
         </Link>
@@ -221,10 +221,10 @@ function MediaHeading({
   const label = LABEL[activeCat];
   return (
     <div className="mb-5 flex items-baseline gap-3">
-      <h1 className="text-xl font-semibold tracking-tight text-zinc-100">
+      <h1 className="text-xl font-semibold tracking-tight text-ink">
         {label}
       </h1>
-      <span className="text-xs text-zinc-500">
+      <span className="text-xs text-ink-subtle">
         {filteredCount} item{filteredCount === 1 ? "" : "s"}
       </span>
     </div>
@@ -252,10 +252,10 @@ function SummaryTile({
   accent?: "verified";
 }) {
   const accentColor =
-    accent === "verified" ? "text-emerald-300" : "text-zinc-100";
+    accent === "verified" ? "text-emerald-700" : "text-ink";
   return (
     <div className="ax-card p-2.5 sm:p-3">
-      <div className="truncate text-2xs uppercase tracking-wider text-zinc-500 sm:text-xs">
+      <div className="truncate text-2xs uppercase tracking-wider text-ink-subtle sm:text-xs">
         {label}
       </div>
       {/* Values like "1.23 GB" must not wrap inside a 2-up mobile grid. */}
@@ -263,7 +263,7 @@ function SummaryTile({
         {value}
       </div>
       {sub && (
-        <div className="truncate text-2xs text-zinc-500 sm:text-xs">
+        <div className="truncate text-2xs text-ink-subtle sm:text-xs">
           {sub}
         </div>
       )}

@@ -246,11 +246,11 @@ export default function CleanupPage() {
     stage === "aptbox-confirming";
 
   return (
-    <div className="relative flex min-h-dvh flex-col text-zinc-100">
+    <div className="relative flex min-h-dvh flex-col text-ink">
       <AppBackdrop />
-      <header className="sticky top-0 z-10 flex w-full items-center justify-between border-b border-zinc-200 bg-white/80 px-4 py-3 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/80 sm:px-6 sm:py-4">
+      <header className="sticky top-0 z-10 flex w-full items-center justify-between border-b border-line bg-surface/80 px-4 py-3 backdrop-blur-md sm:px-6 sm:py-4">
         <Link href="/" className="flex items-center gap-2">
-          <AptboxIcon className="h-8 w-8 text-zinc-900 dark:text-zinc-100" />
+          <AptboxIcon className="h-8 w-8 text-ink" />
           <span className="text-lg font-semibold tracking-tight">aptbox</span>
         </Link>
         <div className="flex items-center gap-1.5 sm:gap-2">
@@ -264,18 +264,18 @@ export default function CleanupPage() {
           <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
             Cleanup pending blobs
           </h1>
-          <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400 sm:text-sm">
+          <p className="mt-1 text-xs text-ink-muted sm:text-sm">
             Blobs registered on chain but never confirmed by storage providers
-            (<code className="rounded bg-zinc-100 px-1 py-0.5 text-xs dark:bg-zinc-800">is_written: 0</code>).
+            (<code className="rounded bg-surface-sunken px-1 py-0.5 text-xs">is_written: 0</code>).
             Delete them to free up account slots. The atomic batch delete uses one
             wallet signature per {BATCH_SIZE} blobs.
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-            <span className="rounded-md bg-zinc-100 px-2 py-0.5 font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+            <span className="rounded-md bg-surface-sunken px-2 py-0.5 font-medium text-ink-muted">
               Network: {label(network)}
             </span>
             {addr && (
-              <span className="rounded-md bg-zinc-100 px-2 py-0.5 font-mono text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+              <span className="rounded-md bg-surface-sunken px-2 py-0.5 font-mono text-ink-muted">
                 {addr.slice(0, 6)}…{addr.slice(-4)}
               </span>
             )}
@@ -283,29 +283,29 @@ export default function CleanupPage() {
         </div>
 
         {!connected && (
-          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
             Connect your wallet to see pending blobs.
           </div>
         )}
 
         {connected && isLoading && (
-          <div className="rounded-xl border border-zinc-200 bg-white p-6 text-center text-sm text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="rounded-xl border border-line bg-surface-raised p-6 text-center text-sm text-ink-subtle">
             Loading pending blobs…
           </div>
         )}
 
         {connected && !isLoading && pending.length === 0 && (
-          <div className="rounded-2xl border-2 border-dashed border-emerald-300 bg-emerald-50 p-8 text-center dark:border-emerald-900 dark:bg-emerald-950/30">
+          <div className="rounded-2xl border-2 border-dashed border-emerald-300 bg-emerald-50 p-8 text-center">
             <CheckIcon className="h-10 w-10 text-emerald-500" />
-            <div className="mt-2 text-base font-semibold text-emerald-900 dark:text-emerald-200">
+            <div className="mt-2 text-base font-semibold text-emerald-900">
               All clean
             </div>
-            <div className="mt-1 text-sm text-emerald-800 dark:text-emerald-300">
+            <div className="mt-1 text-sm text-emerald-800">
               No pending blobs on {label(network)} for this wallet.
             </div>
             <Link
               href="/"
-              className="mt-4 inline-block rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+              className="mt-4 inline-block rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-surface hover:bg-emerald-700"
             >
               Back to dashboard
             </Link>
@@ -315,23 +315,23 @@ export default function CleanupPage() {
         {connected && !isLoading && pending.length > 0 && (
           <>
             {/* Toolbar */}
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line bg-surface-raised p-3">
               <div className="flex flex-wrap items-center gap-2">
                 <button
                   onClick={allSelected ? selectNone : selectAll}
                   disabled={busy}
-                  className="rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 active:scale-95 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                  className="rounded-lg border border-line bg-surface-raised px-3 py-1.5 text-xs font-medium text-ink-muted hover:bg-surface-sunken active:scale-95 disabled:opacity-50"
                 >
                   {allSelected ? "Select none" : "Select all"}
                 </button>
-                <span className="text-xs text-zinc-500">
+                <span className="text-xs text-ink-subtle">
                   {pending.length} pending · {selected.size} selected
                 </span>
               </div>
               <button
                 onClick={() => refetch()}
                 disabled={isFetching || busy}
-                className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium hover:bg-zinc-50 active:scale-95 disabled:opacity-50 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:bg-zinc-800"
+                className="rounded-lg border border-line bg-surface-raised px-3 py-1.5 text-xs font-medium hover:bg-surface-sunken active:scale-95 disabled:opacity-50"
               >
                 {isFetching ? (
                   "Refreshing…"
@@ -354,8 +354,8 @@ export default function CleanupPage() {
                     <label
                       className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition active:scale-[0.997] ${
                         checked
-                          ? "border-indigo-300 bg-indigo-50 ring-1 ring-indigo-200 dark:border-indigo-700 dark:bg-indigo-950/40 dark:ring-indigo-900"
-                          : "border-zinc-200 bg-white hover:border-indigo-200 hover:bg-indigo-50/40 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-indigo-800 dark:hover:bg-indigo-950/20"
+                          ? "border-royal/45 bg-royal/8 ring-1 ring-royal/30"
+                          : "border-line bg-surface-raised hover:border-royal/25 hover:bg-royal/8/40"
                       }`}
                     >
                       <input
@@ -367,20 +367,20 @@ export default function CleanupPage() {
                       />
                       <div className="min-w-0 flex-1">
                         <div
-                          className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100"
+                          className="truncate text-sm font-medium text-ink"
                           title={fileName}
                         >
                           {fileName}
                         </div>
-                        <div className="mt-0.5 truncate font-mono text-2xs text-zinc-400" title={p.shelbyCid}>
+                        <div className="mt-0.5 truncate font-mono text-2xs text-ink-subtle" title={p.shelbyCid}>
                           {p.shelbyCid}
                         </div>
-                        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-zinc-500">
+                        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-ink-subtle">
                           <span>{formatBytes(p.sizeBytes)}</span>
                           <span>·</span>
                           <span>{timeAgo(p.createdAtMicros / 1000)}</span>
                           <span>·</span>
-                          <span className="rounded-md bg-amber-100 px-1.5 py-0.5 text-2xs font-medium text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
+                          <span className="rounded-md bg-amber-100 px-1.5 py-0.5 text-2xs font-medium text-amber-800">
                             pending
                           </span>
                         </div>
@@ -393,16 +393,16 @@ export default function CleanupPage() {
 
             {/* Sticky action bar */}
             <div className="sticky bottom-3 mt-4">
-              <div className="rounded-xl border border-zinc-200 bg-white/90 p-3 shadow-lg backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/90">
+              <div className="rounded-xl border border-line bg-surface/90 p-3 shadow-lg backdrop-blur-md">
                 <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="text-xs text-zinc-600 dark:text-zinc-400">
+                  <div className="text-xs text-ink-muted">
                     {someSelected ? (
                       <>
                         Deleting <strong>{selected.size}</strong> blob
                         {selected.size === 1 ? "" : "s"} ·{" "}
                         {formatBytes(totalReclaimable)} of registered storage
                         {orphanFileIds.length > 0 && (
-                          <span className="ml-1 text-amber-700 dark:text-amber-300">
+                          <span className="ml-1 text-amber-700">
                             (+{orphanFileIds.length} aptbox entr
                             {orphanFileIds.length === 1 ? "y" : "ies"} —
                             extra signatures)
@@ -416,7 +416,7 @@ export default function CleanupPage() {
                   <button
                     onClick={handleDelete}
                     disabled={!someSelected || busy}
-                    className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700 active:scale-95 disabled:opacity-50"
+                    className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-surface shadow-sm transition hover:bg-red-700 active:scale-95 disabled:opacity-50"
                   >
                     {stage === "idle" && "Delete selected"}
                     {stage === "signing" && "Awaiting signature…"}
@@ -435,13 +435,13 @@ export default function CleanupPage() {
                 </div>
 
                 {error && (
-                  <div className="mt-2 rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-900 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
+                  <div className="mt-2 rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-900">
                     {error}
                   </div>
                 )}
 
                 {stage === "done" && (
-                  <div className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50 p-2 text-xs text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200">
+                  <div className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50 p-2 text-xs text-emerald-900">
                     Deleted {deletedCount} Shelby blob
                     {deletedCount === 1 ? "" : "s"}
                     {orphanDeletedCount > 0 &&

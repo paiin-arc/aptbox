@@ -119,17 +119,19 @@ export function DocsBackdrop() {
         const alpha = 0.18 + p.z * 0.5 + glow * 0.45;
         ctx!.beginPath();
         ctx!.arc(x, y, p.r + glow * 1.3, 0, Math.PI * 2);
-        // Cool white drifting to brand violet on the nearer particles.
+        // Inverted for a light page: the particles are the dark element now, so
+        // they read as steel drifting to royal under the pointer rather than
+        // cool white drifting to violet.
         ctx!.fillStyle =
           glow > 0.15
-            ? `rgba(196, 181, 253, ${Math.min(1, alpha)})`
-            : `rgba(219, 234, 254, ${Math.min(1, alpha)})`;
+            ? `rgba(36, 68, 149, ${Math.min(1, alpha)})`
+            : `rgba(115, 122, 176, ${Math.min(1, alpha)})`;
         ctx!.fill();
 
         if (glow > 0.35) {
           ctx!.beginPath();
           ctx!.arc(x, y, (p.r + 1) * 3.2, 0, Math.PI * 2);
-          ctx!.fillStyle = `rgba(139, 92, 246, ${glow * 0.09})`;
+          ctx!.fillStyle = `rgba(36, 68, 149, ${glow * 0.09})`;
           ctx!.fill();
         }
       }
@@ -192,7 +194,7 @@ export function DocsBackdrop() {
   return (
     <div aria-hidden className="pointer-events-none fixed inset-0 overflow-hidden">
       {/* Base wash so the page reads the same with or without a hero image */}
-      <div className="absolute inset-0 bg-[#04060f]" />
+      <div className="absolute inset-0 bg-surface" />
 
       {hasHero && (
         <div
@@ -209,18 +211,21 @@ export function DocsBackdrop() {
       <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" />
 
       {/* Ambient brand blooms */}
-      <div className="ax-anim-blob absolute -top-40 right-[-15%] h-[32rem] w-[32rem] rounded-full bg-blue-600/10 blur-3xl" />
+      <div className="ax-anim-blob absolute -top-40 right-[-15%] h-[32rem] w-[32rem] rounded-full bg-royal/10 blur-3xl" />
       <div
-        className="ax-anim-blob absolute bottom-[-20%] left-[-10%] h-[28rem] w-[28rem] rounded-full bg-violet-600/10 blur-3xl"
+        className="ax-anim-blob absolute bottom-[-20%] left-[-10%] h-[28rem] w-[28rem] rounded-full bg-royal/10 blur-3xl"
         style={{ animationDelay: "2.5s", animationDuration: "10s" }}
       />
 
-      {/* Vignette keeps body copy readable over the artwork */}
+      {/* Vignette keeps body copy readable over the artwork. On the dark page
+          this was a near-opaque black at the edges and clear in the middle; on
+          the light page it has to carry a wash across the *whole* field, since
+          there is nothing else holding the artwork back behind the text. */}
       <div
         className="absolute inset-0"
         style={{
           background:
-            "radial-gradient(ellipse at 60% 40%, transparent 20%, rgba(2,4,12,0.82) 78%)",
+            "radial-gradient(ellipse at 60% 40%, rgba(250,244,248,0.55) 20%, rgba(200,204,210,0.62) 78%)",
         }}
       />
     </div>
