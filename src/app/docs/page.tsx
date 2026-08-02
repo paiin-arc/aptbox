@@ -36,6 +36,7 @@ const TOC = [
   { id: "verify-yourself", label: "Verify it yourself" },
   { id: "size", label: "No size limit" },
   { id: "limits", label: "Limits, stated plainly" },
+  { id: "roadmap", label: "What's next" },
 ];
 
 export default function DocsPage() {
@@ -113,6 +114,7 @@ export default function DocsPage() {
             <VerifyYourself />
             <NoSizeLimit />
             <Limits />
+            <Roadmap />
             <Closing />
           </div>
         </div>
@@ -627,6 +629,65 @@ function Limits() {
             <div className="text-sm font-semibold text-amber-700">{l.t}</div>
             <div className="mt-1.5 text-sm leading-relaxed text-ink-muted">
               {l.d}
+            </div>
+          </div>
+        ))}
+      </div>
+    </Section>
+  );
+}
+
+/**
+ * Roadmap. Kept deliberately short and dependency-first: each item names the
+ * thing that actually gates it, so a reader can tell the difference between
+ * "not built yet" and "not buildable honestly yet". The sidebar's "Soon" row
+ * links straight here.
+ */
+function Roadmap() {
+  return (
+    <Section
+      id="roadmap"
+      eyebrow="Roadmap"
+      title="What's next."
+      lead="One thing at a time, and only once the layer underneath can support it honestly."
+    >
+      <div className="mt-8 space-y-3">
+        {[
+          {
+            t: "Private datasets — client-side encryption",
+            d: "Encrypt bytes in the browser before they ever reach Shelby, and distribute keys to the wallets that hold access. Today a paid dataset is enforced on Aptos but not on Shelby, so payment buys the receipt and the listing rather than exclusivity over the bytes.",
+            blocker:
+              "Nothing external — this is ours to build, and it is the piece the two items below rest on. Encrypting at the client means read access stops depending on the storage layer gaining per-reader permissions.",
+          },
+          {
+            t: "Train with AI — verifiable training sets",
+            d: "Pin a set of datasets on Aptos before training starts, so a model can point back at the exact bytes it learned from and anyone can re-hash them from Shelby to check. The registry already commits a SHA-256 per dataset, which is the hard half.",
+            blocker:
+              "Enforceable read access, via whichever lands first: client-side encryption above, or per-reader access control on Shelby. Until one exists, a training run cannot prove it was licensed to read what it read — and a provenance claim that cannot be enforced is decoration.",
+          },
+          {
+            t: "Model attestation",
+            d: "Close a training run with the resulting model's hash, giving a dataset page a straight answer to \"what was trained on this?\" and a model a straight answer to \"what went into it?\".",
+            blocker:
+              "Follows the above. Worth stating plainly: this would prove a set was committed to in advance and legitimately accessed, not that a model was in fact trained on it. Execution proof needs trusted hardware or ZKML, and neither is ready.",
+          },
+        ].map((r) => (
+          <div
+            key={r.t}
+            className="rounded-xl border border-royal/35 bg-royal/6 p-4"
+          >
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm font-semibold text-ink">{r.t}</span>
+              <span className="rounded-full bg-royal/10 px-1.5 py-0.5 text-2xs font-semibold uppercase tracking-wider text-royal ring-1 ring-royal/20">
+                Soon
+              </span>
+            </div>
+            <div className="mt-1.5 text-sm leading-relaxed text-ink-muted">
+              {r.d}
+            </div>
+            <div className="mt-2.5 border-t border-royal/20 pt-2.5 text-xs leading-relaxed text-ink-subtle">
+              <span className="font-semibold text-ink-muted">Depends on: </span>
+              {r.blocker}
             </div>
           </div>
         ))}

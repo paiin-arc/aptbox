@@ -354,6 +354,27 @@ export function DocsIcon({ className = "h-4 w-4" }: { className?: string }) {
   );
 }
 
+/**
+ * Neural graph over a dataset block — the "train a model on verified data" mark.
+ * Nodes are filled so the glyph still reads at 16px, where three hairline
+ * circles would dissolve into the stroke work.
+ */
+export function TrainIcon({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" {...COMMON} className={className} aria-hidden>
+      {/* Dataset block, feeding the network */}
+      <path d="M3 7.5c0-1 1.8-1.8 4-1.8s4 .8 4 1.8-1.8 1.8-4 1.8-4-.8-4-1.8z" />
+      <path d="M3 7.5v4c0 1 1.8 1.8 4 1.8s4-.8 4-1.8v-4" opacity="0.85" />
+      {/* Edges into the two output nodes */}
+      <path d="M11 9.5l5-2.2M11 11.5l5 2.2M16 7.3v6.4" opacity="0.7" />
+      <circle cx="16.6" cy="7" r="1.7" fill="currentColor" stroke="none" />
+      <circle cx="16.6" cy="14" r="1.7" fill="currentColor" stroke="none" />
+      <circle cx="20.5" cy="10.5" r="1.5" fill="currentColor" stroke="none" opacity="0.6" />
+      <path d="M18.1 7.6l1.5 1.8M18.1 13.4l1.5-1.8" opacity="0.7" />
+    </svg>
+  );
+}
+
 export function ChevronIcon({
   className = "h-3 w-3",
   open,
