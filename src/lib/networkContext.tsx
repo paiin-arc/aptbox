@@ -26,10 +26,9 @@ type NetworkCtx = {
 const Ctx = createContext<NetworkCtx | null>(null);
 
 /**
- * Versioned so the default change to testnet actually reaches people who
- * already used the app. The v1 key holds "shelbynet" for anyone who visited
- * before the registry situation was understood, and a stored value always beat
- * the default — so without this bump the fix would be a no-op for them.
+ * Versioned localStorage key. v2 exists so stale values from when testnet was
+ * supported get discarded — isSupported() now rejects "testnet", and the
+ * fallback correctly lands on shelbynet.
  */
 const STORAGE_KEY = "aptbox:activeNetwork:v2";
 

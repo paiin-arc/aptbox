@@ -5,17 +5,25 @@
  * hits the Shelby indexer (GraphQL). Some Geomi key configurations 401 on that
  * call even when storage works fine. Doing the steps manually skips the dedup
  * check entirely — the user pays once if they re-upload, but that's a fair
- * trade for reliable testnet uploads.
+ * trade for reliable uploads.
  *
  * The flow is split into two phases so the upload page can sign the aptbox
- * register tx in parallel with the (slow on testnet) byte upload:
+ * register tx in parallel with the byte upload:
  *
- *   prepareAndRegisterShelby — erasure-code + sign register tx
- *   uploadShelbyBytes        — putBlob with retry (no wallet signature)
+ *   prepareAndRegisterShelby — erasure-code + sign register tx + extract UID
+ *   uploadShelbyBytes        — putBlobChunksets with retry (no wallet signature)
+ *   commitShelbyBlob         — finalize blob on-chain (wallet signature)
  *
  * `prepareAndRegisterShelby` is additionally split into
  * `prepareShelbyCommitments` + `registerShelbyBlob` for popup-based wallets,
  * which must request their signature from a fresh click. See those functions.
+ *
+ * SDK 0.6.0 changes vs 0.3.1:
+ *   - rpc.putBlob() → rpc.putBlobChunksets() (requires UID + commitments)
+ *   - New commit step: coordination.commitObject() finalizes the upload
+ *   - ShelbyRPCClient constructor now takes full ShelbyClientConfig
+ *   - Register tx events must be parsed with ShelbyBlobClient.registeredBlobUids()
+ *   - testnet is retired; only shelbynet or local are accepted
  */
 
 import {
@@ -24,21 +32,23 @@ import {
   createDefaultErasureCodingProvider,
   generateCommitments,
   type BlobCommitments,
+  type StorageProviderAck,
 } from "@shelby-protocol/sdk/browser";
 import { AccountAddress } from "@aptos-labs/ts-sdk";
 import type { WalletContextState } from "@aptos-labs/wallet-adapter-react";
 import { shelbyApiKeyFor, type SupportedNetwork } from "@/lib/networks";
-import { logStage, signWithTimeout } from "@/lib/tx";
+import { logStage, signWithTimeout, waitForTx } from "@/lib/tx";
+import { SHELBY_DEPLOYER } from "@shelby-protocol/sdk/browser";
 
 /**
  * There is no maximum dataset size.
  *
- * Verified against @shelby-protocol/sdk 0.3.1 rather than assumed:
+ * Verified against @shelby-protocol/sdk 0.6.0:
  *   - `generateCommitments(provider, ReadableStream | Uint8Array)` streams the
  *     data into as many chunksets as needed, 10 MiB each under the default
  *     ClayCode_16Total_10Data scheme. No chunkset-count ceiling.
- *   - `putBlob({ blobData: ReadableStream, totalBytes })` uploads via multipart
- *     in 5 MiB parts with no part-count cap.
+ *   - `putBlobChunksets` uploads chunksets directly to storage providers via the
+ *     RPC's worker pool.
  *   - Neither the SDK nor docs.shelby.xyz states a per-blob maximum; the docs
  *     say "files of any size with automatic chunking and erasure coding".
  *
@@ -47,7 +57,7 @@ import { logStage, signWithTimeout } from "@/lib/tx";
  *
  *   1. SHA-256      — streaming digest (see src/lib/sha256Stream.ts)
  *   2. commitments  — SDK streams it, one 10 MiB chunkset at a time
- *   3. putBlob      — SDK streams it, one 5 MiB part at a time
+ *   3. putBlobChunksets — SDK streams it, chunkset-by-chunkset
  *
  * Peak memory is a small constant regardless of dataset size, so there is no
  * size cap to enforce. The cost is that the file is read from disk three times.
@@ -55,14 +65,12 @@ import { logStage, signWithTimeout } from "@/lib/tx";
 
 /** Default scheme: erasure_k(10) * chunkSizeBytes(1 MiB). */
 const CHUNKSET_SIZE_BYTES = 10 * 1024 * 1024;
-/** `ShelbyRPCClient.#putBlobMultipart` default `partSize`. */
-const UPLOAD_PART_SIZE_BYTES = 5 * 1024 * 1024;
 /** ClayCode_16Total_10Data: encoding expands each chunkset by n/k. */
 const ERASURE_EXPANSION = 16 / 10;
 
 /**
  * Above this, an upload takes long enough (hashing + encoding + a sequential
- * multipart transfer) to be worth calling out. Advisory only — never blocks.
+ * transfer) to be worth calling out. Advisory only — never blocks.
  */
 const LARGE_UPLOAD_ADVISORY_BYTES = 1024 * 1024 * 1024;
 
@@ -71,18 +79,15 @@ export function chunksetCountFor(bytes: number): number {
 }
 
 export function partCountFor(bytes: number): number {
-  return Math.max(1, Math.ceil(bytes / UPLOAD_PART_SIZE_BYTES));
+  return chunksetCountFor(bytes);
 }
 
 /**
  * Peak working set, which is bounded by the largest single stage rather than by
- * the dataset: one chunkset plus its parity, or one multipart part.
+ * the dataset: one chunkset plus its parity.
  */
 export function peakWorkingSetBytes(): number {
-  return Math.max(
-    Math.round(CHUNKSET_SIZE_BYTES * (1 + ERASURE_EXPANSION)),
-    UPLOAD_PART_SIZE_BYTES
-  );
+  return Math.round(CHUNKSET_SIZE_BYTES * (1 + ERASURE_EXPANSION));
 }
 
 export function isLargeUpload(bytes: number): boolean {
@@ -100,6 +105,7 @@ export type UploadStage =
   | "encoding"
   | "registering"
   | "putting"
+  | "committing"
   | "retrying"
   | "done";
 
@@ -127,7 +133,7 @@ export type UploadProgress = {
   totalBytes?: number;
   partIdx?: number;
   totalParts?: number;
-  phase?: "uploading" | "finalizing";
+  phase?: "uploading" | "finalizing" | "committing";
   message?: string;
 };
 
@@ -151,6 +157,8 @@ type PrepareAndRegisterResult = {
   blobName: string;
   commitments: BlobCommitments;
   registerTxHash: string;
+  /** On-chain UID assigned at registration — required for putBlobChunksets + commitObject. */
+  uid: bigint;
 };
 
 /**
@@ -191,11 +199,17 @@ export async function prepareShelbyCommitments(args: {
 }
 
 /**
- * Sign the Shelby `register_blob` tx for commitments produced above. Kept free
- * of async work before the signature request so it can be called directly from
- * a click handler and stay inside the activation window.
+ * Sign the Shelby `register_blob` tx for commitments produced above, then
+ * wait for the tx to land and extract the on-chain UID.
+ *
+ * Kept free of async work before the signature request so it can be called
+ * directly from a click handler and stay inside the activation window.
+ *
+ * SDK 0.6.0 change: the UID is required by putBlobChunksets + commitObject,
+ * so we now waitForTx and parse BlobRegisteredEvent to extract it.
  */
 export async function registerShelbyBlob(args: {
+  network: SupportedNetwork;
   uploaderAddress: string;
   blobName: string;
   commitments: BlobCommitments;
@@ -204,7 +218,7 @@ export async function registerShelbyBlob(args: {
   expirationMicros?: number;
   onProgress?: (p: UploadProgress) => void;
 }): Promise<PrepareAndRegisterResult> {
-  const { uploaderAddress, blobName, commitments, encoding } = args;
+  const { network, uploaderAddress, blobName, commitments, encoding } = args;
 
   args.onProgress?.({
     stage: "registering",
@@ -219,19 +233,42 @@ export async function registerShelbyBlob(args: {
     expirationMicros,
     numChunksets: commitments.chunkset_commitments.length,
     encoding,
+    locationHint: "shelbynet-1",
   });
 
   logStage("uploadService", "→ Shelby register_blob sign requested");
+
   const { hash: registerTxHash } = await signWithTimeout(
     args.signAndSubmitTransaction({ data: registerPayload }),
     "Shelby register_blob"
   );
+
   logStage(
     "uploadService",
     `← Shelby register tx submitted ${registerTxHash.slice(0, 10)}…`
   );
 
-  return { blobName, commitments, registerTxHash };
+  // Wait for the register tx to land so we can parse the UID from events.
+  // The UID is required for putBlobChunksets and commitObject.
+  const registerTx = await waitForTx(registerTxHash, { network });
+  const events =
+    (registerTx as { events?: { type: string; data: unknown }[] }).events ?? [];
+  const registeredUids = ShelbyBlobClient.registeredBlobUids(
+    events as ReadonlyArray<{ type: string; data: unknown }>,
+    AccountAddress.fromString(SHELBY_DEPLOYER)
+  );
+
+  if (registeredUids.length === 0) {
+    throw new Error(
+      `Shelby register_blob tx ${registerTxHash} succeeded but no BlobRegisteredEvent was found. ` +
+        `The blob UID is required for uploading bytes. This may be a contract or indexer issue.`
+    );
+  }
+
+  const uid = registeredUids[0].uid;
+  logStage("uploadService", `  blob UID = ${uid}`);
+
+  return { blobName, commitments, registerTxHash, uid };
 }
 
 /**
@@ -247,6 +284,7 @@ export async function prepareAndRegisterShelby(
     onProgress: args.onProgress,
   });
   return registerShelbyBlob({
+    network: args.network,
     uploaderAddress: args.uploaderAddress,
     blobName: args.blobName,
     commitments,
@@ -262,17 +300,24 @@ type UploadShelbyBytesArgs = {
   uploaderAddress: string;
   source: Blob;
   blobName: string;
+  /** On-chain UID from registerShelbyBlob — required by putBlobChunksets. */
+  uid: bigint;
+  /** Commitments from prepareShelbyCommitments — required by putBlobChunksets. */
+  commitments: BlobCommitments;
   onProgress?: (p: UploadProgress) => void;
 };
 
 /**
  * Phase 2: upload bytes via the Shelby RPC. No wallet interaction.
  * Includes one transient-error retry (408 / 5xx).
+ *
+ * SDK 0.6.0 change: Uses putBlobChunksets (v2 API) instead of the removed
+ * putBlob. Returns SP acks needed for the commitObject step.
  */
 export async function uploadShelbyBytes(
   args: UploadShelbyBytesArgs
-): Promise<void> {
-  const { network, uploaderAddress, source, blobName, onProgress } = args;
+): Promise<{ spAcks: StorageProviderAck[] }> {
+  const { network, uploaderAddress, source, blobName, uid, commitments, onProgress } = args;
 
   const apiKey = shelbyApiKeyFor(network);
   if (!apiKey) {
@@ -286,13 +331,14 @@ export async function uploadShelbyBytes(
     pct: 0,
     message: "Uploading bytes to Shelby…",
   });
+
   const rpc = new ShelbyRPCClient({ network, apiKey });
 
   const handlePutProgress = (p: {
-    phase: "uploading" | "finalizing";
-    partIdx: number;
-    totalParts: number;
-    partBytes: number;
+    phase: "uploading";
+    chunksetIdx: number;
+    totalChunksets: number;
+    chunksetBytes: number;
     uploadedBytes: number;
     totalBytes: number;
   }) => {
@@ -300,7 +346,7 @@ export async function uploadShelbyBytes(
       p.totalBytes > 0 ? Math.min(100, (p.uploadedBytes / p.totalBytes) * 100) : 0;
     if (typeof window !== "undefined") {
       console.log(
-        `[shelby putBlob] ${p.phase} part ${p.partIdx + 1}/${p.totalParts}  ${p.uploadedBytes}/${p.totalBytes} bytes (${pct.toFixed(1)}%)`
+        `[shelby putBlobChunksets] ${p.phase} chunkset ${p.chunksetIdx + 1}/${p.totalChunksets}  ${p.uploadedBytes}/${p.totalBytes} bytes (${pct.toFixed(1)}%)`
       );
     }
     onProgress?.({
@@ -308,10 +354,10 @@ export async function uploadShelbyBytes(
       pct,
       uploadedBytes: p.uploadedBytes,
       totalBytes: p.totalBytes,
-      partIdx: p.partIdx,
-      totalParts: p.totalParts,
+      partIdx: p.chunksetIdx,
+      totalParts: p.totalChunksets,
       phase: p.phase,
-      message: `Uploading bytes to Shelby (part ${p.partIdx + 1}/${p.totalParts})…`,
+      message: `Uploading bytes to Shelby (chunkset ${p.chunksetIdx + 1}/${p.totalChunksets})…`,
     });
   };
 
@@ -320,17 +366,20 @@ export async function uploadShelbyBytes(
    * retry that reused the first stream would upload zero bytes.
    */
   const buildPutParams = () => ({
-    account: uploaderAddress,
-    blobName,
-    blobData: source.stream(),
+    accountAddress: uploaderAddress,
+    uid,
+    blobData: source.stream() as ReadableStream<Uint8Array>,
+    commitments,
     totalBytes: source.size,
     onProgress: handlePutProgress,
   });
 
   let lastPutErr: unknown = null;
+  let spAcks: StorageProviderAck[] = [];
   for (let attempt = 0; attempt <= MAX_PUT_RETRIES; attempt++) {
     try {
-      await rpc.putBlob(buildPutParams());
+      const result = await rpc.putBlobChunksets(buildPutParams());
+      spAcks = result.spAcks;
       lastPutErr = null;
       break;
     } catch (e) {
@@ -345,7 +394,7 @@ export async function uploadShelbyBytes(
         throw e;
       }
       console.warn(
-        `[shelby putBlob] attempt ${attempt + 1} failed with status ${getErrorStatus(e)}; retrying in ${PUT_RETRY_DELAY_MS / 1000}s`,
+        `[shelby putBlobChunksets] attempt ${attempt + 1} failed with status ${getErrorStatus(e)}; retrying in ${PUT_RETRY_DELAY_MS / 1000}s`,
         e
       );
       onProgress?.({
@@ -357,6 +406,56 @@ export async function uploadShelbyBytes(
   }
   if (lastPutErr) throw lastPutErr;
 
-  onProgress?.({ stage: "done", message: "Upload complete." });
+  onProgress?.({ stage: "putting", pct: 100, message: "Bytes uploaded, committing…" });
+  return { spAcks };
 }
 
+/**
+ * Phase 3: Commit the uploaded blob on-chain. Requires a wallet signature.
+ *
+ * SDK 0.6.0 addition: After putBlobChunksets, the blob is in "pending" state.
+ * commitObject binds the pending blob under its object name, setting
+ * `is_written = true` and applying SP acks.
+ *
+ * Uses the static `createCommitObjectPayload` and submits via the wallet
+ * adapter, matching the pattern used for `createRegisterBlobPayload`.
+ */
+export async function commitShelbyBlob(args: {
+  blobName: string;
+  uid: bigint;
+  spAcks: StorageProviderAck[];
+  signAndSubmitTransaction: SignAndSubmitFn;
+  network: SupportedNetwork;
+  onProgress?: (p: UploadProgress) => void;
+}): Promise<{ commitTxHash: string }> {
+  args.onProgress?.({
+    stage: "committing",
+    message: "Approve Shelby commit in wallet…",
+  });
+
+  const commitPayload = ShelbyBlobClient.createCommitObjectPayload({
+    uid: args.uid,
+    blobName: args.blobName,
+    overwrite: false,
+    storageProviderAcks: args.spAcks,
+  });
+
+  logStage("uploadService", "→ Shelby commit_object sign requested");
+
+  const { hash: commitTxHash } = await signWithTimeout(
+    args.signAndSubmitTransaction({ data: commitPayload }),
+    "Shelby commit_object"
+  );
+
+  logStage(
+    "uploadService",
+    `← Shelby commit tx submitted ${commitTxHash.slice(0, 10)}…`
+  );
+
+  // Wait for the commit tx to confirm
+  await waitForTx(commitTxHash, { network: args.network });
+  logStage("uploadService", "  commit confirmed");
+
+  args.onProgress?.({ stage: "done", message: "Upload complete." });
+  return { commitTxHash };
+}

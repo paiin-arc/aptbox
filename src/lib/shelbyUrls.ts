@@ -7,7 +7,6 @@ import type { SupportedNetwork } from "./networks";
  */
 const RPC_BASE: Record<SupportedNetwork, string> = {
   [Network.SHELBYNET]: "https://api.shelbynet.shelby.xyz/shelby",
-  [Network.TESTNET]: "https://api.testnet.shelby.xyz/shelby",
 };
 
 /**

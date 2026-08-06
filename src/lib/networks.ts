@@ -1,6 +1,12 @@
 import { Network } from "@aptos-labs/ts-sdk";
 
-export const SUPPORTED_NETWORKS = [Network.SHELBYNET, Network.TESTNET] as const;
+/**
+ * Shelby Testnet has been retired as of SDK 0.6.0. The SDK's `ShelbyNetwork`
+ * type only accepts `shelbynet` or `local`. Passing `testnet` to any Shelby
+ * client constructor throws immediately. Only shelbynet is listed here;
+ * `local` can be added for local development when needed.
+ */
+export const SUPPORTED_NETWORKS = [Network.SHELBYNET] as const;
 export type SupportedNetwork = (typeof SUPPORTED_NETWORKS)[number];
 
 export function isSupported(n: string | null | undefined): n is SupportedNetwork {
@@ -10,36 +16,20 @@ export function isSupported(n: string | null | undefined): n is SupportedNetwork
 
 export const NETWORK_LABEL: Record<SupportedNetwork, string> = {
   [Network.SHELBYNET]: "Shelbynet",
-  [Network.TESTNET]: "Testnet",
 };
 
 /**
  * NEXT_PUBLIC_DEFAULT_NETWORK is the only env override.
  *
- * The old NEXT_PUBLIC_APTOS_NETWORK was kept as a back-compat shim and turned
- * into a production bug: a stale `shelbynet` value was sitting in the Vercel
- * project, and because NEXT_PUBLIC_* is inlined at build time it beat this
- * function's fallback on every deploy — so the live site kept defaulting to a
- * network whose registry is empty, no matter what the code said. Dropping the
- * shim means the deployed default comes from one place we can actually see.
- *
- * Testnet is that default because the registry holds real datasets there;
- * shelbynet is deployed but empty, and lands users on a blank workspace.
+ * Falls back to shelbynet — the only supported Shelby network since SDK 0.6.0.
  */
 export function defaultNetwork(): SupportedNetwork {
   const env = (process.env.NEXT_PUBLIC_DEFAULT_NETWORK ?? "").toLowerCase();
   if (isSupported(env)) return env;
-  return Network.TESTNET;
+  return Network.SHELBYNET;
 }
 
 export function shelbyApiKeyFor(network: SupportedNetwork): string | undefined {
-  if (network === Network.TESTNET) {
-    return (
-      process.env.NEXT_PUBLIC_SHELBY_API_KEY_TESTNET ||
-      process.env.NEXT_PUBLIC_SHELBY_API_KEY ||
-      undefined
-    );
-  }
   return (
     process.env.NEXT_PUBLIC_SHELBY_API_KEY_SHELBYNET ||
     process.env.NEXT_PUBLIC_SHELBY_API_KEY ||
@@ -48,32 +38,20 @@ export function shelbyApiKeyFor(network: SupportedNetwork): string | undefined {
 }
 
 /**
- * Aptos Labs API key for the given network. Currently only meaningful for
- * Aptos testnet/mainnet (which talk to api.aptoslabs.com). SHELBYNET runs its
- * own fullnode and doesn't need this key.
+ * Aptos Labs API key for the given network. SHELBYNET runs its own fullnode
+ * and doesn't need this key, so this always returns undefined for now.
  */
-export function aptosApiKeyFor(network: SupportedNetwork): string | undefined {
-  if (network === Network.TESTNET) {
-    return process.env.NEXT_PUBLIC_APTOS_API_KEY_TESTNET || undefined;
-  }
+export function aptosApiKeyFor(_network: SupportedNetwork): string | undefined {
   return undefined;
 }
 
 /**
- * Faucet URLs for funding an empty wallet. Sites users land on in a new tab —
- * no in-app faucet call because testnet's Aptos faucet is Cloudflare-gated
- * and won't work from the browser.
+ * Faucet URLs for funding an empty wallet. Sites users land on in a new tab.
  */
-export function faucetUrlsFor(network: SupportedNetwork): {
+export function faucetUrlsFor(_network: SupportedNetwork): {
   apt: string;
   susd: string;
 } {
-  if (network === Network.TESTNET) {
-    return {
-      apt: "https://aptos.dev/en/network/faucet",
-      susd: "https://docs.shelby.xyz/apis/faucet/shelbyusd",
-    };
-  }
   return {
     apt: "https://docs.shelby.xyz/tools/cli",
     susd: "https://docs.shelby.xyz/apis/faucet/shelbyusd",
@@ -81,13 +59,6 @@ export function faucetUrlsFor(network: SupportedNetwork): {
 }
 
 export function registryAddressFor(network: SupportedNetwork): string {
-  if (network === Network.TESTNET) {
-    return (
-      process.env.NEXT_PUBLIC_REGISTRY_ADDRESS_TESTNET ||
-      process.env.NEXT_PUBLIC_REGISTRY_ADDRESS ||
-      ""
-    );
-  }
   return (
     process.env.NEXT_PUBLIC_REGISTRY_ADDRESS_SHELBYNET ||
     process.env.NEXT_PUBLIC_REGISTRY_ADDRESS ||

@@ -9,26 +9,22 @@
  * Run: node --experimental-strip-types --env-file=.env.local scripts/check-network.mts
  */
 
-const SUPPORTED = ["shelbynet", "testnet"] as const;
+const SUPPORTED = ["shelbynet"] as const;
 type Net = (typeof SUPPORTED)[number];
 
 const NODE_API: Record<Net, string> = {
   shelbynet: "https://api.shelbynet.shelby.xyz/v1",
-  testnet: "https://api.testnet.aptoslabs.com/v1",
 };
 
 function resolveDefault(): Net {
   // Mirrors defaultNetwork() in src/lib/networks.ts — one override, one fallback.
   const v = (process.env.NEXT_PUBLIC_DEFAULT_NETWORK ?? "").toLowerCase();
   if ((SUPPORTED as readonly string[]).includes(v)) return v as Net;
-  return "testnet";
+  return "shelbynet";
 }
 
 const net = resolveDefault();
-const addr =
-  net === "testnet"
-    ? process.env.NEXT_PUBLIC_REGISTRY_ADDRESS_TESTNET
-    : process.env.NEXT_PUBLIC_REGISTRY_ADDRESS_SHELBYNET;
+const addr = process.env.NEXT_PUBLIC_REGISTRY_ADDRESS_SHELBYNET;
 
 console.log("default network :", net);
 console.log("registry address:", addr);

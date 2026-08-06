@@ -37,6 +37,7 @@ import { isUserRejection, logStage, signWithTimeout, waitForTx } from "@/lib/tx"
 import { useNetwork } from "@/lib/networkContext";
 import {
   chunksetCountFor,
+  commitShelbyBlob,
   isLargeUpload,
   partCountFor,
   peakWorkingSetBytes,
@@ -102,6 +103,7 @@ type UploadStage =
   | "encoding"
   | "shelby-sign"
   | "shelby-put"
+  | "shelby-commit"
   | "shelby-retry"
   | "registering"
   | "done"
@@ -114,6 +116,7 @@ const STAGE_LABEL: Record<UploadStage, string> = {
   encoding: "Erasure-coding…",
   "shelby-sign": "Sign Shelby register…",
   "shelby-put": "Uploading to Shelby…",
+  "shelby-commit": "Finalize Shelby commit…",
   "shelby-retry": "Retrying upload…",
   registering: "Sign hash commitment…",
   done: "Upload another",
@@ -309,6 +312,7 @@ export default function UploadPage() {
   function handleProgress(p: UploadProgress) {
     if (p.stage === "encoding") setStage("encoding");
     else if (p.stage === "registering") setStage("shelby-sign");
+    else if (p.stage === "committing") setStage("shelby-commit");
     else if (p.stage === "retrying") {
       setStage("shelby-retry");
       setPutDetail(p.message ?? "Retrying…");
@@ -323,7 +327,7 @@ export default function UploadPage() {
       ) {
         const mb = (n: number) => (n / 1024 / 1024).toFixed(2);
         setPutDetail(
-          `${mb(p.uploadedBytes)} / ${mb(p.totalBytes)} MB · part ${p.partIdx + 1}/${p.totalParts}` +
+          `${mb(p.uploadedBytes)} / ${mb(p.totalBytes)} MB · chunkset ${p.partIdx + 1}/${p.totalParts}` +
             (p.phase === "finalizing" ? " · finalizing" : "")
         );
       }
@@ -382,6 +386,7 @@ export default function UploadPage() {
     try {
       setStage("shelby-sign");
       const shelbyResult = await registerShelbyBlob({
+        network,
         uploaderAddress,
         blobName: pending.blobName,
         commitments: pending.commitments,
@@ -408,14 +413,27 @@ export default function UploadPage() {
       const registryTxHash = (submitted as { hash: string }).hash;
       setTxHash(registryTxHash);
 
-      const [, tx] = await Promise.all([
-        uploadShelbyBytes({
-          network,
-          uploaderAddress,
-          source: file,
-          blobName: pending.blobName,
-          onProgress: handleProgress,
-        }),
+      const [{ spAcks }, tx] = await Promise.all([
+        (async () => {
+          const putRes = await uploadShelbyBytes({
+            network,
+            uploaderAddress,
+            source: file,
+            blobName: pending.blobName,
+            uid: shelbyResult.uid,
+            commitments: pending.commitments,
+            onProgress: handleProgress,
+          });
+          await commitShelbyBlob({
+            blobName: pending.blobName,
+            uid: shelbyResult.uid,
+            spAcks: putRes.spAcks,
+            signAndSubmitTransaction,
+            network,
+            onProgress: handleProgress,
+          });
+          return putRes;
+        })(),
         waitForTx(registryTxHash, { network }),
       ]);
 
@@ -538,14 +556,27 @@ export default function UploadPage() {
       // 5. Run byte upload AND tx confirmation in parallel. Bytes can take 5+
       //    min on testnet; the tx confirmation usually lands in seconds. Both
       //    must succeed before we mark "done".
-      const [, tx] = await Promise.all([
-        uploadShelbyBytes({
-          network,
-          uploaderAddress,
-          source: file,
-          blobName,
-          onProgress: handleProgress,
-        }),
+      const [{ spAcks }, tx] = await Promise.all([
+        (async () => {
+          const putRes = await uploadShelbyBytes({
+            network,
+            uploaderAddress,
+            source: file,
+            blobName,
+            uid: shelbyResult.uid,
+            commitments: shelbyResult.commitments,
+            onProgress: handleProgress,
+          });
+          await commitShelbyBlob({
+            blobName,
+            uid: shelbyResult.uid,
+            spAcks: putRes.spAcks,
+            signAndSubmitTransaction,
+            network,
+            onProgress: handleProgress,
+          });
+          return putRes;
+        })(),
         waitForTx(registryTxHash, { network }),
       ]);
 
@@ -597,6 +628,7 @@ export default function UploadPage() {
     stage === "encoding" ||
     stage === "shelby-sign" ||
     stage === "shelby-put" ||
+    stage === "shelby-commit" ||
     stage === "shelby-retry" ||
     stage === "registering";
 

@@ -1,6 +1,6 @@
 /**
  * Cleanup workflow for blobs that registered on chain but never finalized
- * storage (`is_written: false`). On Shelby testnet these "stuck pending"
+ * storage (`is_written: false`). On Shelbynet these "stuck pending"
  * blobs occupy slots in the user's account and can't recover — storage
  * providers don't retry old uncommitted writes.
  *
@@ -64,7 +64,7 @@ export async function fetchPendingBlobs(
  * @param blobNames suffix-only names ("aptbox/foo.png"), NOT prefixed keys
  */
 export function buildDeleteMultiplePayload(blobNames: string[]) {
-  return ShelbyBlobClient.createDeleteMultipleBlobsPayload({ blobNames });
+  return ShelbyBlobClient.createDeleteMultipleObjectsPayload({ blobNames });
 }
 
 /**

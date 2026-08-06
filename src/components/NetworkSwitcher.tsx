@@ -11,7 +11,6 @@ import { CheckIcon, ChevronIcon } from "./CategoryIcon";
 // apart at dot size.
 const NETWORK_DOTS: Record<string, string> = {
   shelbynet: "bg-royal",
-  testnet: "bg-sky",
 };
 
 export function NetworkSwitcher() {

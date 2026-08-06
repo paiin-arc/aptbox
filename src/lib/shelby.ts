@@ -53,6 +53,7 @@ export function getShelbyClient(network: SupportedNetwork): ShelbyClient | null 
     apiKey,
     rpc: { apiKey },
     indexer: { apiKey },
+    locationHint: "shelbynet-1",
   });
   patchAptosWaitForTx(client);
   cache.set(network, client);
