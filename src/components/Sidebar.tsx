@@ -54,9 +54,8 @@ const PRIMARY_NAV: PrimaryItem[] = [
   { label: "Check a file", href: "/verify", icon: <VerifyIcon /> },
   {
     label: "Train with AI",
-    href: "/docs#roadmap",
+    href: "/train",
     icon: <TrainIcon />,
-    soon: true,
   },
   { label: "Docs", href: "/docs", icon: <DocsIcon /> },
 ];
