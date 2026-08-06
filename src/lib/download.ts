@@ -1,5 +1,6 @@
 import type { ShelbyClient } from "@shelby-protocol/sdk/browser";
 import { sha256Stream, type HashProgress } from "./sha256Stream";
+import { decryptAesGcm } from "./crypto";
 
 type FetchedBlob = {
   bytes: Uint8Array;
@@ -36,7 +37,7 @@ function isNotFound(e: unknown): boolean {
 
 export async function fetchShelbyBlob(
   client: ShelbyClient,
-  args: { uploader: string; cid: string; mimeType: string }
+  args: { uploader: string; cid: string; mimeType: string; encryptionKeyHex?: string }
 ): Promise<FetchedBlob> {
   try {
     const result = await client.rpc.getBlob({
@@ -44,7 +45,11 @@ export async function fetchShelbyBlob(
       blobName: args.cid,
     });
     const buf = await new Response(result.readable).arrayBuffer();
-    const bytes = new Uint8Array(buf);
+    let bytes = new Uint8Array(buf);
+    if (args.encryptionKeyHex) {
+      const decrypted = await decryptAesGcm(bytes, args.encryptionKeyHex);
+      bytes = new Uint8Array(decrypted.buffer as ArrayBuffer, decrypted.byteOffset, decrypted.byteLength);
+    }
     const blob = new Blob([bytes], {
       type: args.mimeType || "application/octet-stream",
     });

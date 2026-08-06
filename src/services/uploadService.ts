@@ -32,6 +32,7 @@ import {
   createDefaultErasureCodingProvider,
   generateCommitments,
   type BlobCommitments,
+  type BlobEncryption,
   type StorageProviderAck,
 } from "@shelby-protocol/sdk/browser";
 import { AccountAddress } from "@aptos-labs/ts-sdk";
@@ -148,6 +149,7 @@ type PrepareAndRegisterArgs = {
    */
   source: Blob;
   blobName: string;
+  encryption?: BlobEncryption;
   signAndSubmitTransaction: SignAndSubmitFn;
   expirationMicros?: number;
   onProgress?: (p: UploadProgress) => void;
@@ -214,11 +216,12 @@ export async function registerShelbyBlob(args: {
   blobName: string;
   commitments: BlobCommitments;
   encoding: number;
+  encryption?: BlobEncryption;
   signAndSubmitTransaction: SignAndSubmitFn;
   expirationMicros?: number;
   onProgress?: (p: UploadProgress) => void;
 }): Promise<PrepareAndRegisterResult> {
-  const { network, uploaderAddress, blobName, commitments, encoding } = args;
+  const { network, uploaderAddress, blobName, commitments, encoding, encryption } = args;
 
   args.onProgress?.({
     stage: "registering",
@@ -234,6 +237,7 @@ export async function registerShelbyBlob(args: {
     numChunksets: commitments.chunkset_commitments.length,
     encoding,
     locationHint: "shelbynet-1",
+    encryption: encryption ?? "Unencrypted",
   });
 
   logStage("uploadService", "→ Shelby register_blob sign requested");
@@ -289,6 +293,7 @@ export async function prepareAndRegisterShelby(
     blobName: args.blobName,
     commitments,
     encoding,
+    encryption: args.encryption,
     signAndSubmitTransaction: args.signAndSubmitTransaction,
     expirationMicros: args.expirationMicros,
     onProgress: args.onProgress,

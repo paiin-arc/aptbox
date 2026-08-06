@@ -4,10 +4,11 @@ export type BlobLifecycle = {
   expirationMicros: number;
   isWritten: boolean;
   isDeleted: boolean;
+  encryption?: string;
 };
 
 /**
- * Fetches lifecycle metadata (expiration, written, deleted) for every blob
+ * Fetches lifecycle metadata (expiration, written, deleted, encryption) for every blob
  * owned by `account` from the Shelby indexer. Override the default expiry
  * filter so that already-expired blobs are still returned — we want to surface
  * them in the UI as "Expired N days ago" rather than hide them.
@@ -36,6 +37,7 @@ export async function fetchAccountBlobLifecycles(
         expirationMicros: Number(b.expirationMicros),
         isWritten: Boolean(b.isWritten),
         isDeleted: Boolean(b.isDeleted ?? false),
+        encryption: b.encryption,
       });
     }
     return map;

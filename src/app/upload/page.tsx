@@ -11,7 +11,7 @@ import {
 import { ConnectWalletButton } from "@/components/ConnectWalletButton";
 import { AptboxIcon } from "@/components/AptboxIcon";
 import { NetworkSwitcher } from "@/components/NetworkSwitcher";
-import { sha256File, formatBytes, blobNameFor } from "@/lib/crypto";
+import { generateAesKey, encryptAesGcm, sha256File, formatBytes, blobNameFor } from "@/lib/crypto";
 import { formatHashForDisplay } from "@/lib/verify";
 import {
   ArrowRightIcon,
@@ -174,6 +174,9 @@ export default function UploadPage() {
   const [whitelistText, setWhitelistText] = useState("");
   const [durationPreset, setDurationPreset] = useState<DurationPreset>("30d");
   const [customHours, setCustomHours] = useState("48");
+
+  const [encryptDataset, setEncryptDataset] = useState(false);
+  const [encryptionKeyHex, setEncryptionKeyHex] = useState<string | null>(null);
 
   const [stage, setStage] = useState<UploadStage>("idle");
   const [putPct, setPutPct] = useState<number | null>(null);
@@ -359,8 +362,18 @@ export default function UploadPage() {
       setHashPct(null);
 
       const blobName = blobNameFor(hex, displayName);
+      let uploadSource: Blob = file;
+      if (encryptDataset) {
+        setStage("encoding");
+        const keyHex = await generateAesKey();
+        setEncryptionKeyHex(keyHex);
+        const buf = new Uint8Array(await file.arrayBuffer());
+        const encryptedBytes = await encryptAesGcm(buf, keyHex);
+        uploadSource = new Blob([encryptedBytes.buffer as ArrayBuffer], { type: file.type || "application/octet-stream" });
+      }
+
       const { commitments, encoding } = await prepareShelbyCommitments({
-        source: file,
+        source: uploadSource,
         onProgress: handleProgress,
       });
 
@@ -391,6 +404,7 @@ export default function UploadPage() {
         blobName: pending.blobName,
         commitments: pending.commitments,
         encoding: pending.encoding,
+        encryption: encryptDataset ? "AES_GCM_V1" : "Unencrypted",
         signAndSubmitTransaction,
         expirationMicros,
         onProgress: handleProgress,
@@ -515,12 +529,23 @@ export default function UploadPage() {
       const blobName = blobNameFor(hex, displayName);
       const uploaderAddress = account.address.toString();
 
+      let uploadSource: Blob = file;
+      if (encryptDataset) {
+        setStage("encoding");
+        const keyHex = await generateAesKey();
+        setEncryptionKeyHex(keyHex);
+        const buf = new Uint8Array(await file.arrayBuffer());
+        const encryptedBytes = await encryptAesGcm(buf, keyHex);
+        uploadSource = new Blob([encryptedBytes.buffer as ArrayBuffer], { type: file.type || "application/octet-stream" });
+      }
+
       // 3. Erasure-code + sign Shelby register tx (popup 1)
       const shelbyResult = await prepareAndRegisterShelby({
         network,
         uploaderAddress,
-        source: file,
+        source: uploadSource,
         blobName,
+        encryption: encryptDataset ? "AES_GCM_V1" : "Unencrypted",
         signAndSubmitTransaction,
         expirationMicros,
         onProgress: handleProgress,
@@ -935,6 +960,52 @@ export default function UploadPage() {
               <div className="mt-1 text-xs text-ink-subtle">
                 {whitelist.length} valid address
                 {whitelist.length === 1 ? "" : "es"}
+              </div>
+            </div>
+          )}
+
+          {/* Client-Side Encryption Toggle (Phase 1) */}
+          <div className="rounded-xl border border-line bg-surface-raised p-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <LockIcon className="h-4 w-4 text-royal-deep" />
+                <span className="text-sm font-semibold text-ink">Client-Side Encryption (AES-256-GCM)</span>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={encryptDataset}
+                  onChange={(e) => setEncryptDataset(e.target.checked)}
+                  disabled={busy}
+                  className="sr-only peer"
+                />
+                <div className="w-9 h-5 bg-line peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-royal"></div>
+              </label>
+            </div>
+            <p className="text-xs text-ink-subtle">
+              {encryptDataset
+                ? "Dataset bytes will be encrypted using WebCrypto AES-256-GCM before upload. The on-chain registration will record encryption: AES_GCM_V1."
+                : "Dataset is stored unencrypted on Shelby RPC nodes. Enable this if your training data requires zero-trust privacy."}
+            </p>
+          </div>
+
+          {encryptionKeyHex && (
+            <div className="rounded-xl border border-emerald-600/40 bg-emerald-500/10 p-4 text-xs space-y-2 text-ink">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-emerald-700">🔐 Dataset Encryption Key (Save This Key!)</span>
+                <button
+                  type="button"
+                  onClick={() => navigator.clipboard.writeText(encryptionKeyHex)}
+                  className="font-medium text-emerald-800 underline hover:no-underline"
+                >
+                  Copy Key
+                </button>
+              </div>
+              <p className="text-2xs text-ink-muted">
+                Your dataset was encrypted with WebCrypto AES-256-GCM. Save this key — you will need it to decrypt and download the dataset bytes.
+              </p>
+              <div className="rounded bg-surface-sunken p-2 font-mono text-2xs break-all text-ink select-all">
+                {encryptionKeyHex}
               </div>
             </div>
           )}

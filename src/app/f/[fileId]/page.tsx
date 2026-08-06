@@ -128,6 +128,7 @@ export default function FilePage({ params }: Props) {
   /** Cap auto-retries at ~2 min to avoid hammering a truly-dead blob. */
   const MAX_PROPAGATION_ATTEMPTS = 20;
   const [tamperAcknowledged, setTamperAcknowledged] = useState(false);
+  const [decryptKeyInput, setDecryptKeyInput] = useState("");
   const [deleteStage, setDeleteStage] = useState<
     "idle" | "confirming" | "signing" | "waiting" | "done" | "error"
   >("idle");
@@ -488,6 +489,24 @@ export default function FilePage({ params }: Props) {
       {/* Preview / download */}
       {canAccess && (
         <div className="space-y-4">
+          {lifecycle?.encryption === "AES_GCM_V1" && (
+            <div className="rounded-xl border border-royal/30 bg-royal/6 p-3 space-y-1.5 text-xs text-ink">
+              <div className="font-semibold text-royal-deep flex items-center gap-1.5">
+                <span>🔐 Encrypted Dataset (AES-256-GCM)</span>
+              </div>
+              <p className="text-2xs text-ink-muted">
+                This dataset is encrypted. Enter your 256-bit decryption key hex to decrypt and download:
+              </p>
+              <input
+                type="text"
+                value={decryptKeyInput}
+                onChange={(e) => setDecryptKeyInput(e.target.value)}
+                placeholder="Enter 64-character AES key hex..."
+                className="w-full rounded-lg border border-line bg-surface-raised px-3 py-2 font-mono text-xs tabular-nums text-ink placeholder:text-ink-subtle"
+              />
+            </div>
+          )}
+
           {downloadStage === "idle" && (
             <button
               onClick={() => loadBlob(file)}
