@@ -176,7 +176,7 @@ export default function TrainPage() {
   return (
     <div className="relative flex min-h-dvh flex-col text-ink">
       <AppBackdrop />
-      <header className="sticky top-0 z-10 flex w-full items-center justify-between border-b border-line bg-surface/80 px-4 py-3 backdrop-blur-md sm:px-6 sm:py-4">
+      <header className="relative z-10 sticky top-0 flex w-full items-center justify-between border-b border-line bg-surface/80 px-4 py-3 backdrop-blur-md sm:px-6 sm:py-4">
         <Link href="/" className="flex items-center gap-2">
           <AptboxIcon className="h-8 w-8 text-ink" />
           <span className="text-lg font-semibold tracking-tight">
@@ -189,7 +189,7 @@ export default function TrainPage() {
         </div>
       </header>
 
-      <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 p-4 sm:p-6">
+      <main className="relative z-10 mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 p-4 sm:p-6">
         <div>
           <div className="text-2xs font-semibold uppercase tracking-wider text-royal-deep">
             AI Training Provenance
