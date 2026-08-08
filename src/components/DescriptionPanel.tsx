@@ -8,7 +8,7 @@ import {
   MAX_DESCRIPTION_LEN,
   buildSetDescriptionPayload,
 } from "@/lib/registry";
-import { isUserRejection, waitForTx } from "@/lib/tx";
+import { buildSignSubmit, isUserRejection, waitForTx } from "@/lib/tx";
 import type { SupportedNetwork } from "@/lib/networks";
 import { CheckIcon, PencilIcon } from "./CategoryIcon";
 
@@ -21,12 +21,16 @@ export function DescriptionPanel({
   fileId,
   network,
   isOwner,
+  accountAddress,
   signAndSubmitTransaction,
+  signTransaction,
 }: {
   fileId: string;
   network: SupportedNetwork;
   isOwner: boolean;
+  accountAddress?: string;
   signAndSubmitTransaction: WalletContextState["signAndSubmitTransaction"];
+  signTransaction?: WalletContextState["signTransaction"];
 }) {
   const qc = useQueryClient();
   const [editing, setEditing] = useState(false);
@@ -43,13 +47,17 @@ export function DescriptionPanel({
   });
 
   async function save() {
+    if (!accountAddress) return;
     setError(null);
     try {
       setStage("signing");
-      const submitted = await signAndSubmitTransaction({
+      const { hash } = await buildSignSubmit({
+        network,
+        sender: accountAddress,
         data: buildSetDescriptionPayload(network, fileId, draft.trim()),
+        signTransaction,
+        signAndSubmitTransaction,
       });
-      const hash = (submitted as { hash: string }).hash;
       setStage("waiting");
       await waitForTx(hash, { network });
       await qc.invalidateQueries({ queryKey: ["description", network, fileId] });

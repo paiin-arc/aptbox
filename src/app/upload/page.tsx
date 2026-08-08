@@ -161,6 +161,7 @@ export default function UploadPage() {
       ReturnType<typeof prepareShelbyCommitments>
     >["commitments"];
     encoding: number;
+    uploadSource: Blob;
   } | null>(null);
 
   const [file, setFile] = useState<File | null>(null);
@@ -177,6 +178,7 @@ export default function UploadPage() {
 
   const [encryptDataset, setEncryptDataset] = useState(false);
   const [encryptionKeyHex, setEncryptionKeyHex] = useState<string | null>(null);
+  const [keyCopied, setKeyCopied] = useState(false);
 
   const [stage, setStage] = useState<UploadStage>("idle");
   const [putPct, setPutPct] = useState<number | null>(null);
@@ -377,7 +379,7 @@ export default function UploadPage() {
         onProgress: handleProgress,
       });
 
-      setPending({ hashBytes, hex, blobName, commitments, encoding });
+      setPending({ hashBytes, hex, blobName, commitments, encoding, uploadSource });
       setStage("idle");
     } catch (e) {
       console.error(e);
@@ -432,7 +434,7 @@ export default function UploadPage() {
           const putRes = await uploadShelbyBytes({
             network,
             uploaderAddress,
-            source: file,
+            source: pending.uploadSource,
             blobName: pending.blobName,
             uid: shelbyResult.uid,
             commitments: pending.commitments,
@@ -586,7 +588,7 @@ export default function UploadPage() {
           const putRes = await uploadShelbyBytes({
             network,
             uploaderAddress,
-            source: file,
+            source: uploadSource,
             blobName,
             uid: shelbyResult.uid,
             commitments: shelbyResult.commitments,
@@ -995,10 +997,18 @@ export default function UploadPage() {
                 <span className="font-semibold text-emerald-700">🔐 Dataset Encryption Key (Save This Key!)</span>
                 <button
                   type="button"
-                  onClick={() => navigator.clipboard.writeText(encryptionKeyHex)}
+                  onClick={() => {
+                    if (!encryptionKeyHex) return;
+                    navigator.clipboard.writeText(encryptionKeyHex)
+                      .then(() => {
+                        setKeyCopied(true);
+                        setTimeout(() => setKeyCopied(false), 2000);
+                      })
+                      .catch(() => {});
+                  }}
                   className="font-medium text-emerald-800 underline hover:no-underline"
                 >
-                  Copy Key
+                  {keyCopied ? "✓ Copied!" : "Copy Key"}
                 </button>
               </div>
               <p className="text-2xs text-ink-muted">

@@ -30,7 +30,7 @@ import {
   buildDeleteFilePayload,
   buildPurchaseAccessPayload,
 } from "@/lib/registry";
-import { isUserRejection, waitForTx } from "@/lib/tx";
+import { isUserRejection, waitForTx, buildSignSubmit } from "@/lib/tx";
 import {
   canMaterialize,
   fetchShelbyBlob,
@@ -62,7 +62,7 @@ type Props = { params: Promise<{ fileId: string }> };
 export default function FilePage({ params }: Props) {
   const { fileId } = use(params);
   const wallet = useWallet();
-  const { connected, account, signAndSubmitTransaction } = wallet;
+  const { connected, account, signAndSubmitTransaction, signTransaction } = wallet;
   const shelby = useShelbyClient();
   const qc = useQueryClient();
   const router = useRouter();
@@ -190,10 +190,12 @@ export default function FilePage({ params }: Props) {
       // Too large → stream-verify in constant memory and skip the in-tab copy,
       // so integrity is still provable at any size.
       if (canMaterialize(file.sizeBytes)) {
+        const keyHex = decryptKeyInput.trim();
         const { bytes, blob } = await fetchShelbyBlob(shelby, {
           uploader: file.uploader,
           cid: file.shelbyCid,
           mimeType: file.mimeType,
+          encryptionKeyHex: keyHex || undefined,
         });
 
         // Verify BEFORE exposing a preview or download. The whole point of the
@@ -253,7 +255,12 @@ export default function FilePage({ params }: Props) {
         return;
       }
       console.error(e);
-      setDownloadError((e as Error).message ?? String(e));
+      const msg = (e as Error).message ?? String(e);
+      if (/cipher/i.test(msg) || /decrypt/i.test(msg) || /OperationError/i.test(msg)) {
+        setDownloadError("Decryption failed. Please check that your 64-character AES key is correct.");
+      } else {
+        setDownloadError(msg);
+      }
       setDownloadStage("error");
     }
   }
@@ -287,14 +294,17 @@ export default function FilePage({ params }: Props) {
   const [purchaseError, setPurchaseError] = useState<string | null>(null);
 
   async function handlePurchase() {
-    if (!file || !connected) return;
+    if (!file || !connected || !account) return;
     setPurchaseError(null);
     try {
       setPurchaseStage("signing");
-      const submitted = await signAndSubmitTransaction({
+      const { hash } = await buildSignSubmit({
+        network,
+        sender: account.address.toString(),
         data: buildPurchaseAccessPayload(network, file.fileId),
+        signTransaction,
+        signAndSubmitTransaction,
       });
-      const hash = (submitted as { hash: string }).hash;
       setPurchaseStage("confirming");
       await waitForTx(hash, { network });
       setPurchaseStage("done");
@@ -313,14 +323,17 @@ export default function FilePage({ params }: Props) {
   }
 
   async function handleDelete() {
-    if (!file || !connected) return;
+    if (!file || !connected || !account) return;
     setDeleteError(null);
     try {
       setDeleteStage("signing");
-      const submitted = await signAndSubmitTransaction({
+      const { hash } = await buildSignSubmit({
+        network,
+        sender: account.address.toString(),
         data: buildDeleteFilePayload(network, file.fileId),
+        signTransaction,
+        signAndSubmitTransaction,
       });
-      const hash = (submitted as { hash: string }).hash;
       setDeleteStage("waiting");
       await waitForTx(hash, { network });
       setDeleteStage("done");
@@ -437,7 +450,9 @@ export default function FilePage({ params }: Props) {
         fileId={file.fileId}
         network={network}
         isOwner={isOwner}
+        accountAddress={addr}
         signAndSubmitTransaction={signAndSubmitTransaction}
+        signTransaction={signTransaction}
       />
 
       {/* Integrity — the core guarantee, shown above the bytes it describes. */}

@@ -96,3 +96,113 @@ export async function waitForTx(
   }
   throw lastErr ?? new Error("Timed out waiting for transaction");
 }
+
+/**
+ * Detect wallet-internal simulation crashes.
+ *
+ * Wallet extensions (Petra, Aptos Connect) call their own `getAptosConfig()`
+ * which doesn't know about Shelbynet. The crash surfaces as:
+ *   "Cannot read properties of undefined (reading 'match')"
+ *   "Simulation error"
+ *   "Invalid network ... not supported"
+ *
+ * When this happens, falling back to `signAndSubmitTransaction` will also
+ * crash — so we re-throw a descriptive error instead.
+ */
+function isWalletSimulationCrash(e: unknown): boolean {
+  const msg = (e as { message?: string })?.message ?? String(e);
+  return (
+    /cannot read properties of undefined/i.test(msg) ||
+    /simulation error/i.test(msg) ||
+    /invalid network.*not supported/i.test(msg) ||
+    /reading 'match'/i.test(msg)
+  );
+}
+
+/**
+ * Build → sign → submit a transaction manually, bypassing the wallet
+ * adapter's internal `getAptosConfig` + simulation path.
+ *
+ * Some wallet extensions (Petra, Aptos Connect) crash during simulation on
+ * Shelbynet because their internal ABI / type resolver can't handle the
+ * network. This helper uses *our own* Aptos client (which works fine for
+ * Shelbynet) to build the raw transaction, then asks the wallet only to
+ * sign it, and finally submits via our client.
+ *
+ * Falls back to `signAndSubmitTransaction` only if the manual path fails
+ * for a non-simulation reason (e.g. wallet doesn't support `signTransaction`).
+ */
+export async function buildSignSubmit(args: {
+  network: SupportedNetwork;
+  sender: string;
+  data: {
+    function: `${string}::${string}::${string}`;
+    typeArguments: string[] | any[];
+    functionArguments: any[];
+  };
+  signTransaction?: (args: any) => Promise<any>;
+  signAndSubmitTransaction: (args: any) => Promise<any>;
+}): Promise<{ hash: string }> {
+  const aptos = getAptos(args.network);
+
+  // 1. Try manual build → sign → submit (avoids wallet simulation)
+  if (args.signTransaction) {
+    try {
+      const rawTx = await aptos.transaction.build.simple({
+        sender: args.sender,
+        data: args.data as any,
+      });
+
+      const signed = await args.signTransaction({
+        transactionOrPayload: rawTx,
+      });
+
+      const pending = await aptos.transaction.submit.simple({
+        transaction: rawTx,
+        senderAuthenticator: signed.authenticator,
+      });
+
+      return { hash: pending.hash };
+    } catch (e) {
+      // If the user rejected, propagate immediately.
+      if (isUserRejection(e)) throw e;
+
+      // If the wallet crashed during its internal simulation (common on
+      // Shelbynet), DO NOT fall back — signAndSubmitTransaction will also
+      // crash with the same error. Rethrow with a helpful message.
+      if (isWalletSimulationCrash(e)) {
+        throw new Error(
+          `Your wallet crashed while simulating on Shelbynet. ` +
+          `This is a known issue with some wallet extensions (Petra, Aptos Connect). ` +
+          `Try using a different wallet (e.g. Nightly, Pontem) or update your wallet extension to the latest version.`
+        );
+      }
+
+      console.warn(
+        "[buildSignSubmit] manual path failed, falling back to signAndSubmitTransaction:",
+        (e as Error).message
+      );
+    }
+  }
+
+  // 2. Fallback: let the wallet adapter handle everything.
+  try {
+    const submitted = await args.signAndSubmitTransaction({
+      data: args.data,
+    });
+    return { hash: (submitted as { hash: string }).hash };
+  } catch (e) {
+    if (isUserRejection(e)) throw e;
+
+    // Catch simulation crash in the fallback path too.
+    if (isWalletSimulationCrash(e)) {
+      throw new Error(
+        `Your wallet cannot simulate transactions on Shelbynet. ` +
+        `This is a known issue with some wallet extensions. ` +
+        `Try using a different wallet (e.g. Nightly, Pontem) or update your wallet extension to the latest version.`
+      );
+    }
+    throw e;
+  }
+}
+

@@ -337,7 +337,7 @@ export async function uploadShelbyBytes(
     message: "Uploading bytes to Shelby…",
   });
 
-  const rpc = new ShelbyRPCClient({ network, apiKey });
+  const rpc = new ShelbyRPCClient({ network, apiKey, locationHint: "shelbynet-1" });
 
   const handlePutProgress = (p: {
     phase: "uploading";
