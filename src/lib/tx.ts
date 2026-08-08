@@ -98,18 +98,33 @@ export async function waitForTx(
 }
 
 /**
- * Detect wallet-internal simulation crashes.
+ * Detect wallet-internal simulation crashes or unfunded account errors.
  *
- * Wallet extensions (Petra, Aptos Connect) call their own `getAptosConfig()`
- * which doesn't know about Shelbynet. The crash surfaces as:
- *   "Cannot read properties of undefined (reading 'match')"
- *   "Simulation error"
- *   "Invalid network ... not supported"
+ * Two distinct failure modes surface as cryptic errors:
  *
- * When this happens, falling back to `signAndSubmitTransaction` will also
- * crash — so we re-throw a descriptive error instead.
+ * 1. **SDK parsing crash**: The fullnode returns an error (e.g. account
+ *    doesn't exist), and the SDK or wallet tries to parse the response,
+ *    calling `.match()` on a field that's `undefined`. Surfaces as:
+ *      "Cannot read properties of undefined (reading 'match')"
+ *      "Simulation error"
+ *
+ * 2. **Unfunded account**: The sender has 0 APT or the account hasn't been
+ *    created on-chain. Surfaces as:
+ *      "account_not_found" / "Account not found"
+ *      "insufficient" / "INSUFFICIENT_BALANCE"
+ *      "sequence_number" errors (account doesn't exist)
  */
-function isWalletSimulationCrash(e: unknown): boolean {
+function isUnfundedAccountError(e: unknown): boolean {
+  const msg = (e as { message?: string })?.message ?? String(e);
+  return (
+    /account.?not.?found/i.test(msg) ||
+    /insufficient/i.test(msg) ||
+    /sequence.?number.*not available/i.test(msg) ||
+    /resource.?not.?found/i.test(msg)
+  );
+}
+
+function isSimulationCrash(e: unknown): boolean {
   const msg = (e as { message?: string })?.message ?? String(e);
   return (
     /cannot read properties of undefined/i.test(msg) ||
@@ -123,14 +138,12 @@ function isWalletSimulationCrash(e: unknown): boolean {
  * Build → sign → submit a transaction manually, bypassing the wallet
  * adapter's internal `getAptosConfig` + simulation path.
  *
- * Some wallet extensions (Petra, Aptos Connect) crash during simulation on
- * Shelbynet because their internal ABI / type resolver can't handle the
- * network. This helper uses *our own* Aptos client (which works fine for
- * Shelbynet) to build the raw transaction, then asks the wallet only to
- * sign it, and finally submits via our client.
+ * Some wallet extensions crash during simulation on Shelbynet because the
+ * buyer's account doesn't exist there (never funded). The SDK tries to
+ * parse the error response and calls `.match()` on an undefined field.
  *
- * Falls back to `signAndSubmitTransaction` only if the manual path fails
- * for a non-simulation reason (e.g. wallet doesn't support `signTransaction`).
+ * This helper uses *our own* Aptos client to build the raw transaction,
+ * then asks the wallet only to sign it, and finally submits via our client.
  */
 export async function buildSignSubmit(args: {
   network: SupportedNetwork;
@@ -167,14 +180,22 @@ export async function buildSignSubmit(args: {
       // If the user rejected, propagate immediately.
       if (isUserRejection(e)) throw e;
 
-      // If the wallet crashed during its internal simulation (common on
-      // Shelbynet), DO NOT fall back — signAndSubmitTransaction will also
-      // crash with the same error. Rethrow with a helpful message.
-      if (isWalletSimulationCrash(e)) {
+      // Account doesn't exist or has no APT on this network.
+      if (isUnfundedAccountError(e)) {
         throw new Error(
-          `Your wallet crashed while simulating on Shelbynet. ` +
-          `This is a known issue with some wallet extensions (Petra, Aptos Connect). ` +
-          `Try using a different wallet (e.g. Nightly, Pontem) or update your wallet extension to the latest version.`
+          `Your wallet account does not exist on Shelbynet yet. ` +
+          `You need APT on Shelbynet to pay for the dataset and gas fees. ` +
+          `Fund your wallet with Shelbynet APT first (use the Shelbynet faucet or transfer from another account).`
+        );
+      }
+
+      // SDK/wallet crashed during simulation (e.g. unfunded account causing
+      // an unexpected response format where .match() is called on undefined).
+      if (isSimulationCrash(e)) {
+        throw new Error(
+          `Transaction simulation failed. This usually means your wallet ` +
+          `has no APT on Shelbynet — the account must be funded before it ` +
+          `can sign transactions. Fund your wallet with Shelbynet APT first.`
         );
       }
 
@@ -194,12 +215,17 @@ export async function buildSignSubmit(args: {
   } catch (e) {
     if (isUserRejection(e)) throw e;
 
-    // Catch simulation crash in the fallback path too.
-    if (isWalletSimulationCrash(e)) {
+    if (isUnfundedAccountError(e)) {
       throw new Error(
-        `Your wallet cannot simulate transactions on Shelbynet. ` +
-        `This is a known issue with some wallet extensions. ` +
-        `Try using a different wallet (e.g. Nightly, Pontem) or update your wallet extension to the latest version.`
+        `Your wallet account does not exist on Shelbynet yet. ` +
+        `Fund your wallet with Shelbynet APT first.`
+      );
+    }
+
+    if (isSimulationCrash(e)) {
+      throw new Error(
+        `Transaction simulation failed. This usually means your wallet ` +
+        `has no APT on Shelbynet. Fund your wallet with Shelbynet APT first.`
       );
     }
     throw e;
