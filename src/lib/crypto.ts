@@ -1,4 +1,7 @@
-import { sha256Blob, type HashProgress } from "./sha256Stream";
+import { sha256Blob, type HashProgress } from "./sha256Stream.ts";
+
+export const AES_GCM_IV_BYTES = 12;
+export const MAX_BROWSER_AES_GCM_BYTES = 256 * 1024 * 1024;
 
 /**
  * Compute SHA-256 of a dataset. Returns the raw 32 hash bytes (for the on-chain
@@ -46,6 +49,15 @@ export async function generateAesKey(): Promise<string> {
     .join("");
 }
 
+function aesKeyBytes(keyHex: string): Uint8Array {
+  if (!/^[0-9a-f]{64}$/i.test(keyHex)) {
+    throw new Error("AES-256-GCM key must be exactly 32 bytes encoded as 64 hex characters.");
+  }
+  return new Uint8Array(
+    keyHex.match(/.{2}/g)?.map((byte) => parseInt(byte, 16)) ?? []
+  );
+}
+
 /**
  * Encrypt bytes using AES-256-GCM. Returns IV (12 bytes) prepended to ciphertext.
  */
@@ -53,17 +65,15 @@ export async function encryptAesGcm(
   data: Uint8Array,
   keyHex: string
 ): Promise<Uint8Array> {
-  const keyBytes = new Uint8Array(
-    keyHex.match(/.{1,2}/g)?.map((byte) => parseInt(byte, 16)) ?? []
-  );
+  const keyBytes = aesKeyBytes(keyHex);
   const cryptoKey = await crypto.subtle.importKey(
     "raw",
-    keyBytes,
+    keyBytes.slice().buffer,
     "AES-GCM",
     false,
     ["encrypt"]
   );
-  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const iv = crypto.getRandomValues(new Uint8Array(AES_GCM_IV_BYTES));
   const ciphertext = await crypto.subtle.encrypt(
     { name: "AES-GCM", iv },
     cryptoKey,
@@ -82,18 +92,19 @@ export async function decryptAesGcm(
   encryptedData: Uint8Array,
   keyHex: string
 ): Promise<Uint8Array> {
-  const keyBytes = new Uint8Array(
-    keyHex.match(/.{1,2}/g)?.map((byte) => parseInt(byte, 16)) ?? []
-  );
+  const keyBytes = aesKeyBytes(keyHex);
+  if (encryptedData.length <= AES_GCM_IV_BYTES) {
+    throw new Error("Encrypted payload is too short to contain an AES-GCM IV and ciphertext.");
+  }
   const cryptoKey = await crypto.subtle.importKey(
     "raw",
-    keyBytes,
+    keyBytes.slice().buffer,
     "AES-GCM",
     false,
     ["decrypt"]
   );
-  const iv = encryptedData.slice(0, 12);
-  const ciphertext = encryptedData.slice(12);
+  const iv = encryptedData.slice(0, AES_GCM_IV_BYTES);
+  const ciphertext = encryptedData.slice(AES_GCM_IV_BYTES);
   const decrypted = await crypto.subtle.decrypt(
     { name: "AES-GCM", iv },
     cryptoKey,

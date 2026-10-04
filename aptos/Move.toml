@@ -13,7 +13,7 @@ aptbox = "0xCAFE"
 
 [dependencies.AptosFramework]
 git = "https://github.com/aptos-labs/aptos-core.git"
-rev = "mainnet"
+rev = "aptos-cli-v9.1.0"
 subdir = "aptos-move/framework/aptos-framework"
 
 [dev-dependencies]

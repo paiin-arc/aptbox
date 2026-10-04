@@ -135,99 +135,56 @@ function isSimulationCrash(e: unknown): boolean {
 }
 
 /**
- * Build → sign → submit a transaction manually, bypassing the wallet
- * adapter's internal `getAptosConfig` + simulation path.
+ * Submits an entry function transaction using standard wallet adapter payload.
  *
- * Some wallet extensions crash during simulation on Shelbynet because the
- * buyer's account doesn't exist there (never funded). The SDK tries to
- * parse the error response and calls `.match()` on an undefined field.
- *
- * This helper uses *our own* Aptos client to build the raw transaction,
- * then asks the wallet only to sign it, and finally submits via our client.
+ * Direct `signAndSubmitTransaction({ data })` with plain JSON payloads is supported
+ * natively by all Aptos wallets (Petra, Nightly, Pontem, Aptos Connect).
  */
 export async function buildSignSubmit(args: {
   network: SupportedNetwork;
   sender: string;
   data: {
     function: `${string}::${string}::${string}`;
-    typeArguments: string[] | any[];
+    typeArguments?: string[] | any[];
     functionArguments: any[];
   };
   signTransaction?: (args: any) => Promise<any>;
   signAndSubmitTransaction: (args: any) => Promise<any>;
 }): Promise<{ hash: string }> {
-  const aptos = getAptos(args.network);
-
-  // 1. Try manual build → sign → submit (avoids wallet simulation)
-  if (args.signTransaction) {
-    try {
-      const rawTx = await aptos.transaction.build.simple({
-        sender: args.sender,
-        data: args.data as any,
-      });
-
-      const signed = await args.signTransaction({
-        transactionOrPayload: rawTx,
-      });
-
-      const pending = await aptos.transaction.submit.simple({
-        transaction: rawTx,
-        senderAuthenticator: signed.authenticator,
-      });
-
-      return { hash: pending.hash };
-    } catch (e) {
-      // If the user rejected, propagate immediately.
-      if (isUserRejection(e)) throw e;
-
-      // Account doesn't exist or has no APT on this network.
-      if (isUnfundedAccountError(e)) {
-        throw new Error(
-          `Your wallet account does not exist on Shelbynet yet. ` +
-          `You need APT on Shelbynet to pay for the dataset and gas fees. ` +
-          `Fund your wallet with Shelbynet APT first (use the Shelbynet faucet or transfer from another account).`
-        );
-      }
-
-      // SDK/wallet crashed during simulation (e.g. unfunded account causing
-      // an unexpected response format where .match() is called on undefined).
-      if (isSimulationCrash(e)) {
-        throw new Error(
-          `Transaction simulation failed. This usually means your wallet ` +
-          `has no APT on Shelbynet — the account must be funded before it ` +
-          `can sign transactions. Fund your wallet with Shelbynet APT first.`
-        );
-      }
-
-      console.warn(
-        "[buildSignSubmit] manual path failed, falling back to signAndSubmitTransaction:",
-        (e as Error).message
-      );
-    }
-  }
-
-  // 2. Fallback: let the wallet adapter handle everything.
+  logStage("buildSignSubmit", `→ requesting sign & submit for ${args.data.function}`);
   try {
-    const submitted = await args.signAndSubmitTransaction({
-      data: args.data,
-    });
-    return { hash: (submitted as { hash: string }).hash };
+    const res = await signWithTimeout(
+      args.signAndSubmitTransaction({
+        data: args.data,
+      }),
+      "Wallet Sign & Submit"
+    );
+    const hash = typeof res === "string" ? res : (res as { hash: string })?.hash;
+    if (!hash) {
+      throw new Error("Wallet did not return a valid transaction hash.");
+    }
+    logStage("buildSignSubmit", `← transaction submitted ${hash.slice(0, 10)}…`);
+    return { hash };
   } catch (e) {
     if (isUserRejection(e)) throw e;
 
-    if (isUnfundedAccountError(e)) {
+    const msg = (e as { message?: string })?.message ?? String(e);
+
+    if (
+      /INSUFFICIENT_BALANCE|insufficient_balance|not enough balance|0x1::aptos_account::transfer/i.test(msg) ||
+      isUnfundedAccountError(e)
+    ) {
       throw new Error(
-        `Your wallet account does not exist on Shelbynet yet. ` +
-        `Fund your wallet with Shelbynet APT first.`
+        `Insufficient Shelbynet APT balance. Your wallet needs enough APT to pay for the dataset price and network gas fees.`
       );
     }
 
     if (isSimulationCrash(e)) {
       throw new Error(
-        `Transaction simulation failed. This usually means your wallet ` +
-        `has no APT on Shelbynet. Fund your wallet with Shelbynet APT first.`
+        `Wallet transaction error on Shelbynet: ${msg}. Make sure your wallet is connected to Shelbynet and has APT.`
       );
     }
+
     throw e;
   }
 }

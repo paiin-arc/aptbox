@@ -167,9 +167,11 @@ function Marketplace() {
         const lc = lifecycles.get(`${f.uploader}:${f.shelbyCid}`);
         // Unknown lifecycle is not evidence of expiry — keep those listed.
         if (!lc) return true;
-        // Same helper the cards use, so one definition of "expired" governs both.
-        const exp = formatExpirationCountdown(lc.expirationMicros);
-        return exp.severity !== "expired" && !lc.isDeleted;
+        // SDK 0.9 no longer exposes blob expiry in its object index.
+        const expired =
+          lc.expirationMicros !== undefined &&
+          formatExpirationCountdown(lc.expirationMicros).severity === "expired";
+        return !expired && !lc.isDeleted;
       });
     }
     return list;

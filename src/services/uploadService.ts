@@ -18,12 +18,11 @@
  * `prepareShelbyCommitments` + `registerShelbyBlob` for popup-based wallets,
  * which must request their signature from a fresh click. See those functions.
  *
- * SDK 0.6.0 changes vs 0.3.1:
- *   - rpc.putBlob() → rpc.putBlobChunksets() (requires UID + commitments)
- *   - New commit step: coordination.commitObject() finalizes the upload
- *   - ShelbyRPCClient constructor now takes full ShelbyClientConfig
- *   - Register tx events must be parsed with ShelbyBlobClient.registeredBlobUids()
- *   - testnet is retired; only shelbynet or local are accepted
+ * SDK 0.9.1 flow:
+ *   - Register with the SDK payload builder (expiry is not part of the ABI)
+ *   - Upload chunksets using the registered UID and commitments
+ *   - Commit the object with storage-provider acknowledgements
+ *   - Parse BlobRegisteredEvent to obtain the UID before uploading bytes
  */
 
 import {
@@ -44,7 +43,7 @@ import { SHELBY_DEPLOYER } from "@shelby-protocol/sdk/browser";
 /**
  * There is no maximum dataset size.
  *
- * Verified against @shelby-protocol/sdk 0.6.0:
+ * Verified against @shelby-protocol/sdk 0.9.1:
  *   - `generateCommitments(provider, ReadableStream | Uint8Array)` streams the
  *     data into as many chunksets as needed, 10 MiB each under the default
  *     ClayCode_16Total_10Data scheme. No chunkset-count ceiling.
@@ -93,12 +92,6 @@ export function peakWorkingSetBytes(): number {
 
 export function isLargeUpload(bytes: number): boolean {
   return bytes > LARGE_UPLOAD_ADVISORY_BYTES;
-}
-
-/** Blob expiration: 30 days from now in microseconds since Unix epoch. */
-function defaultExpirationMicros(): number {
-  const ms = Date.now() + 30 * 24 * 60 * 60 * 1000;
-  return ms * 1000;
 }
 
 export type UploadStage =
@@ -151,7 +144,6 @@ type PrepareAndRegisterArgs = {
   blobName: string;
   encryption?: BlobEncryption;
   signAndSubmitTransaction: SignAndSubmitFn;
-  expirationMicros?: number;
   onProgress?: (p: UploadProgress) => void;
 };
 
@@ -207,8 +199,8 @@ export async function prepareShelbyCommitments(args: {
  * Kept free of async work before the signature request so it can be called
  * directly from a click handler and stay inside the activation window.
  *
- * SDK 0.6.0 change: the UID is required by putBlobChunksets + commitObject,
- * so we now waitForTx and parse BlobRegisteredEvent to extract it.
+ * The UID is required by putBlobChunksets + commitObject, so registration is
+ * confirmed and BlobRegisteredEvent is parsed before uploading.
  */
 export async function registerShelbyBlob(args: {
   network: SupportedNetwork;
@@ -218,7 +210,6 @@ export async function registerShelbyBlob(args: {
   encoding: number;
   encryption?: BlobEncryption;
   signAndSubmitTransaction: SignAndSubmitFn;
-  expirationMicros?: number;
   onProgress?: (p: UploadProgress) => void;
 }): Promise<PrepareAndRegisterResult> {
   const { network, uploaderAddress, blobName, commitments, encoding, encryption } = args;
@@ -227,19 +218,16 @@ export async function registerShelbyBlob(args: {
     stage: "registering",
     message: "Approve Shelby register in wallet…",
   });
-  const expirationMicros = args.expirationMicros ?? defaultExpirationMicros();
   const registerPayload = ShelbyBlobClient.createRegisterBlobPayload({
     account: AccountAddress.fromString(uploaderAddress),
     blobName,
     blobSize: commitments.raw_data_size,
     blobMerkleRoot: commitments.blob_merkle_root,
-    expirationMicros,
     numChunksets: commitments.chunkset_commitments.length,
     encoding,
     locationHint: "shelbynet-1",
     encryption: encryption ?? "Unencrypted",
   });
-
   logStage("uploadService", "→ Shelby register_blob sign requested");
 
   const { hash: registerTxHash } = await signWithTimeout(
@@ -295,7 +283,6 @@ export async function prepareAndRegisterShelby(
     encoding,
     encryption: args.encryption,
     signAndSubmitTransaction: args.signAndSubmitTransaction,
-    expirationMicros: args.expirationMicros,
     onProgress: args.onProgress,
   });
 }
@@ -418,7 +405,7 @@ export async function uploadShelbyBytes(
 /**
  * Phase 3: Commit the uploaded blob on-chain. Requires a wallet signature.
  *
- * SDK 0.6.0 addition: After putBlobChunksets, the blob is in "pending" state.
+ * After putBlobChunksets, the blob is in "pending" state.
  * commitObject binds the pending blob under its object name, setting
  * `is_written = true` and applying SP acks.
  *

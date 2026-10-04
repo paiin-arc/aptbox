@@ -4,52 +4,35 @@
  * blobs occupy slots in the user's account and can't recover — storage
  * providers don't retry old uncommitted writes.
  *
- * Strategy:
- *   1. Query Shelby indexer for the user's blobs filtered by `is_written: 0`
- *   2. Let user pick which to delete
- *   3. Batch them via `delete_multiple_blobs` (atomic, single wallet sig)
+ * Pending blobs are indexed by UID and reclaimed through Shelby's
+ * `garbage_collect_blobs` entry function.
  */
 
-import {
-  ShelbyBlobClient,
-  type ShelbyClient,
-} from "@shelby-protocol/sdk/browser";
+import { SHELBY_DEPLOYER, type ShelbyClient } from "@shelby-protocol/sdk/browser";
 
 export type PendingBlob = {
-  /** The full blob_name as the indexer reports it (e.g. "@<addr>/aptbox/foo.png"). */
-  fullKey: string;
-  /** The suffix-only name we pass to delete_multiple_blobs ("aptbox/foo.png"). */
+  /** Pending blob UID, used by Shelby's garbage collector. */
   shelbyCid: string;
   sizeBytes: number;
   createdAtMicros: number;
-  expirationMicros: number;
 };
 
 /**
- * Fetch all pending (registered but not stored) blobs for an account.
- * Filters out deleted + expired so the user only sees actionable orphans.
+ * Fetch pending (registered but not committed) blob UIDs for an account.
  */
 export async function fetchPendingBlobs(
   client: ShelbyClient,
   account: string
 ): Promise<PendingBlob[]> {
   try {
-    const blobs = await client.coordination.getAccountBlobs({
-      account,
-      where: {
-        // Override SDK default expires_at filter so we still catch expired
-        // pending blobs (they're still in the registry until cleaned)
-        expires_at: { _gte: "0" },
-      },
+    const blobs = await client.index.listPendingBlobs({
+      owner: account,
     });
     return blobs
-      .filter((b) => !b.isWritten && !b.isDeleted)
-      .map((b) => ({
-        fullKey: b.name,
-        shelbyCid: b.blobNameSuffix,
-        sizeBytes: Number(b.size),
-        createdAtMicros: Number(b.creationMicros),
-        expirationMicros: Number(b.expirationMicros),
+      .map((blob) => ({
+        shelbyCid: blob.uid.toString(),
+        sizeBytes: blob.storedSize,
+        createdAtMicros: blob.creationMicros,
       }))
       .sort((a, b) => b.createdAtMicros - a.createdAtMicros);
   } catch (e) {
@@ -59,12 +42,13 @@ export async function fetchPendingBlobs(
 }
 
 /**
- * Build the delete_multiple_blobs Move call payload. Caller signs/submits.
- *
- * @param blobNames suffix-only names ("aptbox/foo.png"), NOT prefixed keys
+ * Build the UID-based pending-blob garbage-collection payload.
  */
-export function buildDeleteMultiplePayload(blobNames: string[]) {
-  return ShelbyBlobClient.createDeleteMultipleObjectsPayload({ blobNames });
+export function buildDeleteMultiplePayload(blobUids: string[]) {
+  return {
+    function: `${SHELBY_DEPLOYER}::blob_metadata::garbage_collect_blobs` as `${string}::${string}::${string}`,
+    functionArguments: [blobUids.map((uid) => BigInt(uid))],
+  };
 }
 
 /**

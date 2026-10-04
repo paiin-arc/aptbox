@@ -17,7 +17,6 @@ import {
 } from "@/services/cleanupService";
 import { isUserRejection, waitForTx } from "@/lib/tx";
 import { formatBytes } from "@/lib/crypto";
-import { fileNameFromCid } from "@/lib/download";
 import { buildDeleteFilePayload, getRegistryAddress } from "@/lib/registry";
 import { fetchFilesByUploader } from "@/lib/files";
 import { CheckIcon, RefreshIcon } from "@/components/CategoryIcon";
@@ -348,7 +347,7 @@ export default function CleanupPage() {
             <ul className="space-y-1.5">
               {pending.map((p) => {
                 const checked = selected.has(p.shelbyCid);
-                const fileName = fileNameFromCid(p.shelbyCid);
+                const fileName = `Pending blob ${p.shelbyCid}`;
                 return (
                   <li key={p.shelbyCid}>
                     <label

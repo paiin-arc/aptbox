@@ -1,7 +1,7 @@
 import type { ShelbyClient } from "@shelby-protocol/sdk/browser";
 
 export type BlobLifecycle = {
-  expirationMicros: number;
+  expirationMicros?: number;
   isWritten: boolean;
   isDeleted: boolean;
   encryption?: string;
@@ -25,19 +25,16 @@ export async function fetchAccountBlobLifecycles(
   account: string
 ): Promise<Map<string, BlobLifecycle>> {
   try {
-    const blobs = await client.coordination.getAccountBlobs({
-      account,
-      // Disable the SDK's default `expires_at >= now` filter so we still see
-      // expired blobs (and can render "Expired X ago").
-      where: { expires_at: { _gte: "0" } },
+    const objects = await client.index.listObjectsByPrefix({
+      owner: account,
+      prefix: "",
     });
     const map = new Map<string, BlobLifecycle>();
-    for (const b of blobs) {
-      map.set(b.blobNameSuffix, {
-        expirationMicros: Number(b.expirationMicros),
-        isWritten: Boolean(b.isWritten),
-        isDeleted: Boolean(b.isDeleted ?? false),
-        encryption: b.encryption,
+    for (const object of objects) {
+      map.set(object.key, {
+        isWritten: true,
+        isDeleted: false,
+        encryption: object.encryption,
       });
     }
     return map;

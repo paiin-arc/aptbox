@@ -3,7 +3,7 @@ import {
   aptosApiKeyFor,
   registryAddressFor,
   type SupportedNetwork,
-} from "./networks";
+} from "./networks.ts";
 
 /** 1 APT = 100,000,000 octas. */
 export const OCTAS_PER_APT = 100_000_000n;
@@ -67,6 +67,8 @@ type RegisterFileArgs = {
   whitelist: string[];
 };
 
+export type RegisterFileInput = RegisterFileArgs;
+
 export function buildRegisterFilePayload(
   network: SupportedNetwork,
   args: RegisterFileArgs
@@ -80,7 +82,6 @@ export function buildRegisterFilePayload(
   return {
     function:
       `${addr}::registry::register_file` as `${string}::${string}::${string}`,
-    typeArguments: [],
     functionArguments: [
       Array.from(args.contentHash),
       args.shelbyCid,
@@ -89,6 +90,58 @@ export function buildRegisterFilePayload(
       args.accessType,
       args.priceOctas.toString(),
       args.whitelist,
+    ],
+  };
+}
+
+export function buildRegisterFilesBatchPayload(
+  network: SupportedNetwork,
+  files: RegisterFileInput[]
+) {
+  if (files.length === 0) {
+    throw new Error("Batch registration requires at least one dataset.");
+  }
+  const addr = getRegistryAddress(network);
+  if (!addr) {
+    throw new Error(
+      `No registry address for ${network}. Set NEXT_PUBLIC_REGISTRY_ADDRESS_${network.toUpperCase()}.`
+    );
+  }
+  return {
+    function:
+      `${addr}::registry::register_files_batch` as `${string}::${string}::${string}`,
+    functionArguments: [
+      files.map((f) => Array.from(f.contentHash)),
+      files.map((f) => f.shelbyCid),
+      files.map((f) => f.mimeType),
+      files.map((f) => f.sizeBytes.toString()),
+      files.map((f) => f.accessType),
+      files.map((f) => f.priceOctas.toString()),
+      files.map((f) => f.whitelist),
+    ],
+  };
+}
+
+export function buildRegisterTrainingSetPayload(
+  network: SupportedNetwork,
+  args: {
+    trainingSetCommitment: Uint8Array;
+    fileIds: string[];
+    datasetCommitments: Uint8Array[];
+  }
+) {
+  if (args.fileIds.length === 0) {
+    throw new Error("Training set requires at least one registered dataset.");
+  }
+  const addr = getRegistryAddress(network);
+  if (!addr) throw new Error(`No registry address for ${network}.`);
+  return {
+    function:
+      `${addr}::registry::register_training_set` as `${string}::${string}::${string}`,
+    functionArguments: [
+      Array.from(args.trainingSetCommitment),
+      args.fileIds,
+      args.datasetCommitments.map((h) => Array.from(h)),
     ],
   };
 }
@@ -103,7 +156,6 @@ export function buildPurchaseAccessPayload(
   return {
     function:
       `${addr}::registry::purchase_access` as `${string}::${string}::${string}`,
-    typeArguments: [],
     functionArguments: [fileId],
   };
 }
@@ -126,7 +178,6 @@ export function buildSetDescriptionPayload(
   return {
     function:
       `${addr}::registry::set_description` as `${string}::${string}::${string}`,
-    typeArguments: [],
     functionArguments: [fileId, text],
   };
 }
@@ -140,7 +191,6 @@ export function buildDeleteFilePayload(
   return {
     function:
       `${addr}::registry::delete_file` as `${string}::${string}::${string}`,
-    typeArguments: [],
     functionArguments: [fileId],
   };
 }
@@ -152,4 +202,14 @@ export function extractFileIdFromTx(
   if (!evt) return null;
   const id = evt.data?.file_id as string | number | undefined;
   return id != null ? BigInt(id) : null;
+}
+
+export function extractFileIdsFromTx(
+  events: { type: string; data: Record<string, unknown> }[]
+): bigint[] {
+  return events
+    .filter((e) => e.type.includes("::registry::FileRegistered"))
+    .map((evt) => evt.data?.file_id as string | number | undefined)
+    .filter((id): id is string | number => id != null)
+    .map((id) => BigInt(id));
 }

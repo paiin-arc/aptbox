@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import { Providers } from "@/providers/Providers";
 
@@ -77,12 +78,13 @@ export default function RootLayout({
       <head>
         {/*
           Filter EVM wallet-extension noise (Phantom, Coinbase, Rabby, MetaMask
-          fighting over window.ethereum). This script runs before any other JS,
-          including extension content scripts that race to define ethereum.
-          We can't stop the very first inject error (extension content scripts
-          run at document_start), but we suppress the spam thereafter.
+          fighting over window.ethereum). This runs before app hydration.
+          Extensions can still emit their first error at document_start, but
+          subsequent noise is suppressed.
         */}
-        <script
+        <Script
+          id="aptbox-extension-noise-filter"
+          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
             __html: `
               (function(){

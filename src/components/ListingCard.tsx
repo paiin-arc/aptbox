@@ -55,7 +55,7 @@ export function ListingCard({
 
   // The registry entry is permanent; the storage lease is not. Say so on the
   // card rather than letting someone click through to a dead download.
-  const expiry = lifecycle
+  const expiry = lifecycle?.expirationMicros !== undefined
     ? formatExpirationCountdown(lifecycle.expirationMicros)
     : null;
   const bytesGone = expiry?.severity === "expired" || lifecycle?.isDeleted === true;

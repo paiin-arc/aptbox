@@ -11,7 +11,18 @@ import {
 import { ConnectWalletButton } from "@/components/ConnectWalletButton";
 import { AptboxIcon } from "@/components/AptboxIcon";
 import { NetworkSwitcher } from "@/components/NetworkSwitcher";
-import { generateAesKey, encryptAesGcm, sha256File, formatBytes, blobNameFor } from "@/lib/crypto";
+import {
+  MAX_BROWSER_AES_GCM_BYTES,
+  generateAesKey,
+  encryptAesGcm,
+  sha256File,
+  formatBytes,
+  blobNameFor,
+} from "@/lib/crypto";
+import {
+  buildEncryptionReceipt,
+  type EncryptionReceipt,
+} from "@/lib/provenance";
 import { formatHashForDisplay } from "@/lib/verify";
 import {
   ArrowRightIcon,
@@ -162,6 +173,7 @@ export default function UploadPage() {
     >["commitments"];
     encoding: number;
     uploadSource: Blob;
+    encryptionReceipt?: EncryptionReceipt;
   } | null>(null);
 
   const [file, setFile] = useState<File | null>(null);
@@ -178,6 +190,8 @@ export default function UploadPage() {
 
   const [encryptDataset, setEncryptDataset] = useState(false);
   const [encryptionKeyHex, setEncryptionKeyHex] = useState<string | null>(null);
+  const [encryptionReceipt, setEncryptionReceipt] =
+    useState<EncryptionReceipt | null>(null);
   const [keyCopied, setKeyCopied] = useState(false);
 
   const [stage, setStage] = useState<UploadStage>("idle");
@@ -254,11 +268,6 @@ export default function UploadPage() {
     setDraftName("");
   }
 
-  // Reset edit mode if file changes mid-edit
-  useEffect(() => {
-    if (!file) setEditingName(false);
-  }, [file]);
-
   const durationHours = useMemo(() => {
     if (durationPreset === "custom") {
       const h = parseFloat(customHours);
@@ -267,13 +276,25 @@ export default function UploadPage() {
     return PRESET_HOURS[durationPreset];
   }, [durationPreset, customHours]);
 
+  const [nowMs, setNowMs] = useState<number | null>(null);
+  useEffect(() => {
+    const frameId = window.requestAnimationFrame(() => setNowMs(Date.now()));
+    return () => window.cancelAnimationFrame(frameId);
+  }, []);
+
   const expirationMicros = useMemo(
-    () => Date.now() * 1000 + Math.round(durationHours * 3600 * 1_000_000),
-    [durationHours]
+    () =>
+      nowMs === null
+        ? null
+        : nowMs * 1000 + Math.round(durationHours * 3600 * 1_000_000),
+    [nowMs, durationHours]
   );
 
   const expirationDate = useMemo(
-    () => new Date(Math.round(expirationMicros / 1000)),
+    () =>
+      expirationMicros === null
+        ? null
+        : new Date(Math.round(expirationMicros / 1000)),
     [expirationMicros]
   );
 
@@ -287,6 +308,8 @@ export default function UploadPage() {
     setErrorIsOrphaned(false);
     setFileId(null);
     setTxHash(null);
+    setEncryptionKeyHex(null);
+    setEncryptionReceipt(null);
     setStage("idle");
     setPutPct(null);
     if (!f) return;
@@ -365,13 +388,29 @@ export default function UploadPage() {
 
       const blobName = blobNameFor(hex, displayName);
       let uploadSource: Blob = file;
+      let receipt: EncryptionReceipt | undefined;
       if (encryptDataset) {
+        if (file.size > MAX_BROWSER_AES_GCM_BYTES) {
+          throw new Error(
+            `Encrypted uploads are currently limited to ${formatBytes(
+              MAX_BROWSER_AES_GCM_BYTES
+            )} because browser AES-GCM encryption materializes the encrypted artifact in memory. Disable encryption for larger public datasets, or split this dataset before locking it.`
+          );
+        }
         setStage("encoding");
         const keyHex = await generateAesKey();
         setEncryptionKeyHex(keyHex);
         const buf = new Uint8Array(await file.arrayBuffer());
         const encryptedBytes = await encryptAesGcm(buf, keyHex);
         uploadSource = new Blob([encryptedBytes.buffer as ArrayBuffer], { type: file.type || "application/octet-stream" });
+        receipt = buildEncryptionReceipt({
+          datasetCommitment: hex,
+          keyHex,
+          originalFilename: displayName,
+          originalSize: file.size,
+          encryptedSize: uploadSource.size,
+        });
+        setEncryptionReceipt(receipt);
       }
 
       const { commitments, encoding } = await prepareShelbyCommitments({
@@ -379,7 +418,15 @@ export default function UploadPage() {
         onProgress: handleProgress,
       });
 
-      setPending({ hashBytes, hex, blobName, commitments, encoding, uploadSource });
+      setPending({
+        hashBytes,
+        hex,
+        blobName,
+        commitments,
+        encoding,
+        uploadSource,
+        encryptionReceipt: receipt,
+      });
       setStage("idle");
     } catch (e) {
       console.error(e);
@@ -408,7 +455,6 @@ export default function UploadPage() {
         encoding: pending.encoding,
         encryption: encryptDataset ? "AES_GCM_V1" : "Unencrypted",
         signAndSubmitTransaction,
-        expirationMicros,
         onProgress: handleProgress,
       });
 
@@ -533,12 +579,28 @@ export default function UploadPage() {
 
       let uploadSource: Blob = file;
       if (encryptDataset) {
+        if (file.size > MAX_BROWSER_AES_GCM_BYTES) {
+          throw new Error(
+            `Encrypted uploads are currently limited to ${formatBytes(
+              MAX_BROWSER_AES_GCM_BYTES
+            )} because browser AES-GCM encryption materializes the encrypted artifact in memory. Disable encryption for larger public datasets, or split this dataset before locking it.`
+          );
+        }
         setStage("encoding");
         const keyHex = await generateAesKey();
         setEncryptionKeyHex(keyHex);
         const buf = new Uint8Array(await file.arrayBuffer());
         const encryptedBytes = await encryptAesGcm(buf, keyHex);
         uploadSource = new Blob([encryptedBytes.buffer as ArrayBuffer], { type: file.type || "application/octet-stream" });
+        setEncryptionReceipt(
+          buildEncryptionReceipt({
+            datasetCommitment: hex,
+            keyHex,
+            originalFilename: displayName,
+            originalSize: file.size,
+            encryptedSize: uploadSource.size,
+          })
+        );
       }
 
       // 3. Erasure-code + sign Shelby register tx (popup 1)
@@ -549,7 +611,6 @@ export default function UploadPage() {
         blobName,
         encryption: encryptDataset ? "AES_GCM_V1" : "Unencrypted",
         signAndSubmitTransaction,
-        expirationMicros,
         onProgress: handleProgress,
       });
 
@@ -858,13 +919,15 @@ export default function UploadPage() {
           <div className="text-xs text-ink-subtle">
             Expires{" "}
             <span className="font-medium text-ink-muted">
-              {expirationDate.toLocaleString(undefined, {
-                year: "numeric",
-                month: "short",
-                day: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
+              {expirationDate
+                ? expirationDate.toLocaleString(undefined, {
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })
+                : "Calculating…"}
             </span>{" "}
             <span className="text-ink-subtle">
               · {formatDurationHuman(durationHours)} from now
@@ -986,7 +1049,7 @@ export default function UploadPage() {
             </div>
             <p className="text-xs text-ink-subtle">
               {encryptDataset
-                ? "Dataset bytes will be encrypted using WebCrypto AES-256-GCM before upload. The on-chain registration will record encryption: AES_GCM_V1."
+                ? `Dataset bytes will be encrypted using WebCrypto AES-256-GCM before upload. Current browser encryption limit: ${formatBytes(MAX_BROWSER_AES_GCM_BYTES)}.`
                 : "Dataset is stored unencrypted on Shelby RPC nodes. Enable this if your training data requires zero-trust privacy."}
             </p>
           </div>
@@ -994,7 +1057,9 @@ export default function UploadPage() {
           {encryptionKeyHex && (
             <div className="rounded-xl border border-emerald-600/40 bg-emerald-500/10 p-4 text-xs space-y-2 text-ink">
               <div className="flex items-center justify-between">
-                <span className="font-semibold text-emerald-700">🔐 Dataset Encryption Key (Save This Key!)</span>
+                <span className="font-semibold text-emerald-700">
+                  Dataset encryption key
+                </span>
                 <button
                   type="button"
                   onClick={() => {
@@ -1008,15 +1073,20 @@ export default function UploadPage() {
                   }}
                   className="font-medium text-emerald-800 underline hover:no-underline"
                 >
-                  {keyCopied ? "✓ Copied!" : "Copy Key"}
+                  {keyCopied ? "Copied" : "Copy key"}
                 </button>
               </div>
               <p className="text-2xs text-ink-muted">
-                Your dataset was encrypted with WebCrypto AES-256-GCM. Save this key — you will need it to decrypt and download the dataset bytes.
+                Save this key locally. Aptbox never sends it to Shelby, Aptos, URLs, or server APIs.
               </p>
               <div className="rounded bg-surface-sunken p-2 font-mono text-2xs break-all text-ink select-all">
                 {encryptionKeyHex}
               </div>
+              {encryptionReceipt && (
+                <pre className="max-h-36 overflow-auto rounded bg-surface-sunken p-2 font-mono text-2xs text-ink-muted">
+                  {JSON.stringify(encryptionReceipt, null, 2)}
+                </pre>
+              )}
             </div>
           )}
         </div>

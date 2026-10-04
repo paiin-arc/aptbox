@@ -34,10 +34,15 @@ module aptbox::registry {
     const E_ALREADY_INITIALIZED: u64 = 6;
     const E_DESCRIPTIONS_NOT_PUBLISHED: u64 = 7;
     const E_DESCRIPTION_TOO_LONG: u64 = 8;
+    const E_INVALID_BATCH: u64 = 9;
+    const E_INVALID_HASH: u64 = 10;
+    const E_TRAINING_SETS_NOT_PUBLISHED: u64 = 11;
+    const E_DUPLICATE_TRAINING_SET: u64 = 12;
 
     /// Descriptions are permanent public chain state; cap them so a listing
     /// can't be used to store arbitrary payloads.
     const MAX_DESCRIPTION_LEN: u64 = 500;
+    const SHA256_LEN: u64 = 32;
 
     // ---- Resources ----
 
@@ -80,10 +85,29 @@ module aptbox::registry {
         texts: Table<u64, String>,
     }
 
+    struct TrainingSetRecord has store, drop, copy {
+        training_set_commitment: vector<u8>,
+        creator: address,
+        file_ids: vector<u64>,
+        dataset_commitments: vector<vector<u8>>,
+        created_at: u64,
+    }
+
+    struct TrainingSets has key {
+        by_commitment: Table<vector<u8>, TrainingSetRecord>,
+    }
+
     #[event]
     struct DescriptionSet has drop, store {
         file_id: u64,
         uploader: address,
+    }
+
+    #[event]
+    struct TrainingSetRegistered has drop, store {
+        training_set_commitment: vector<u8>,
+        creator: address,
+        dataset_count: u64,
     }
 
     // ---- Events ----
@@ -118,6 +142,48 @@ module aptbox::registry {
         shelby_cid: String,
     }
 
+    fun assert_valid_file_inputs(
+        content_hash: &vector<u8>,
+        access_type: u8,
+    ) {
+        assert!(vector::length(content_hash) == SHA256_LEN, error::invalid_argument(E_INVALID_HASH));
+        assert!(access_type <= ACCESS_TOKEN_GATED, error::invalid_argument(E_INVALID_ACCESS_TYPE));
+    }
+
+    fun add_file_record(
+        registry: &mut Registry,
+        uploader_addr: address,
+        content_hash: vector<u8>,
+        shelby_cid: String,
+        mime_type: String,
+        size_bytes: u64,
+        access_type: u8,
+        price_octas: u64,
+        whitelist: vector<address>,
+    ): u64 {
+        assert_valid_file_inputs(&content_hash, access_type);
+
+        let file_id = registry.next_id;
+        registry.next_id = file_id + 1;
+
+        let record = FileRecord {
+            file_id,
+            uploader: uploader_addr,
+            content_hash,
+            shelby_cid,
+            mime_type,
+            size_bytes,
+            access_type,
+            price_octas,
+            whitelist,
+            flag_count: 0,
+            created_at: timestamp::now_seconds(),
+        };
+        table::add(&mut registry.files, file_id, record);
+
+        file_id
+    }
+
     // ---- Init ----
 
     /// Called once by the module owner after publishing.
@@ -146,16 +212,13 @@ module aptbox::registry {
         whitelist: vector<address>,
     ) acquires Registry {
         assert!(exists<Registry>(@aptbox), error::not_found(E_NOT_PUBLISHED));
-        assert!(access_type <= ACCESS_TOKEN_GATED, error::invalid_argument(E_INVALID_ACCESS_TYPE));
 
         let registry = borrow_global_mut<Registry>(@aptbox);
-        let file_id = registry.next_id;
-        registry.next_id = file_id + 1;
-
         let uploader_addr = signer::address_of(uploader);
-        let record = FileRecord {
-            file_id,
-            uploader: uploader_addr,
+
+        let file_id = add_file_record(
+            registry,
+            uploader_addr,
             content_hash,
             shelby_cid,
             mime_type,
@@ -163,10 +226,7 @@ module aptbox::registry {
             access_type,
             price_octas,
             whitelist,
-            flag_count: 0,
-            created_at: timestamp::now_seconds(),
-        };
-        table::add(&mut registry.files, file_id, record);
+        );
 
         event::emit(FileRegistered {
             file_id,
@@ -175,6 +235,64 @@ module aptbox::registry {
             access_type,
             price_octas,
         });
+    }
+
+    public entry fun register_files_batch(
+        uploader: &signer,
+        content_hashes: vector<vector<u8>>,
+        shelby_cids: vector<String>,
+        mime_types: vector<String>,
+        size_bytes_values: vector<u64>,
+        access_types: vector<u8>,
+        price_octas_values: vector<u64>,
+        whitelists: vector<vector<address>>,
+    ) acquires Registry {
+        assert!(exists<Registry>(@aptbox), error::not_found(E_NOT_PUBLISHED));
+
+        let count = vector::length(&content_hashes);
+        assert!(count > 0, error::invalid_argument(E_INVALID_BATCH));
+        assert!(vector::length(&shelby_cids) == count, error::invalid_argument(E_INVALID_BATCH));
+        assert!(vector::length(&mime_types) == count, error::invalid_argument(E_INVALID_BATCH));
+        assert!(vector::length(&size_bytes_values) == count, error::invalid_argument(E_INVALID_BATCH));
+        assert!(vector::length(&access_types) == count, error::invalid_argument(E_INVALID_BATCH));
+        assert!(vector::length(&price_octas_values) == count, error::invalid_argument(E_INVALID_BATCH));
+        assert!(vector::length(&whitelists) == count, error::invalid_argument(E_INVALID_BATCH));
+
+        let registry = borrow_global_mut<Registry>(@aptbox);
+        let uploader_addr = signer::address_of(uploader);
+        let i = 0;
+        while (i < count) {
+            let content_hash = vector::remove(&mut content_hashes, 0);
+            let shelby_cid = vector::remove(&mut shelby_cids, 0);
+            let mime_type = vector::remove(&mut mime_types, 0);
+            let size_bytes = vector::remove(&mut size_bytes_values, 0);
+            let access_type = vector::remove(&mut access_types, 0);
+            let price_octas = vector::remove(&mut price_octas_values, 0);
+            let whitelist = vector::remove(&mut whitelists, 0);
+
+            let file_id = add_file_record(
+                registry,
+                uploader_addr,
+                content_hash,
+                shelby_cid,
+                mime_type,
+                size_bytes,
+                access_type,
+                price_octas,
+                whitelist,
+            );
+
+            let record = table::borrow(&registry.files, file_id);
+            event::emit(FileRegistered {
+                file_id,
+                uploader: uploader_addr,
+                shelby_cid: record.shelby_cid,
+                access_type: record.access_type,
+                price_octas: record.price_octas,
+            });
+
+            i = i + 1;
+        };
     }
 
     // ---- Entry: purchase access to a paid file ----
@@ -282,6 +400,70 @@ module aptbox::registry {
         assert!(owner_addr == @aptbox, error::permission_denied(E_NOT_OWNER));
         assert!(!exists<Descriptions>(@aptbox), error::already_exists(E_ALREADY_INITIALIZED));
         move_to(owner, Descriptions { texts: table::new() });
+    }
+
+    public entry fun init_training_sets(owner: &signer) {
+        let owner_addr = signer::address_of(owner);
+        assert!(owner_addr == @aptbox, error::permission_denied(E_NOT_OWNER));
+        assert!(!exists<TrainingSets>(@aptbox), error::already_exists(E_ALREADY_INITIALIZED));
+        move_to(owner, TrainingSets { by_commitment: table::new() });
+    }
+
+    public entry fun register_training_set(
+        creator: &signer,
+        training_set_commitment: vector<u8>,
+        file_ids: vector<u64>,
+        dataset_commitments: vector<vector<u8>>,
+    ) acquires Registry, TrainingSets {
+        assert!(exists<Registry>(@aptbox), error::not_found(E_NOT_PUBLISHED));
+        assert!(
+            exists<TrainingSets>(@aptbox),
+            error::not_found(E_TRAINING_SETS_NOT_PUBLISHED)
+        );
+        assert!(
+            vector::length(&training_set_commitment) == SHA256_LEN,
+            error::invalid_argument(E_INVALID_HASH)
+        );
+
+        let count = vector::length(&file_ids);
+        assert!(count > 0, error::invalid_argument(E_INVALID_BATCH));
+        assert!(
+            vector::length(&dataset_commitments) == count,
+            error::invalid_argument(E_INVALID_BATCH)
+        );
+
+        let registry = borrow_global<Registry>(@aptbox);
+        let i = 0;
+        while (i < count) {
+            let file_id = *vector::borrow(&file_ids, i);
+            assert!(table::contains(&registry.files, file_id), error::not_found(E_FILE_NOT_FOUND));
+            let expected = vector::borrow(&dataset_commitments, i);
+            assert!(vector::length(expected) == SHA256_LEN, error::invalid_argument(E_INVALID_HASH));
+            let record = table::borrow(&registry.files, file_id);
+            assert!(record.content_hash == *expected, error::invalid_argument(E_INVALID_HASH));
+            i = i + 1;
+        };
+
+        let sets = borrow_global_mut<TrainingSets>(@aptbox);
+        assert!(
+            !table::contains(&sets.by_commitment, training_set_commitment),
+            error::already_exists(E_DUPLICATE_TRAINING_SET)
+        );
+
+        let creator_addr = signer::address_of(creator);
+        table::add(&mut sets.by_commitment, training_set_commitment, TrainingSetRecord {
+            training_set_commitment,
+            creator: creator_addr,
+            file_ids,
+            dataset_commitments,
+            created_at: timestamp::now_seconds(),
+        });
+
+        event::emit(TrainingSetRegistered {
+            training_set_commitment,
+            creator: creator_addr,
+            dataset_count: count,
+        });
     }
 
     /// Set or replace a dataset's description. Only the original uploader may

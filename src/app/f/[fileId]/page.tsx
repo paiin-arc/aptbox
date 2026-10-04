@@ -27,8 +27,10 @@ import {
   ACCESS_PAID,
   ACCESS_PUBLIC,
   ACCESS_WHITELIST,
+  aptFromOctas,
   buildDeleteFilePayload,
   buildPurchaseAccessPayload,
+  getAptos,
 } from "@/lib/registry";
 import { isUserRejection, waitForTx, buildSignSubmit } from "@/lib/tx";
 import {
@@ -298,6 +300,22 @@ export default function FilePage({ params }: Props) {
     setPurchaseError(null);
     try {
       setPurchaseStage("signing");
+
+      // Check Shelbynet APT balance before prompting wallet to avoid simulation aborts inside Petra extension
+      const octasNum = await getAptos(network).getAccountAPTAmount({
+        accountAddress: account.address.toString(),
+      });
+      const balanceOctas = BigInt(octasNum);
+      const requiredOctas = file.priceOctas + 100_000n; // price + gas fee margin
+
+      if (balanceOctas < requiredOctas) {
+        setPurchaseError(
+          `Insufficient Shelbynet APT balance. Your balance is ${aptFromOctas(balanceOctas)} APT, but this dataset costs ${aptFromOctas(requiredOctas)} APT (price + gas). Please fund your wallet with Shelbynet APT.`
+        );
+        setPurchaseStage("error");
+        return;
+      }
+
       const { hash } = await buildSignSubmit({
         network,
         sender: account.address.toString(),
@@ -805,16 +823,20 @@ function ExpirationBanner({
   expirationMicros,
   isWritten,
 }: {
-  expirationMicros: number;
+  expirationMicros?: number;
   isWritten: boolean;
 }) {
-  const exp = formatExpirationCountdown(expirationMicros);
-  const expiresAt = new Date(expirationMicros / 1000);
+  const exp =
+    expirationMicros === undefined
+      ? null
+      : formatExpirationCountdown(expirationMicros);
+  const expiresAt =
+    expirationMicros === undefined ? null : new Date(expirationMicros / 1000);
 
   const palette =
-    exp.severity === "expired"
+    exp?.severity === "expired"
       ? "border-red-200 bg-red-50 text-red-900"
-      : exp.severity === "warn"
+      : exp?.severity === "warn"
         ? "border-amber-200 bg-amber-50 text-amber-900"
         : "border-line bg-surface-raised text-ink-muted";
 
@@ -825,12 +847,16 @@ function ExpirationBanner({
       <div className="flex items-center gap-2">
         <ClockIcon className="mt-0.5 h-4 w-4 shrink-0" />
         <div>
-          <div className="text-sm font-semibold">{exp.text}</div>
-          <div className="mt-0.5 opacity-80">
-            {exp.severity === "expired"
-              ? `Expired ${expiresAt.toLocaleString()}`
-              : `Expires ${expiresAt.toLocaleString()}`}
+          <div className="text-sm font-semibold">
+            {exp?.text ?? (isWritten ? "Stored on Shelby" : "Pending on Shelby")}
           </div>
+          {exp && expiresAt && (
+            <div className="mt-0.5 opacity-80">
+              {exp.severity === "expired"
+                ? `Expired ${expiresAt.toLocaleString()}`
+                : `Expires ${expiresAt.toLocaleString()}`}
+            </div>
+          )}
         </div>
       </div>
       <span
