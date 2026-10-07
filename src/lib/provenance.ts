@@ -56,7 +56,29 @@ export type DatasetProvenance = {
   registryTxHash?: string;
   shelbyRegisterTxHash?: string;
   encryptionReceipt?: EncryptionReceipt;
+  /**
+   * Shelby's own label for the stored blob ("AES_GCM_V1" | "Unencrypted").
+   * Registry-sourced datasets have no receipt, so this is the only source of
+   * truth for them; undefined means it couldn't be looked up.
+   */
+  storageEncryption?: string;
 };
+
+export type EncryptionBadge = "encrypted" | "unencrypted" | "unknown";
+
+/**
+ * Whether to tell the user a dataset is private or public. Never infer
+ * "unencrypted" from a missing receipt: registry datasets have none, and a
+ * false "publicly readable" claim about encrypted data is worse than saying
+ * we don't know.
+ */
+export function encryptionBadge(
+  d: Pick<DatasetProvenance, "encryptionReceipt" | "storageEncryption">
+): EncryptionBadge {
+  if (d.encryptionReceipt || d.storageEncryption === "AES_GCM_V1") return "encrypted";
+  if (d.storageEncryption === "Unencrypted") return "unencrypted";
+  return "unknown";
+}
 
 export type TrainingSetDataset = {
   datasetCommitment: string;

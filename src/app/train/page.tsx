@@ -50,6 +50,7 @@ import {
   certificateVerdictState,
   certificateSigningNonce,
   createTrainingCertificate,
+  encryptionBadge,
   encryptionKeyId,
   hexToBytes,
   normalizeShelbyActivities,
@@ -70,6 +71,7 @@ import {
 } from "@/lib/trainingSets";
 import { fetchAllFiles, hasAccess, type FileMeta } from "@/lib/files";
 import { fileNameFromCid } from "@/lib/download";
+import { fetchAccountBlobLifecycles } from "@/lib/blobLifecycle";
 import {
   decideForExistingSet,
   registryDatasetEntries,
@@ -555,6 +557,8 @@ export default function TrainPage() {
         registryTxHash,
         shelbyRegisterTxHash: shelbyTxHash,
         encryptionReceipt: p.encryptionReceipt,
+        // We registered it, so we know exactly what Shelby was told.
+        storageEncryption: p.keyHex ? "AES_GCM_V1" : "Unencrypted",
       }));
       setDatasets(uploaded);
 
@@ -672,6 +676,19 @@ export default function TrainPage() {
         );
       }
 
+      // Registry datasets carry no encryption receipt, so ask Shelby what it
+      // stored. One listing per uploader; a failed lookup leaves it unknown
+      // rather than guessing "unencrypted".
+      const encryptionByKey = new Map<string, string | undefined>();
+      const client = getShelbyClient(network);
+      if (client) {
+        await Promise.all(
+          [...new Set(chosen.map((f) => f.uploader))].map(async (uploader) => {
+            const map = await fetchAccountBlobLifecycles(client, uploader);
+            for (const [cid, lc] of map) encryptionByKey.set(`${uploader}/${cid}`, lc.encryption);
+          })
+        );
+      }
       setDatasets(
         chosen.map((f) => ({
           fileId: f.fileId,
@@ -681,6 +698,7 @@ export default function TrainPage() {
           datasetCommitment: f.contentHash,
           shelbyCid: f.shelbyCid,
           uploader: f.uploader,
+          storageEncryption: encryptionByKey.get(`${f.uploader}/${f.shelbyCid}`),
         }))
       );
       setTrainingSet(set);
@@ -1111,16 +1129,23 @@ export default function TrainPage() {
                   <div className="flex items-baseline justify-between gap-2">
                     <span className="flex min-w-0 flex-wrap items-baseline gap-2">
                       <span className="text-sm font-semibold">{d.originalFilename}</span>
-                      {d.encryptionReceipt ? (
+                      {encryptionBadge(d) === "encrypted" ? (
                         <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-2xs font-semibold text-emerald-800">
                           🔒 Encrypted (AES-256-GCM)
                         </span>
-                      ) : (
+                      ) : encryptionBadge(d) === "unencrypted" ? (
                         <span
                           className="rounded bg-amber-100 px-1.5 py-0.5 text-2xs font-semibold text-amber-900"
                           title="Stored as plaintext: anyone can download it from Shelby"
                         >
                           🔓 Unencrypted · publicly readable on Shelby
+                        </span>
+                      ) : (
+                        <span
+                          className="rounded bg-surface px-1.5 py-0.5 text-2xs font-medium text-ink-subtle"
+                          title="Shelby's storage listing couldn't be read, so this isn't labelled either way"
+                        >
+                          Encryption unknown
                         </span>
                       )}
                     </span>

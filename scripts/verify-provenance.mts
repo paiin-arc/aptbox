@@ -20,6 +20,7 @@ import {
   certificateSigningNonce,
   certificateVerdictState,
   createTrainingCertificate,
+  encryptionBadge,
   encryptionKeyId,
   normalizeShelbyActivities,
   parseKeyBackup,
@@ -386,6 +387,19 @@ console.log("\n-- training sets from registered datasets (2a) --");
   check("reused set (no tx hash) + confirmed on-chain → verified", r.state === "verified", JSON.stringify(r.checks));
   check("…without the false 'not committed on-chain' warning",
     !r.warnings.some((w) => /not committed on-chain/.test(w)) && r.warnings.some((w) => /confirmed on-chain/.test(w)), JSON.stringify(r.warnings));
+}
+
+console.log("\n-- encryption badge --");
+{
+  const receipt = { keyId: "aes256:x" } as never;
+  check("upload with receipt → encrypted", encryptionBadge({ encryptionReceipt: receipt }) === "encrypted");
+  check("Shelby says AES_GCM_V1 → encrypted", encryptionBadge({ storageEncryption: "AES_GCM_V1" }) === "encrypted");
+  check("Shelby says Unencrypted → unencrypted", encryptionBadge({ storageEncryption: "Unencrypted" }) === "unencrypted");
+  // Regression: a registry dataset has no receipt. Encrypted dataset #6 was
+  // labelled "publicly readable" because missing receipt meant "unencrypted".
+  check("no receipt + no lookup → unknown, never 'unencrypted'", encryptionBadge({}) === "unknown");
+  check("no receipt + encrypted on Shelby → encrypted (the #6 case)",
+    encryptionBadge({ encryptionReceipt: undefined, storageEncryption: "AES_GCM_V1" }) === "encrypted");
 }
 
 console.log("\n-- verdict states --");
