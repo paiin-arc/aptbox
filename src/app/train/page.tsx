@@ -2,7 +2,13 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { AccountAddress } from "@aptos-labs/ts-sdk";
+import {
+  AccountAddress,
+  Ed25519PublicKey,
+  Ed25519Signature,
+  type PublicKey,
+  type Signature,
+} from "@aptos-labs/ts-sdk";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { SHELBY_DEPLOYER, ShelbyBlobClient } from "@shelby-protocol/sdk/browser";
 import { AppBackdrop } from "@/components/AppBackdrop";
@@ -24,8 +30,9 @@ import {
   buildRegisterFilesBatchPayload,
   buildRegisterTrainingSetPayload,
   extractFileIdsFromTx,
+  getAptos,
 } from "@/lib/registry";
-import { signWithTimeout, waitForTx } from "@/lib/tx";
+import { isUserRejection, signWithTimeout, waitForTx } from "@/lib/tx";
 import {
   commitShelbyBlob,
   prepareShelbyCommitments,
@@ -33,29 +40,42 @@ import {
   validateFile,
 } from "@/services/uploadService";
 import {
+  attachCertificateSignature,
   buildEncryptionReceipt,
+  buildKeyBackup,
   buildTrainingSet,
+  certificateSigningMessage,
+  certificateVerdictState,
+  certificateSigningNonce,
   createTrainingCertificate,
+  encryptionKeyId,
   hexToBytes,
   normalizeShelbyActivities,
+  shelbyObjectToActivity,
   verifyTrainingCertificate,
+  type CertificateCheck,
+  type CertificateVerdictState,
   type DatasetProvenance,
   type EncryptionReceipt,
+  type KeyBackupEntry,
   type ProvenanceActivity,
   type TrainingCertificate,
   type TrainingSet,
 } from "@/lib/provenance";
+import { verifyCertificateOnChain } from "@/lib/trainingSets";
 
 type WorkflowStage =
   | "idle"
   | "hashing"
   | "encrypting"
   | "encoding"
+  | "prepared"
   | "shelby-signing"
   | "registry-signing"
   | "uploading"
   | "committing"
   | "training-set-signing"
+  | "certificate-signing"
   | "done"
   | "error";
 
@@ -65,9 +85,29 @@ type PreparedDataset = {
   originalHashHex: string;
   blobName: string;
   uploadSource: Blob;
+  /** Held only in memory until the user has backed it up. Never sent anywhere. */
+  keyHex?: string;
   encryptionReceipt?: EncryptionReceipt;
   commitments: Awaited<ReturnType<typeof prepareShelbyCommitments>>["commitments"];
   encoding: number;
+};
+
+/** Outcome of the optional register_training_set step, kept separate so it can't be overwritten. */
+type TrainingSetStatus =
+  | { state: "pending" }
+  | { state: "committed"; txHash: string }
+  | { state: "rejected" }
+  | { state: "failed"; reason: string };
+
+type ChainRefs = {
+  registryTxHash?: string;
+  shelbyRegisterTxHash?: string;
+};
+
+type CertificateVerdict = {
+  state: CertificateVerdictState;
+  checks: CertificateCheck[];
+  warnings: string[];
 };
 
 const STAGE_LABEL: Record<WorkflowStage, string> = {
@@ -75,14 +115,18 @@ const STAGE_LABEL: Record<WorkflowStage, string> = {
   hashing: "Hashing original datasets",
   encrypting: "Encrypting client-side",
   encoding: "Erasure-coding for Shelby",
+  prepared: "Prepared: review and pin",
   "shelby-signing": "Wallet approval: Shelby batch register",
   "registry-signing": "Wallet approval: Aptbox batch register",
-  uploading: "Uploading encrypted bytes to Shelby",
+  uploading: "Uploading bytes to Shelby",
   committing: "Wallet approval: Shelby commit",
   "training-set-signing": "Wallet approval: training set commitment",
+  "certificate-signing": "Wallet approval: sign training certificate",
   done: "Complete",
   error: "Error",
 };
+
+const IDLE_STAGES: WorkflowStage[] = ["idle", "prepared", "done", "error"];
 
 function fullShelbyObjectName(account: string, blobName: string): string {
   const long = AccountAddress.fromString(account).toStringLong().slice(2);
@@ -95,8 +139,29 @@ function statusTone(stage: WorkflowStage): string {
   return "border-line bg-surface-sunken text-ink";
 }
 
+function downloadJson(value: unknown, filename: string) {
+  const url = URL.createObjectURL(
+    new Blob([JSON.stringify(value, null, 2)], { type: "application/json" })
+  );
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+/** Some wallets hand back raw hex instead of SDK objects. */
+function asPublicKey(pk: unknown): PublicKey | PublicKey[] | undefined {
+  if (typeof pk === "string") return new Ed25519PublicKey(pk);
+  return pk as PublicKey | PublicKey[] | undefined;
+}
+function asSignature(sig: unknown): Signature {
+  if (typeof sig === "string") return new Ed25519Signature(sig);
+  return sig as Signature;
+}
+
 export default function TrainPage() {
-  const { connected, account, signAndSubmitTransaction } = useWallet();
+  const { connected, account, signAndSubmitTransaction, signMessage } = useWallet();
   const network = useNetwork();
 
   const [files, setFiles] = useState<File[]>([]);
@@ -106,16 +171,42 @@ export default function TrainPage() {
   const [stage, setStage] = useState<WorkflowStage>("idle");
   const [detail, setDetail] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
+
+  const [prepared, setPrepared] = useState<PreparedDataset[] | null>(null);
+  const [keysSaved, setKeysSaved] = useState(false);
+  const [pinnedKeys, setPinnedKeys] = useState<KeyBackupEntry[]>([]);
+
   const [datasets, setDatasets] = useState<DatasetProvenance[]>([]);
   const [trainingSet, setTrainingSet] = useState<TrainingSet | null>(null);
+  const [trainingSetStatus, setTrainingSetStatus] = useState<TrainingSetStatus | null>(null);
+  const [chainRefs, setChainRefs] = useState<ChainRefs>({});
   const [certificate, setCertificate] = useState<TrainingCertificate | null>(null);
-  const [certificateVerdict, setCertificateVerdict] = useState<string | null>(null);
+  const [verdict, setVerdict] = useState<CertificateVerdict | null>(null);
+  const [certError, setCertError] = useState<string | null>(null);
   const [activities, setActivities] = useState<ProvenanceActivity[] | null>(null);
   const [auditLoading, setAuditLoading] = useState(false);
+  const [auditNote, setAuditNote] = useState<string | null>(null);
 
-  const busy = !["idle", "done", "error"].includes(stage);
-  const canRun = connected && account && files.length > 0 && !busy;
+  const busy = !IDLE_STAGES.includes(stage);
   const hasShelbyConfig = useMemo(() => isShelbyConfigured(network), [network]);
+  const preparedEncrypted = Boolean(prepared?.some((p) => p.keyHex));
+  const canPrepare = connected && account && files.length > 0 && !busy;
+  const canPin =
+    connected && account && prepared && !busy && (!preparedEncrypted || keysSaved);
+  /** Prepared without encryption: the next click publishes plaintext. */
+  const pinsPublicly = Boolean(prepared && !preparedEncrypted);
+
+  /** Any input change invalidates prepared bytes and their (unsaved) keys. */
+  function resetPrepared() {
+    setPrepared(null);
+    setKeysSaved(false);
+    if (stage === "prepared") setStage("idle");
+  }
+
+  function fail(message: string) {
+    setError(message);
+    setStage("error");
+  }
 
   async function prepareDataset(file: File, index: number): Promise<PreparedDataset> {
     validateFile(file);
@@ -125,6 +216,7 @@ export default function TrainPage() {
     const blobName = blobNameFor(hex, `${index + 1}-${file.name}`);
 
     let uploadSource: Blob = file;
+    let keyHex: string | undefined;
     let encryptionReceipt: EncryptionReceipt | undefined;
     if (encryptDatasets) {
       if (file.size > MAX_BROWSER_AES_GCM_BYTES) {
@@ -136,7 +228,7 @@ export default function TrainPage() {
       }
       setStage("encrypting");
       setDetail(`Encrypting ${file.name}`);
-      const keyHex = await generateAesKey();
+      keyHex = await generateAesKey();
       const plaintext = new Uint8Array(await file.arrayBuffer());
       const encrypted = await encryptAesGcm(plaintext, keyHex);
       uploadSource = new Blob([encrypted.buffer as ArrayBuffer], {
@@ -163,47 +255,159 @@ export default function TrainPage() {
       originalHashHex: hex,
       blobName,
       uploadSource,
+      keyHex,
       encryptionReceipt,
       commitments,
       encoding,
     };
   }
 
-  async function handleBatchPin() {
-    if (!connected || !account) {
-      setError("Connect your wallet first.");
-      setStage("error");
+  /** Step 1: hash, encrypt and erasure-code locally. Nothing leaves the browser. */
+  async function handlePrepare() {
+    if (!connected || !account) return fail("Connect your wallet first.");
+    if (!hasShelbyConfig) return fail("Shelby is not configured for this network.");
+    if (files.length === 0) return fail("Choose at least one training dataset.");
+
+    setError(null);
+    setPrepared(null);
+    setKeysSaved(false);
+    try {
+      const out: PreparedDataset[] = [];
+      for (let i = 0; i < files.length; i += 1) {
+        out.push(await prepareDataset(files[i], i));
+      }
+      if (out.some((p) => p.encoding !== out[0].encoding)) {
+        throw new Error("Prepared datasets used different Shelby encodings.");
+      }
+      setPrepared(out);
+      setStage("prepared");
+      setDetail(
+        out.some((p) => p.keyHex)
+          ? "Back up your decryption keys below, then pin the training set."
+          : "Ready to pin. Datasets will be stored unencrypted."
+      );
+    } catch (e) {
+      fail((e as Error).message ?? String(e));
+    }
+  }
+
+  function keyEntries(list: PreparedDataset[], fileIds?: string[]): KeyBackupEntry[] {
+    return list.flatMap((p, i): KeyBackupEntry[] =>
+      p.keyHex
+        ? [
+            {
+              fileId: fileIds?.[i],
+              originalFilename: p.file.name,
+              datasetCommitment: p.originalHashHex,
+              shelbyCid: p.blobName,
+              keyId: encryptionKeyId(p.keyHex),
+              keyHex: p.keyHex,
+            },
+          ]
+        : []
+    );
+  }
+
+  function handleDownloadKeys(entries: KeyBackupEntry[], suffix: string) {
+    const backup = buildKeyBackup({
+      network,
+      uploader: account?.address.toString(),
+      keys: entries,
+    });
+    downloadJson(backup, `aptbox-keys-${suffix}.json`);
+  }
+
+  /**
+   * Builds, wallet-signs, and verifies a certificate. trainingSetTxHash is
+   * passed only when register_training_set actually confirmed, so a registry
+   * tx can never be presented as the training-set commitment.
+   */
+  async function issueCertificate(
+    set: TrainingSet,
+    refs: ChainRefs,
+    tsStatus: TrainingSetStatus | null
+  ) {
+    if (!account) throw new Error("Connect your wallet first.");
+    setCertError(null);
+    setVerdict(null);
+    const trainingSetTxHash = tsStatus?.state === "committed" ? tsStatus.txHash : undefined;
+    const unsigned = await createTrainingCertificate({
+      network,
+      signerAddress: account.address.toString(),
+      modelRunId,
+      modelHash: modelHash.trim() || undefined,
+      trainingSet: set,
+      trainingSetTxHash,
+      registryTxHash: refs.registryTxHash,
+    });
+
+    setStage("certificate-signing");
+    setDetail("Approve the message signature so the certificate proves you issued it.");
+    const nonce = certificateSigningNonce(unsigned);
+    let signed: TrainingCertificate;
+    try {
+      const out = await signWithTimeout(
+        signMessage({ message: certificateSigningMessage(unsigned), nonce, address: true }),
+        "Sign training certificate"
+      );
+      signed = attachCertificateSignature(unsigned, {
+        publicKey: asPublicKey(account.publicKey),
+        signature: asSignature(out.signature),
+        fullMessage: out.fullMessage,
+        nonce: out.nonce ?? nonce,
+      });
+    } catch (e) {
+      setCertificate(null);
+      setCertError(
+        isUserRejection(e)
+          ? "Certificate not issued: the signature was declined. Use “Sign & Export Certificate” to try again."
+          : `Certificate not issued: ${(e as Error).message}`
+      );
       return;
     }
-    if (!hasShelbyConfig) {
-      setError("Shelby is not configured for this network.");
-      setStage("error");
-      return;
-    }
-    if (files.length === 0) {
-      setError("Choose at least one training dataset.");
-      setStage("error");
-      return;
+
+    const offline = await verifyTrainingCertificate(signed, {
+      aptosConfig: getAptos(network).config,
+    });
+    const onChain: CertificateCheck[] = trainingSetTxHash
+      ? await verifyCertificateOnChain(signed, network)
+      : [
+          {
+            label: "Training set on-chain",
+            status: "skip",
+            detail: "Not committed on-chain, so only the datasets are anchored.",
+          },
+        ];
+    const checks = [...offline.checks, ...onChain];
+    setCertificate(signed);
+    setVerdict({
+      state: certificateVerdictState(checks),
+      checks,
+      warnings: offline.warnings,
+    });
+  }
+
+  /** Step 2: register on Shelby + Aptbox, commit the training set, upload, certify. */
+  async function handlePin() {
+    if (!connected || !account) return fail("Connect your wallet first.");
+    if (!prepared) return fail("Prepare the datasets first.");
+    if (preparedEncrypted && !keysSaved) {
+      return fail("Back up the decryption keys before pinning. Without them the datasets are unrecoverable.");
     }
 
     setError(null);
     setCertificate(null);
-    setCertificateVerdict(null);
+    setVerdict(null);
+    setCertError(null);
     setActivities(null);
     setDatasets([]);
     setTrainingSet(null);
+    setTrainingSetStatus(null);
+    setChainRefs({});
 
     try {
       const uploaderAddress = account.address.toString();
-      const prepared: PreparedDataset[] = [];
-      for (let i = 0; i < files.length; i += 1) {
-        prepared.push(await prepareDataset(files[i], i));
-      }
-
       const encoding = prepared[0].encoding;
-      if (prepared.some((p) => p.encoding !== encoding)) {
-        throw new Error("Prepared datasets used different Shelby encodings.");
-      }
 
       setStage("shelby-signing");
       setDetail("Approve one Shelby register_multiple_blobs transaction.");
@@ -211,7 +415,7 @@ export default function TrainPage() {
         account: AccountAddress.fromString(uploaderAddress),
         encoding,
         locationHint: "shelbynet-1",
-        encryption: encryptDatasets ? "AES_GCM_V1" : "Unencrypted",
+        encryption: preparedEncrypted ? "AES_GCM_V1" : "Unencrypted",
         blobs: prepared.map((p) => ({
           blobName: p.blobName,
           blobSize: p.commitments.raw_data_size,
@@ -262,15 +466,18 @@ export default function TrainPage() {
         (registryTx as { events?: { type: string; data: unknown }[] }).events ?? [];
       const fileIds = extractFileIdsFromTx(
         registryEvents as { type: string; data: Record<string, unknown> }[]
-      );
+      ).map(String);
       if (fileIds.length !== prepared.length) {
         throw new Error(
           `Aptbox batch registration returned ${fileIds.length} file ID(s) for ${prepared.length} dataset(s).`
         );
       }
+      const refs: ChainRefs = { registryTxHash, shelbyRegisterTxHash: shelbyTxHash };
+      setChainRefs(refs);
+      setPinnedKeys(keyEntries(prepared, fileIds));
 
       const uploaded: DatasetProvenance[] = prepared.map((p, i) => ({
-        fileId: fileIds[i].toString(),
+        fileId: fileIds[i],
         originalFilename: p.file.name,
         originalSize: p.file.size,
         mimeType: p.file.type || "application/octet-stream",
@@ -292,7 +499,10 @@ export default function TrainPage() {
       );
       setTrainingSet(set);
 
-      let trainingSetTxHash: string | undefined;
+      // Optional step: its outcome is recorded in its own state so later
+      // progress messages can't hide a failure.
+      let tsStatus: TrainingSetStatus = { state: "pending" };
+      setTrainingSetStatus(tsStatus);
       try {
         setStage("training-set-signing");
         setDetail("Approve immutable Aptbox training-set commitment.");
@@ -305,13 +515,15 @@ export default function TrainPage() {
           signAndSubmitTransaction({ data: payload }),
           "Aptbox register_training_set"
         );
-        trainingSetTxHash = (submitted as { hash: string }).hash;
-        await waitForTx(trainingSetTxHash, { network });
+        const txHash = (submitted as { hash: string }).hash;
+        await waitForTx(txHash, { network });
+        tsStatus = { state: "committed", txHash };
       } catch (e) {
-        setDetail(
-          `Datasets are registered. Training-set on-chain commitment was skipped or failed: ${(e as Error).message}`
-        );
+        tsStatus = isUserRejection(e)
+          ? { state: "rejected" }
+          : { state: "failed", reason: (e as Error).message ?? String(e) };
       }
+      setTrainingSetStatus(tsStatus);
 
       setStage("uploading");
       for (let i = 0; i < prepared.length; i += 1) {
@@ -336,93 +548,92 @@ export default function TrainPage() {
         setStage("uploading");
       }
 
-      const cert = await createTrainingCertificate({
-        network,
-        signerAddress: uploaderAddress,
-        modelRunId,
-        modelHash: modelHash.trim() || undefined,
-        trainingSet: set,
-        transactionHash: trainingSetTxHash ?? registryTxHash,
-      });
-      setCertificate(cert);
-      const verdict = await verifyTrainingCertificate(cert);
-      setCertificateVerdict(verdict.ok ? "Certificate verified" : verdict.errors.join(" "));
+      await issueCertificate(set, refs, tsStatus);
       setStage("done");
       setDetail("Training provenance chain completed.");
     } catch (e) {
-      setStage("error");
-      setError((e as Error).message ?? String(e));
+      fail((e as Error).message ?? String(e));
     }
   }
 
   async function handleExportCertificate() {
     if (!trainingSet || !account) {
-      setError("Pin a training set before exporting its certificate.");
-      setStage("error");
-      return;
+      return fail("Pin a training set before exporting its certificate.");
     }
     try {
-      const cert = await createTrainingCertificate({
-        network,
-        signerAddress: account.address.toString(),
-        modelRunId,
-        modelHash: modelHash.trim() || undefined,
-        trainingSet,
-      });
-      setCertificate(cert);
-      const verdict = await verifyTrainingCertificate(cert);
-      setCertificateVerdict(verdict.ok ? "Certificate verified" : verdict.errors.join(" "));
+      setError(null);
+      await issueCertificate(trainingSet, chainRefs, trainingSetStatus);
+      setStage("done");
+      setDetail("Certificate re-issued.");
     } catch (e) {
-      setError((e as Error).message);
-      setStage("error");
+      fail((e as Error).message);
     }
   }
 
   async function handleFetchActivities() {
-    if (!account) {
-      setError("Connect your wallet first.");
-      setStage("error");
-      return;
-    }
+    if (!account) return fail("Connect your wallet first.");
     if (datasets.length === 0) {
-      setError("Pin a training set first so Aptbox has real Shelby blob IDs to query.");
-      setStage("error");
-      return;
+      return fail("Pin a training set first so Aptbox has real Shelby blob IDs to query.");
     }
     const client = getShelbyClient(network);
-    if (!client) {
-      setError("Shelby is not configured for this network.");
-      setStage("error");
-      return;
-    }
+    if (!client) return fail("Shelby is not configured for this network.");
 
     setAuditLoading(true);
+    setAuditNote(null);
     setError(null);
     try {
-      const all = await Promise.all(
-        datasets.map((d) =>
-          client.index.listObjectActivities({
+      const owner = account.address.toString();
+      const perDataset = await Promise.all(
+        datasets.map(async (d) => {
+          const events = await client.index.listObjectActivities({
             where: {
-              owner: { _eq: account.address.toString() },
-              object_name: {
-                _eq: fullShelbyObjectName(account.address.toString(), d.shelbyCid),
-              },
+              owner: { _eq: owner },
+              object_name: { _eq: fullShelbyObjectName(owner, d.shelbyCid) },
             },
             pagination: { limit: 25 },
-          })
-        )
+          });
+          if (events.length > 0) {
+            return { activities: normalizeShelbyActivities(events), derived: false, missing: false };
+          }
+          // Activity indexer returned nothing: fall back to the object listing,
+          // which still records that (and when) the object was committed.
+          const objects = await client.index.listObjectsByPrefix({ owner, prefix: d.shelbyCid });
+          const obj = objects.find((o) => o.key === d.shelbyCid);
+          return {
+            activities: obj ? [shelbyObjectToActivity(obj)] : [],
+            derived: Boolean(obj),
+            missing: !obj,
+          };
+        })
       );
-      const shelby = normalizeShelbyActivities(all.flat());
+      const shelby = perDataset
+        .flatMap((r) => r.activities)
+        .sort((a, b) => (a.timestamp ?? "").localeCompare(b.timestamp ?? ""));
+      const derivedCount = perDataset.filter((r) => r.derived).length;
+      const missingCount = perDataset.filter((r) => r.missing).length;
+      const notes: string[] = [];
+      if (derivedCount > 0) {
+        notes.push(
+          `Shelby's activity indexer returned no events for ${derivedCount} dataset(s), so their entries come from the Shelby object listing (commit time, encryption, size) instead.`
+        );
+      }
+      if (missingCount > 0) {
+        notes.push(
+          `${missingCount} dataset(s) have no Shelby object yet. The upload may still be finalizing, or it never committed.`
+        );
+      }
+      setAuditNote(notes.length ? notes.join(" ") : null);
       const aptos: ProvenanceActivity[] = datasets.map((d) => ({
         source: "aptos",
         category: "registered",
         transactionHash: d.registryTxHash,
         label: `Aptbox registry file ${d.fileId}`,
       }));
-      if (trainingSet) {
+      if (trainingSet && trainingSetStatus?.state === "committed") {
         aptos.push({
           source: "aptos",
           category: "training-set-inclusion",
+          transactionHash: trainingSetStatus.txHash,
           label: `Training set ${trainingSet.commitment.slice(0, 16)}`,
         });
       }
@@ -435,12 +646,13 @@ export default function TrainPage() {
       }
       setActivities([...shelby, ...aptos]);
     } catch (e) {
-      setError((e as Error).message);
-      setStage("error");
+      fail((e as Error).message);
     } finally {
       setAuditLoading(false);
     }
   }
+
+  const preparedKeys = prepared ? keyEntries(prepared) : [];
 
   return (
     <div className="relative flex min-h-dvh flex-col text-ink">
@@ -466,7 +678,7 @@ export default function TrainPage() {
           </h1>
           <p className="mt-2 text-sm text-ink-muted">
             Build a provenance chain from original dataset SHA-256 commitments to
-            encrypted Shelby blobs, Aptbox batch registration, and a verifiable
+            encrypted Shelby blobs, Aptbox batch registration, and a wallet-signed
             model-run certificate.
           </p>
         </div>
@@ -481,7 +693,10 @@ export default function TrainPage() {
                 type="file"
                 multiple
                 disabled={busy}
-                onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
+                onChange={(e) => {
+                  setFiles(Array.from(e.target.files ?? []));
+                  resetPrepared();
+                }}
                 className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm"
               />
             </label>
@@ -490,7 +705,10 @@ export default function TrainPage() {
                 type="checkbox"
                 checked={encryptDatasets}
                 disabled={busy}
-                onChange={(e) => setEncryptDatasets(e.target.checked)}
+                onChange={(e) => {
+                  setEncryptDatasets(e.target.checked);
+                  resetPrepared();
+                }}
               />
               Encrypt before Shelby
             </label>
@@ -536,11 +754,30 @@ export default function TrainPage() {
         <div className="grid gap-4 sm:grid-cols-2">
           <button
             type="button"
-            onClick={handleBatchPin}
-            disabled={!canRun}
-            className="rounded-lg bg-royal px-4 py-2.5 text-xs font-semibold text-surface transition hover:bg-royal-deep disabled:cursor-not-allowed disabled:opacity-50"
+            onClick={handlePrepare}
+            disabled={!canPrepare}
+            className="rounded-lg border border-royal px-4 py-2.5 text-xs font-semibold text-royal-deep transition hover:bg-royal/10 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Pin Verifiable Training Set
+            1. Prepare Datasets
+          </button>
+          <button
+            type="button"
+            onClick={handlePin}
+            disabled={!canPin}
+            title={
+              preparedEncrypted && !keysSaved
+                ? "Back up your decryption keys first"
+                : pinsPublicly
+                  ? "Encryption is off: anyone will be able to download these datasets"
+                  : undefined
+            }
+            className={`rounded-lg px-4 py-2.5 text-xs font-semibold text-surface transition disabled:cursor-not-allowed disabled:opacity-50 ${
+              pinsPublicly ? "bg-amber-600 hover:bg-amber-700" : "bg-royal hover:bg-royal-deep"
+            }`}
+          >
+            {pinsPublicly
+              ? "2. Pin Training Set (unencrypted · public)"
+              : "2. Pin Verifiable Training Set"}
           </button>
           <button
             type="button"
@@ -548,17 +785,45 @@ export default function TrainPage() {
             disabled={!trainingSet || busy}
             className="rounded-lg border border-royal px-4 py-2.5 text-xs font-semibold text-royal-deep transition hover:bg-royal/10 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Export Training Certificate
+            Sign &amp; Export Certificate
           </button>
           <button
             type="button"
             onClick={handleFetchActivities}
             disabled={auditLoading || datasets.length === 0}
-            className="rounded-lg border border-royal px-4 py-2.5 text-xs font-semibold text-royal-deep transition hover:bg-royal/10 disabled:cursor-not-allowed disabled:opacity-50 sm:col-span-2"
+            className="rounded-lg border border-royal px-4 py-2.5 text-xs font-semibold text-royal-deep transition hover:bg-royal/10 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {auditLoading ? "Fetching Activity Audit Trail" : "Fetch Activity Audit Trail"}
           </button>
         </div>
+
+        {stage === "prepared" && pinsPublicly && (
+          <section className="rounded-xl border-2 border-amber-400 bg-amber-50 p-4 text-amber-950 shadow-sm">
+            <div className="text-sm font-semibold">🔓 These datasets will be stored unencrypted</div>
+            <p className="mt-1 text-xs">
+              Encryption is off. Once pinned, <strong>anyone</strong> can download the
+              original files from Shelby. Deleting the registry entry later hides them in
+              Aptbox, but the stored copy stays readable until it expires. To keep them
+              private, tick <strong>Encrypt before Shelby</strong> and prepare again.
+            </p>
+          </section>
+        )}
+
+        {stage === "prepared" && preparedKeys.length > 0 && (
+          <KeyBackupPanel
+            entries={preparedKeys}
+            saved={keysSaved}
+            onSavedChange={setKeysSaved}
+            onDownload={() => {
+              handleDownloadKeys(preparedKeys, new Date().toISOString().slice(0, 19).replace(/:/g, "-"));
+              setKeysSaved(true);
+            }}
+          />
+        )}
+
+        {trainingSetStatus && trainingSetStatus.state !== "pending" && (
+          <TrainingSetStatusBanner status={trainingSetStatus} />
+        )}
 
         {trainingSet && (
           <section className="rounded-xl border border-line bg-surface-raised p-4 shadow-sm">
@@ -573,13 +838,51 @@ export default function TrainPage() {
 
         {datasets.length > 0 && (
           <section className="rounded-xl border border-line bg-surface-raised p-4 shadow-sm">
-            <div className="text-xs font-semibold uppercase tracking-wide text-royal-deep">
-              Dataset Chain
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-xs font-semibold uppercase tracking-wide text-royal-deep">
+                Dataset Chain
+              </span>
+              {pinnedKeys.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleDownloadKeys(pinnedKeys, `files-${datasets.map((d) => d.fileId).join("-")}`)
+                  }
+                  className="text-2xs font-semibold text-royal hover:underline"
+                  title="Same keys, now including the registry dataset IDs"
+                >
+                  Download key backup (with dataset IDs)
+                </button>
+              )}
             </div>
             <div className="mt-3 space-y-3">
               {datasets.map((d) => (
                 <div key={d.shelbyCid} className="rounded-lg border border-line bg-surface-sunken p-3">
-                  <div className="text-sm font-semibold">{d.originalFilename}</div>
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="flex min-w-0 flex-wrap items-baseline gap-2">
+                      <span className="text-sm font-semibold">{d.originalFilename}</span>
+                      {d.encryptionReceipt ? (
+                        <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-2xs font-semibold text-emerald-800">
+                          🔒 Encrypted (AES-256-GCM)
+                        </span>
+                      ) : (
+                        <span
+                          className="rounded bg-amber-100 px-1.5 py-0.5 text-2xs font-semibold text-amber-900"
+                          title="Stored as plaintext: anyone can download it from Shelby"
+                        >
+                          🔓 Unencrypted · publicly readable on Shelby
+                        </span>
+                      )}
+                    </span>
+                    {d.fileId && (
+                      <Link
+                        href={`/f/${d.fileId}?n=${network}`}
+                        className="shrink-0 text-2xs font-semibold text-royal hover:underline"
+                      >
+                        Open dataset #{d.fileId}
+                      </Link>
+                    )}
+                  </div>
                   <div className="mt-1 break-all font-mono text-2xs text-ink-muted">
                     SHA-256 {d.datasetCommitment}
                   </div>
@@ -597,24 +900,39 @@ export default function TrainPage() {
           </section>
         )}
 
+        {certError && (
+          <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
+            {certError}
+          </div>
+        )}
+
         {certificate && (
           <section className="rounded-xl border border-line bg-surface-raised p-4 shadow-sm">
             <div className="flex items-center justify-between gap-3">
               <span className="text-xs font-semibold uppercase tracking-wide text-royal-deep">
                 Training Certificate
               </span>
-              <button
-                type="button"
-                onClick={() => navigator.clipboard.writeText(JSON.stringify(certificate, null, 2))}
-                className="text-2xs font-semibold text-royal hover:underline"
-              >
-                Copy JSON
-              </button>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => navigator.clipboard.writeText(JSON.stringify(certificate, null, 2))}
+                  className="text-2xs font-semibold text-royal hover:underline"
+                >
+                  Copy JSON
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    downloadJson(certificate, `aptbox-certificate-${certificate.trainingSetCommitment.slice(0, 12)}.json`)
+                  }
+                  className="text-2xs font-semibold text-royal hover:underline"
+                >
+                  Download
+                </button>
+              </div>
             </div>
-            {certificateVerdict && (
-              <div className="mt-2 text-xs text-emerald-800">{certificateVerdict}</div>
-            )}
-            <pre className="mt-2 max-h-72 overflow-auto rounded-lg bg-surface-sunken p-3 text-2xs font-mono text-ink">
+            {verdict && <VerdictPanel verdict={verdict} />}
+            <pre className="mt-3 max-h-72 overflow-auto rounded-lg bg-surface-sunken p-3 text-2xs font-mono text-ink">
               {JSON.stringify(certificate, null, 2)}
             </pre>
           </section>
@@ -625,6 +943,11 @@ export default function TrainPage() {
             <div className="text-xs font-semibold uppercase tracking-wide text-royal-deep">
               Activity Audit Trail
             </div>
+            {auditNote && (
+              <div className="mt-2 rounded-lg border border-royal/25 bg-royal/8 p-2 text-2xs text-royal-deep">
+                {auditNote}
+              </div>
+            )}
             <div className="mt-3 space-y-2">
               {activities.length === 0 ? (
                 <div className="text-sm text-ink-muted">
@@ -633,8 +956,20 @@ export default function TrainPage() {
               ) : (
                 activities.map((a, i) => (
                   <div key={`${a.source}-${i}`} className="rounded-lg border border-line bg-surface-sunken p-3 text-xs">
-                    <div className="font-semibold">
-                      {a.source.toUpperCase()} · {a.category}
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="font-semibold">
+                        {a.source.toUpperCase()} · {a.category}
+                        {a.derivedFrom === "object-listing" && (
+                          <span className="ml-1.5 rounded bg-surface px-1 py-0.5 text-2xs font-medium text-ink-subtle">
+                            from object listing
+                          </span>
+                        )}
+                      </span>
+                      {a.timestamp && (
+                        <span className="shrink-0 text-2xs text-ink-subtle">
+                          {new Date(a.timestamp).toLocaleString()}
+                        </span>
+                      )}
                     </div>
                     <div className="mt-1 text-ink-muted">{a.label}</div>
                     {a.transactionHash && (
@@ -649,6 +984,156 @@ export default function TrainPage() {
           </section>
         )}
       </main>
+    </div>
+  );
+}
+
+function KeyBackupPanel({
+  entries,
+  saved,
+  onSavedChange,
+  onDownload,
+}: {
+  entries: KeyBackupEntry[];
+  saved: boolean;
+  onSavedChange: (v: boolean) => void;
+  onDownload: () => void;
+}) {
+  const [copied, setCopied] = useState(false);
+  const allKeys = entries.map((k) => `${k.originalFilename}\t${k.keyHex}`).join("\n");
+  return (
+    <section className="rounded-xl border-2 border-amber-400 bg-amber-50 p-4 text-amber-950 shadow-sm">
+      <div className="text-sm font-semibold">🔐 Back up your decryption keys</div>
+      <p className="mt-1 text-xs">
+        These keys are the <strong>only</strong> way to decrypt your datasets. Aptbox
+        never stores them, on-chain or anywhere else. If you lose them, the encrypted
+        data is gone for good. You can&apos;t pin until you confirm you&apos;ve saved them.
+      </p>
+      <div className="mt-3 space-y-1.5">
+        {entries.map((k) => (
+          <div key={k.shelbyCid} className="rounded-lg border border-amber-300 bg-surface-raised p-2">
+            <div className="truncate text-xs font-semibold" title={k.originalFilename}>
+              {k.originalFilename}
+            </div>
+            <div className="mt-0.5 break-all font-mono text-2xs text-ink-muted">{k.keyHex}</div>
+          </div>
+        ))}
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={onDownload}
+          className="rounded-lg bg-amber-600 px-3 py-2 text-xs font-semibold text-white hover:bg-amber-700"
+        >
+          Download keys.json
+        </button>
+        <button
+          type="button"
+          onClick={async () => {
+            await navigator.clipboard.writeText(allKeys);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 1500);
+          }}
+          className="rounded-lg border border-amber-400 bg-surface-raised px-3 py-2 text-xs font-medium hover:bg-amber-100"
+        >
+          {copied ? "Copied" : "Copy all keys"}
+        </button>
+        <label className="ml-auto flex items-center gap-2 text-xs font-medium">
+          <input
+            type="checkbox"
+            checked={saved}
+            onChange={(e) => onSavedChange(e.target.checked)}
+          />
+          I&apos;ve saved these keys somewhere safe
+        </label>
+      </div>
+    </section>
+  );
+}
+
+function TrainingSetStatusBanner({ status }: { status: TrainingSetStatus }) {
+  if (status.state === "committed") {
+    return (
+      <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-900">
+        <div className="font-semibold">Training set committed on-chain</div>
+        <div className="mt-1 break-all font-mono text-2xs">{status.txHash}</div>
+      </div>
+    );
+  }
+  return (
+    <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
+      <div className="font-semibold">
+        Training set NOT committed on-chain
+        {status.state === "rejected" ? " (you declined the transaction)" : ""}
+      </div>
+      <div className="mt-1">
+        The individual datasets are registered and uploaded, but there is no on-chain
+        record tying them together as this training set. The certificate will say so.
+        {status.state === "failed" && (
+          <span className="mt-1 block font-mono text-2xs">{status.reason}</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+const SIGNATURE_CHECKS = new Set([
+  "Structure & training-set commitment",
+  "Integrity digest",
+  "Signed message",
+  "Signature",
+  "Key owns signer address",
+]);
+
+function verdictHeadline(verdict: CertificateVerdict): string {
+  if (verdict.state === "verified") return "Certificate verified";
+  if (verdict.state === "failed") return "Certificate failed verification";
+  const signatureOk = verdict.checks
+    .filter((c) => SIGNATURE_CHECKS.has(c.label))
+    .every((c) => c.status === "pass");
+  return signatureOk
+    ? "Signature valid · on-chain check unavailable"
+    : "Could not fully verify: some checks couldn't run";
+}
+
+function VerdictPanel({ verdict }: { verdict: CertificateVerdict }) {
+  const icon = { pass: "✓", fail: "✗", unavailable: "?", skip: "–" } as const;
+  const tone = {
+    pass: "text-emerald-700",
+    fail: "text-red-700",
+    unavailable: "text-amber-700",
+    skip: "text-ink-subtle",
+  } as const;
+  const palette = {
+    verified: { box: "border-emerald-500/30 bg-emerald-500/10", title: "text-emerald-800" },
+    incomplete: { box: "border-amber-300 bg-amber-50", title: "text-amber-900" },
+    failed: { box: "border-red-300 bg-red-50", title: "text-red-800" },
+  }[verdict.state];
+  return (
+    <div className={`mt-3 rounded-lg border p-3 text-xs ${palette.box}`}>
+      <div className={`font-semibold ${palette.title}`}>{verdictHeadline(verdict)}</div>
+      {verdict.state === "incomplete" && (
+        <div className="mt-1 text-amber-800">
+          Nothing here indicates tampering. Some checks needed the network or a newer
+          contract and couldn&apos;t run. Re-issue the certificate to check again.
+        </div>
+      )}
+      <ul className="mt-2 space-y-1">
+        {verdict.checks.map((c, i) => (
+          <li key={i} className="flex gap-2">
+            <span className={`w-3 shrink-0 font-bold ${tone[c.status]}`}>{icon[c.status]}</span>
+            <span>
+              <span className="font-medium">{c.label}</span>
+              {c.detail && <span className="text-ink-muted"> · {c.detail}</span>}
+            </span>
+          </li>
+        ))}
+      </ul>
+      {verdict.warnings.map((w, i) => (
+        <div key={i} className="mt-2 text-amber-800">
+          ⚠ {w}
+        </div>
+      ))}
     </div>
   );
 }

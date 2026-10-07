@@ -38,6 +38,7 @@ module aptbox::registry {
     const E_INVALID_HASH: u64 = 10;
     const E_TRAINING_SETS_NOT_PUBLISHED: u64 = 11;
     const E_DUPLICATE_TRAINING_SET: u64 = 12;
+    const E_TRAINING_SET_NOT_FOUND: u64 = 13;
 
     /// Descriptions are permanent public chain state; cap them so a listing
     /// can't be used to store arbitrary payloads.
@@ -520,5 +521,91 @@ module aptbox::registry {
     #[view]
     public fun next_id(): u64 acquires Registry {
         borrow_global<Registry>(@aptbox).next_id
+    }
+
+    // ---- Views: training sets ----
+    //
+    // Added after TrainingSets shipped. New functions (and a new error
+    // constant) are upgrade-compatible; no stored layout changes.
+
+    // False rather than abort when the table isn't initialised, so verifiers
+    // can probe any deployment without special-casing it.
+    #[view]
+    public fun training_set_exists(training_set_commitment: vector<u8>): bool acquires TrainingSets {
+        if (!exists<TrainingSets>(@aptbox)) return false;
+        table::contains(
+            &borrow_global<TrainingSets>(@aptbox).by_commitment,
+            training_set_commitment
+        )
+    }
+
+    // The immutable record written by `register_training_set`: creator,
+    // member file_ids, and the dataset SHA-256s pinned at registration time.
+    #[view]
+    public fun get_training_set(training_set_commitment: vector<u8>): TrainingSetRecord acquires TrainingSets {
+        assert!(
+            exists<TrainingSets>(@aptbox),
+            error::not_found(E_TRAINING_SETS_NOT_PUBLISHED)
+        );
+        let sets = borrow_global<TrainingSets>(@aptbox);
+        assert!(
+            table::contains(&sets.by_commitment, training_set_commitment),
+            error::not_found(E_TRAINING_SET_NOT_FOUND)
+        );
+        *table::borrow(&sets.by_commitment, training_set_commitment)
+    }
+
+    // ---- Tests ----
+
+    #[test_only]
+    fun setup_for_test(framework: &signer, owner: &signer) {
+        timestamp::set_time_has_started_for_testing(framework);
+        aptos_framework::account::create_account_for_test(signer::address_of(owner));
+        initialize(owner);
+        init_training_sets(owner);
+    }
+
+    #[test_only]
+    fun hash_of(byte: u8): vector<u8> {
+        let h = vector::empty<u8>();
+        let i = 0;
+        while (i < SHA256_LEN) { vector::push_back(&mut h, byte); i = i + 1; };
+        h
+    }
+
+    #[test(framework = @aptos_framework, owner = @aptbox)]
+    fun test_training_set_views_round_trip(framework: &signer, owner: &signer)
+        acquires Registry, TrainingSets
+    {
+        setup_for_test(framework, owner);
+        register_file(
+            owner, hash_of(1), std::string::utf8(b"cid-1"), std::string::utf8(b"text/csv"),
+            10, ACCESS_PUBLIC, 0, vector::empty()
+        );
+        let commitment = hash_of(9);
+        assert!(!training_set_exists(commitment), 100);
+
+        register_training_set(owner, commitment, vector[0], vector[hash_of(1)]);
+
+        assert!(training_set_exists(commitment), 101);
+        let record = get_training_set(commitment);
+        assert!(record.creator == @aptbox, 102);
+        assert!(record.file_ids == vector[0], 103);
+        assert!(record.dataset_commitments == vector[hash_of(1)], 104);
+        assert!(record.training_set_commitment == commitment, 105);
+    }
+
+    #[test(framework = @aptos_framework, owner = @aptbox)]
+    #[expected_failure(abort_code = 0x6000d, location = Self)]
+    fun test_get_missing_training_set_aborts(framework: &signer, owner: &signer)
+        acquires TrainingSets
+    {
+        setup_for_test(framework, owner);
+        get_training_set(hash_of(7));
+    }
+
+    #[test]
+    fun test_exists_is_false_before_init() acquires TrainingSets {
+        assert!(!training_set_exists(hash_of(7)), 200);
     }
 }

@@ -3,19 +3,30 @@
  *
  * Run: node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-provenance.mts
  */
-import { AccountAddress, Network } from "@aptos-labs/ts-sdk";
+import { Account, AccountAddress, Network, SigningSchemeInput } from "@aptos-labs/ts-sdk";
 import {
+  DecryptionError,
   decryptAesGcm,
   encryptAesGcm,
+  isWellFormedAesKey,
   generateAesKey,
   sha256File,
 } from "../src/lib/crypto.ts";
 import {
+  attachCertificateSignature,
+  buildKeyBackup,
   buildTrainingSet,
+  certificateSigningMessage,
+  certificateSigningNonce,
+  certificateVerdictState,
   createTrainingCertificate,
+  encryptionKeyId,
   normalizeShelbyActivities,
+  parseKeyBackup,
+  shelbyObjectToActivity,
   verifyTrainingCertificate,
 } from "../src/lib/provenance.ts";
+import { compareTrainingSetToCertificate, verifyCertificateOnChain } from "../src/lib/trainingSets.ts";
 
 let failures = 0;
 
@@ -51,6 +62,29 @@ await rejects("wrong key rejects", async () => {
   await decryptAesGcm(encrypted1, await generateAesKey());
 });
 
+// A single mistyped character must produce a friendly DecryptionError, not a
+// raw OperationError (which the dev overlay surfaces as a crash).
+const oneCharOff = key.slice(0, -1) + (key.endsWith("0") ? "1" : "0");
+try {
+  await decryptAesGcm(encrypted1, oneCharOff);
+  check("one-character-off key rejects", false, "expected rejection");
+} catch (e) {
+  check("one-character-off key → DecryptionError(authentication-failed)",
+    e instanceof DecryptionError && e.reason === "authentication-failed", (e as Error)?.name);
+  check("…with a user-facing message", /doesn't unlock this dataset/.test((e as Error).message));
+}
+try {
+  await decryptAesGcm(encrypted1, key.slice(0, 63));
+  check("63-char key rejects", false, "expected rejection");
+} catch (e) {
+  check("63-char key → DecryptionError(malformed-key), says how many chars",
+    e instanceof DecryptionError && e.reason === "malformed-key" && /has 63/.test((e as Error).message));
+}
+check("pasted key with 0x prefix and whitespace still decrypts",
+  new TextDecoder().decode(await decryptAesGcm(encrypted1, `  0x${key}\n`)) === "aptbox provenance dataset");
+check("isWellFormedAesKey accepts 0x/whitespace, rejects bad lengths",
+  isWellFormedAesKey(` 0x${key} `) && !isWellFormedAesKey(key.slice(1)) && !isWellFormedAesKey("z".repeat(64)));
+
 console.log("\n-- original hash --");
 const h1 = await sha256File(blob);
 const h2 = await sha256File(blob);
@@ -79,30 +113,171 @@ check("different dataset changes commitment", set1.commitment !== set3.commitmen
 await rejects("empty training set rejects", async () => buildTrainingSet([]));
 await rejects("duplicate dataset rejects", async () => buildTrainingSet([datasetA, datasetA]));
 
-console.log("\n-- certificate --");
-const cert = await createTrainingCertificate({
+console.log("\n-- certificate signing --");
+
+/** Simulates a wallet's AIP-62 signMessage: signs the UTF-8 full message. */
+function walletSign(account: Account, message: string, nonce: string, address = account.accountAddress.toString()) {
+  const fullMessage = `APTOS\naddress: ${address}\nmessage: ${message}\nnonce: ${nonce}`;
+  return {
+    fullMessage,
+    nonce,
+    signature: account.sign(new TextEncoder().encode(fullMessage)),
+  };
+}
+
+async function issue(account: Account, overrides: Partial<Parameters<typeof createTrainingCertificate>[0]> = {}) {
+  const unsigned = await createTrainingCertificate({
+    network: Network.SHELBYNET,
+    signerAddress: account.accountAddress.toString(),
+    modelRunId: "run-1",
+    trainingSet: set1,
+    trainingSetTxHash: "0x" + "7".repeat(64),
+    registryTxHash: "0x" + "8".repeat(64),
+    ...overrides,
+  });
+  const out = walletSign(account, certificateSigningMessage(unsigned), certificateSigningNonce(unsigned));
+  return attachCertificateSignature(unsigned, { publicKey: account.publicKey, ...out });
+}
+
+const legacy = Account.generate({ scheme: SigningSchemeInput.Ed25519, legacy: true });
+const singleKey = Account.generate({ scheme: SigningSchemeInput.Ed25519, legacy: false });
+const attacker = Account.generate({ scheme: SigningSchemeInput.Ed25519, legacy: true });
+
+const cert = await issue(legacy);
+const verdict = await verifyTrainingCertificate(cert);
+check("signed certificate verifies (legacy Ed25519)", verdict.ok, JSON.stringify(verdict));
+check("legacy key uses ed25519 scheme", cert.signature?.scheme === "ed25519");
+const skCert = await issue(singleKey);
+const skVerdict = await verifyTrainingCertificate(skCert);
+check("signed certificate verifies (SingleKey account)", skVerdict.ok, JSON.stringify(skVerdict));
+check("SingleKey uses single-key scheme", skCert.signature?.scheme === "single-key");
+check("survives JSON round trip", (await verifyTrainingCertificate(JSON.parse(JSON.stringify(cert)))).ok);
+
+console.log("\n-- certificate forgery --");
+const unsigned = { ...cert, signature: undefined };
+check("unsigned certificate rejects", !(await verifyTrainingCertificate(unsigned)).ok);
+check("unsigned draft passes only when explicitly allowed",
+  (await verifyTrainingCertificate(unsigned, { requireSignature: false })).ok);
+
+check("edited body (digest NOT recomputed) rejects",
+  !(await verifyTrainingCertificate({ ...cert, modelRunId: "run-2" })).ok);
+
+// The attack the old scheme allowed: edit, recompute the digest, keep going.
+const reDigested = await createTrainingCertificate({
   network: Network.SHELBYNET,
-  signerAddress: "0xabc",
+  signerAddress: legacy.accountAddress.toString(),
+  modelRunId: "run-2-forged",
+  trainingSet: set1,
+});
+const forged = { ...reDigested, signature: cert.signature };
+const forgedVerdict = await verifyTrainingCertificate(forged);
+check("edited body WITH recomputed digest rejects (signature no longer matches)", !forgedVerdict.ok);
+
+check("injected trainingSetTxHash rejects",
+  !(await verifyTrainingCertificate({ ...cert, trainingSetTxHash: "0x" + "9".repeat(64) })).ok);
+
+// Attacker signs a certificate that claims the victim as signer.
+const impersonation = await createTrainingCertificate({
+  network: Network.SHELBYNET,
+  signerAddress: legacy.accountAddress.toString(),
   modelRunId: "run-1",
   trainingSet: set1,
 });
-const verdict = await verifyTrainingCertificate(cert);
-check("valid certificate verifies", verdict.ok);
-const tampered = { ...cert, modelRunId: "run-2" };
-const tamperedVerdict = await verifyTrainingCertificate(tampered);
-check("tampered certificate rejects", !tamperedVerdict.ok);
-const badDataset = {
+const impOut = walletSign(attacker, certificateSigningMessage(impersonation), certificateSigningNonce(impersonation), legacy.accountAddress.toString());
+const impSigned = attachCertificateSignature(impersonation, { publicKey: attacker.publicKey, ...impOut });
+const impVerdict = await verifyTrainingCertificate(impSigned);
+check("attacker key claiming victim address rejects", !impVerdict.ok);
+check("…and says the key doesn't own the address",
+  impVerdict.checks.some((c) => c.label === "Key owns signer address" && c.status === "fail"), JSON.stringify(impVerdict.checks));
+
+const otherCert = await issue(legacy, { modelRunId: "run-other" });
+check("signature from another certificate rejects",
+  !(await verifyTrainingCertificate({ ...cert, signature: otherCert.signature })).ok);
+
+const wrongAddrOut = walletSign(legacy, certificateSigningMessage(cert), certificateSigningNonce(cert), attacker.accountAddress.toString());
+check("signed-message address mismatch rejects",
+  !(await verifyTrainingCertificate(attachCertificateSignature({ ...cert }, { publicKey: legacy.publicKey, ...wrongAddrOut }))).ok);
+
+const garbledSig = { ...cert, signature: { ...cert.signature!, signature: "0x" + "00".repeat(64) } };
+check("garbage signature bytes reject", !(await verifyTrainingCertificate(garbledSig)).ok);
+
+check("v1 certificate rejects", !(await verifyTrainingCertificate({ ...cert, version: 1 })).ok);
+check("schema version rejects", !(await verifyTrainingCertificate({ ...cert, version: 99 })).ok);
+check("modified dataset commitment rejects", !(await verifyTrainingCertificate({
   ...cert,
   datasets: [{ ...cert.datasets[0], datasetCommitment: "d".repeat(64) }],
+})).ok);
+check("modified training-set commitment rejects",
+  !(await verifyTrainingCertificate({ ...cert, trainingSetCommitment: "e".repeat(64) })).ok);
+
+const noTsTx = await issue(legacy, { trainingSetTxHash: undefined });
+const noTsVerdict = await verifyTrainingCertificate(noTsTx);
+check("missing training-set tx still verifies but warns",
+  noTsVerdict.ok && noTsVerdict.warnings.some((w) => /not committed on-chain/.test(w)), JSON.stringify(noTsVerdict));
+check("registry tx is never presented as training-set tx",
+  noTsTx.trainingSetTxHash === undefined && noTsTx.registryTxHash === "0x" + "8".repeat(64));
+
+console.log("\n-- on-chain comparison --");
+const signerLong = legacy.accountAddress.toStringLong();
+const onChain = {
+  commitment: set1.commitment,
+  creator: signerLong,
+  fileIds: ["1", "2"],
+  datasetCommitments: ["b".repeat(64), "a".repeat(64)],
+  createdAt: 1,
 };
-const badDatasetVerdict = await verifyTrainingCertificate(badDataset);
-check("modified dataset commitment rejects", !badDatasetVerdict.ok);
-const badSet = { ...cert, trainingSetCommitment: "e".repeat(64) };
-const badSetVerdict = await verifyTrainingCertificate(badSet);
-check("modified training-set commitment rejects", !badSetVerdict.ok);
-const badVersion = { ...cert, version: 99 };
-const badVersionVerdict = await verifyTrainingCertificate(badVersion);
-check("schema version rejects", !badVersionVerdict.ok);
+const allPass = (cs: { status: string }[]) => cs.every((c) => c.status === "pass");
+check("matching on-chain record passes", allPass(compareTrainingSetToCertificate(onChain, cert)));
+check("missing on-chain record fails", !allPass(compareTrainingSetToCertificate(null, cert)));
+check("different creator fails",
+  !allPass(compareTrainingSetToCertificate({ ...onChain, creator: attacker.accountAddress.toStringLong() }, cert)));
+check("extra on-chain dataset fails",
+  !allPass(compareTrainingSetToCertificate({ ...onChain, fileIds: [...onChain.fileIds, "3"], datasetCommitments: [...onChain.datasetCommitments, "c".repeat(64)] }, cert)));
+check("swapped hash on-chain fails",
+  !allPass(compareTrainingSetToCertificate({ ...onChain, datasetCommitments: ["a".repeat(64), "b".repeat(64)] }, cert)));
+
+console.log("\n-- verdict states --");
+const P = { label: "a", status: "pass" } as const;
+const F = { label: "b", status: "fail" } as const;
+const U = { label: "c", status: "unavailable" } as const;
+const S = { label: "d", status: "skip" } as const;
+check("all pass → verified", certificateVerdictState([P, P, S]) === "verified");
+check("unavailable → incomplete (amber), not failed", certificateVerdictState([P, U]) === "incomplete");
+check("fail beats unavailable → failed", certificateVerdictState([U, F, P]) === "failed");
+
+// This script runs without a registry address configured, so the on-chain
+// lookup genuinely cannot run. That must come back as unavailable, not fail.
+const lookup = await verifyCertificateOnChain(cert, Network.SHELBYNET as never);
+check("lookup that can't run → unavailable", lookup.length === 1 && lookup[0].status === "unavailable", JSON.stringify(lookup));
+check("…so a valid signed cert is incomplete, not failed",
+  certificateVerdictState([...verdict.checks, ...lookup]) === "incomplete");
+check("…but a forged cert with the same outage is still failed",
+  certificateVerdictState([...forgedVerdict.checks, ...lookup]) === "failed");
+check("confirmed absence on-chain is still a hard fail",
+  certificateVerdictState(compareTrainingSetToCertificate(null, cert)) === "failed");
+
+console.log("\n-- key backup --");
+const backupKey = await generateAesKey();
+const ciphertext = await encryptAesGcm(bytes, backupKey);
+const backup = buildKeyBackup({
+  network: "shelbynet",
+  keys: [{
+    originalFilename: "a.csv",
+    datasetCommitment: h1.hex,
+    shelbyCid: "aptbox/a.csv",
+    keyId: encryptionKeyId(backupKey),
+    keyHex: backupKey,
+  }],
+});
+const restored = parseKeyBackup(JSON.parse(JSON.stringify(backup)));
+const roundTrip = await decryptAesGcm(ciphertext, restored.keys[0].keyHex);
+check("backed-up key decrypts the dataset", new TextDecoder().decode(roundTrip) === "aptbox provenance dataset");
+check("backup carries full 64-char key, not just keyId", restored.keys[0].keyHex.length === 64);
+await rejects("corrupted key in backup rejects", async () =>
+  parseKeyBackup({ ...backup, keys: [{ ...backup.keys[0], keyHex: "0".repeat(64) }] }));
+await rejects("non-backup JSON rejects", async () => parseKeyBackup({ hello: "world" }));
+await rejects("building backup with mismatched keyId rejects", async () =>
+  buildKeyBackup({ network: "shelbynet", keys: [{ ...backup.keys[0], keyId: "aes256:00000000:00000000" }] }));
 
 console.log("\n-- activity normalization --");
 const normalized = normalizeShelbyActivities([
@@ -132,6 +307,18 @@ const normalized = normalizeShelbyActivities([
 check("commit activity maps to pinned", normalized[0].category === "pinned");
 check("delete activity maps to deleted", normalized[1].category === "deleted");
 check("empty activity history normalizes", normalizeShelbyActivities([]).length === 0);
+
+const fromListing = shelbyObjectToActivity({
+  key: "aptbox/a.bin",
+  encryption: "AES_GCM_V1" as never,
+  storedSize: 148218,
+  committedAtMicros: 1791356226971992,
+});
+check("object-listing fallback is marked as derived", fromListing.derivedFrom === "object-listing" && fromListing.source === "shelby");
+check("object-listing fallback converts µs commit time", fromListing.timestamp === new Date(1791356226971.992).toISOString(), fromListing.timestamp);
+check("object-listing fallback reports encryption", fromListing.label.includes("AES_GCM_V1"));
+check("missing commit time leaves timestamp empty",
+  shelbyObjectToActivity({ key: "k", encryption: "Unencrypted" as never, storedSize: 1, committedAtMicros: 0 }).timestamp === undefined);
 
 console.log(`\n${failures === 0 ? "ALL CHECKS PASSED" : `${failures} CHECK(S) FAILED`}\n`);
 process.exit(failures === 0 ? 0 : 1);
