@@ -373,6 +373,18 @@ export async function verifyCertificateFull(
   try {
     const onChain = await deps.fetchSet(network, cert.trainingSetCommitment);
     checks.push(...compareTrainingSetToCertificate(onChain, cert));
+    // A certificate issued for an already-registered set carries no tx hash.
+    // The chain itself is the stronger evidence, so drop the "not committed"
+    // warning once the record is confirmed.
+    if (onChain && !cert.trainingSetTxHash) {
+      const i = warnings.findIndex((w) => /not committed on-chain/.test(w));
+      if (i >= 0) {
+        warnings.splice(i, 1);
+        warnings.push(
+          "The certificate has no training-set transaction hash, but the training set is confirmed on-chain (it was registered before this certificate was issued)."
+        );
+      }
+    }
   } catch (e) {
     checks.push({
       label: "Training set on-chain",

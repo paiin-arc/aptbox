@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -62,7 +63,19 @@ import {
   type TrainingCertificate,
   type TrainingSet,
 } from "@/lib/provenance";
-import { CERTIFICATE_HANDOFF_KEY, verifyCertificateOnChain } from "@/lib/trainingSets";
+import {
+  CERTIFICATE_HANDOFF_KEY,
+  fetchTrainingSet,
+  verifyCertificateOnChain,
+} from "@/lib/trainingSets";
+import { fetchAllFiles, hasAccess, type FileMeta } from "@/lib/files";
+import { fileNameFromCid } from "@/lib/download";
+import {
+  decideForExistingSet,
+  registryDatasetEntries,
+  selectionEligibility,
+} from "@/lib/trainingSelection";
+import { RegistryDatasetPicker } from "@/components/RegistryDatasetPicker";
 import {
   CertificateVerdictPanel,
   type CertificateVerdict,
@@ -78,6 +91,7 @@ type WorkflowStage =
   | "registry-signing"
   | "uploading"
   | "committing"
+  | "training-set-checking"
   | "training-set-signing"
   | "certificate-signing"
   | "done"
@@ -100,8 +114,13 @@ type PreparedDataset = {
 type TrainingSetStatus =
   | { state: "pending" }
   | { state: "committed"; txHash: string }
+  /** Already registered by this wallet earlier; reused, no new transaction. */
+  | { state: "existing"; createdAt: number }
   | { state: "rejected" }
   | { state: "failed"; reason: string };
+
+/** Where the training set's datasets come from. */
+type SourceMode = "upload" | "registry";
 
 type ChainRefs = {
   registryTxHash?: string;
@@ -119,6 +138,7 @@ const STAGE_LABEL: Record<WorkflowStage, string> = {
   "registry-signing": "Wallet approval: Aptbox batch register",
   uploading: "Uploading bytes to Shelby",
   committing: "Wallet approval: Shelby commit",
+  "training-set-checking": "Checking whether this training set already exists",
   "training-set-signing": "Wallet approval: training set commitment",
   "certificate-signing": "Wallet approval: sign training certificate",
   done: "Complete",
@@ -187,8 +207,46 @@ export default function TrainPage() {
   const [auditLoading, setAuditLoading] = useState(false);
   const [auditNote, setAuditNote] = useState<string | null>(null);
 
+  const [mode, setMode] = useState<SourceMode>("upload");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const wallet = account?.address.toString();
+
+  // Registry datasets for "use registered datasets" mode. Only fetched once
+  // that mode is opened.
+  const registryQuery = useQuery({
+    queryKey: ["allFiles", network],
+    queryFn: () => fetchAllFiles(network),
+    enabled: mode === "registry",
+    staleTime: 30_000,
+  });
+  const registryFiles = useMemo(() => registryQuery.data ?? [], [registryQuery.data]);
+
+  // has_access only matters for non-public datasets the wallet doesn't own.
+  const accessIds = useMemo(
+    () =>
+      wallet
+        ? registryFiles
+            .filter((f) => f.accessType !== ACCESS_PUBLIC && f.uploader.toLowerCase() !== wallet.toLowerCase())
+            .map((f) => f.fileId)
+        : [],
+    [registryFiles, wallet]
+  );
+  const accessQuery = useQuery({
+    queryKey: ["trainAccess", network, wallet, accessIds.join(",")],
+    queryFn: async () => {
+      const entries = await Promise.all(
+        accessIds.map(async (id) => [id, await hasAccess(network, wallet!, id)] as const)
+      );
+      return Object.fromEntries(entries) as Record<string, boolean>;
+    },
+    enabled: mode === "registry" && Boolean(wallet) && accessIds.length > 0,
+    staleTime: 15_000,
+  });
+  const accessMap = useMemo(() => accessQuery.data ?? {}, [accessQuery.data]);
+
   const busy = !IDLE_STAGES.includes(stage);
   const hasShelbyConfig = useMemo(() => isShelbyConfigured(network), [network]);
+  const canPinRegistry = Boolean(connected && account && selectedIds.size > 0 && !busy);
   const preparedEncrypted = Boolean(prepared?.some((p) => p.keyHex));
   const canPrepare = connected && account && files.length > 0 && !busy;
   const canPin =
@@ -369,7 +427,8 @@ export default function TrainPage() {
     const offline = await verifyTrainingCertificate(signed, {
       aptosConfig: getAptos(network).config,
     });
-    const onChain: CertificateCheck[] = trainingSetTxHash
+    const isOnChain = tsStatus?.state === "committed" || tsStatus?.state === "existing";
+    const onChain: CertificateCheck[] = isOnChain
       ? await verifyCertificateOnChain(signed, network)
       : [
           {
@@ -379,11 +438,20 @@ export default function TrainPage() {
           },
         ];
     const checks = [...offline.checks, ...onChain];
+    // A reused set has no tx hash, so the offline check warns "not committed".
+    // The on-chain check just proved otherwise; say what actually happened.
+    const confirmed = onChain.some((c) => c.label === "Training set on-chain" && c.status === "pass");
+    const warnings =
+      tsStatus?.state === "existing" && confirmed
+        ? offline.warnings
+            .filter((w) => !/not committed on-chain/.test(w))
+            .concat("Reused a training set you registered earlier, so this certificate has no new transaction hash. The on-chain record is confirmed.")
+        : offline.warnings;
     setCertificate(signed);
     setVerdict({
       state: certificateVerdictState(checks),
       checks,
-      warnings: offline.warnings,
+      warnings,
     });
   }
 
@@ -556,6 +624,108 @@ export default function TrainPage() {
     }
   }
 
+  /**
+   * Phase 2a: build a training set from datasets already in the registry.
+   * No uploads and no Shelby transactions: one register_training_set (or none,
+   * if this wallet already registered the same set) plus the certificate.
+   */
+  async function handlePinFromRegistry() {
+    if (!connected || !account) return fail("Connect your wallet first.");
+    const owner = account.address.toString();
+    const chosen: FileMeta[] = registryFiles.filter((f) => selectedIds.has(f.fileId));
+    if (chosen.length === 0) return fail("Select at least one registered dataset.");
+    // Re-check eligibility at click time: access may have changed since render.
+    const ineligible = chosen.filter((f) => !selectionEligibility(f, owner, accessMap[f.fileId]).selectable);
+    if (ineligible.length > 0) {
+      return fail(
+        `You don't have access to ${ineligible.map((f) => `#${f.fileId}`).join(", ")}. Buy access or remove them from the selection.`
+      );
+    }
+
+    setError(null);
+    setCertificate(null);
+    setVerdict(null);
+    setCertError(null);
+    setActivities(null);
+    setAuditNote(null);
+    setPinnedKeys([]);
+    setChainRefs({});
+    setTrainingSetStatus(null);
+
+    try {
+      const entries = registryDatasetEntries(chosen);
+      const set = await buildTrainingSet(entries);
+
+      setStage("training-set-checking");
+      setDetail("Looking up this training set's commitment on-chain.");
+      let decision;
+      try {
+        decision = decideForExistingSet(await fetchTrainingSet(network, set.commitment), owner);
+      } catch (e) {
+        return fail(
+          `Couldn't check whether this training set already exists, so nothing was sent: ${(e as Error).message}`
+        );
+      }
+      if (decision.action === "blocked") {
+        return fail(
+          `This exact set of datasets was already registered as a training set by ${decision.creator}. The registry keeps one record per training set, and a certificate from you would fail the "creator is the signer" check. Add or remove a dataset to make it a distinct training set.`
+        );
+      }
+
+      setDatasets(
+        chosen.map((f) => ({
+          fileId: f.fileId,
+          originalFilename: fileNameFromCid(f.shelbyCid),
+          originalSize: f.sizeBytes,
+          mimeType: f.mimeType,
+          datasetCommitment: f.contentHash,
+          shelbyCid: f.shelbyCid,
+          uploader: f.uploader,
+        }))
+      );
+      setTrainingSet(set);
+
+      let tsStatus: TrainingSetStatus;
+      if (decision.action === "reuse") {
+        tsStatus = { state: "existing", createdAt: decision.createdAt };
+      } else {
+        tsStatus = { state: "pending" };
+        setTrainingSetStatus(tsStatus);
+        try {
+          setStage("training-set-signing");
+          setDetail("Approve the training-set commitment. This is the only transaction.");
+          const payload = buildRegisterTrainingSetPayload(network, {
+            trainingSetCommitment: hexToBytes(set.commitment),
+            fileIds: chosen.map((f) => f.fileId),
+            datasetCommitments: chosen.map((f) => hexToBytes(f.contentHash)),
+          });
+          const submitted = await signWithTimeout(
+            signAndSubmitTransaction({ data: payload }),
+            "Aptbox register_training_set"
+          );
+          const txHash = (submitted as { hash: string }).hash;
+          await waitForTx(txHash, { network });
+          tsStatus = { state: "committed", txHash };
+        } catch (e) {
+          tsStatus = isUserRejection(e)
+            ? { state: "rejected" }
+            : { state: "failed", reason: (e as Error).message ?? String(e) };
+        }
+      }
+      setTrainingSetStatus(tsStatus);
+
+      await issueCertificate(set, {}, tsStatus);
+      setStage("done");
+      setDetail(
+        tsStatus.state === "existing"
+          ? "Reused your existing training set and issued a new certificate."
+          : "Training set built from registered datasets."
+      );
+    } catch (e) {
+      fail((e as Error).message ?? String(e));
+    }
+  }
+
   async function handleExportCertificate() {
     if (!trainingSet || !account) {
       return fail("Pin a training set before exporting its certificate.");
@@ -582,9 +752,12 @@ export default function TrainPage() {
     setAuditNote(null);
     setError(null);
     try {
-      const owner = account.address.toString();
+      const me = account.address.toString();
       const perDataset = await Promise.all(
         datasets.map(async (d) => {
+          // Registry-sourced datasets can belong to other publishers: query
+          // Shelby under each blob's actual owner.
+          const owner = d.uploader ?? me;
           const events = await client.index.listObjectActivities({
             where: {
               owner: { _eq: owner },
@@ -627,7 +800,9 @@ export default function TrainPage() {
         source: "aptos",
         category: "registered",
         transactionHash: d.registryTxHash,
-        label: `Aptbox registry file ${d.fileId}`,
+        label: d.registryTxHash
+          ? `Aptbox registry file ${d.fileId}`
+          : `Aptbox registry file ${d.fileId} (registered earlier${d.uploader && d.uploader.toLowerCase() !== me.toLowerCase() ? ` by ${d.uploader.slice(0, 6)}…${d.uploader.slice(-4)}` : ""})`,
       }));
       if (trainingSet && trainingSetStatus?.state === "committed") {
         aptos.push({
@@ -635,6 +810,13 @@ export default function TrainPage() {
           category: "training-set-inclusion",
           transactionHash: trainingSetStatus.txHash,
           label: `Training set ${trainingSet.commitment.slice(0, 16)}`,
+        });
+      } else if (trainingSet && trainingSetStatus?.state === "existing") {
+        aptos.push({
+          source: "aptos",
+          category: "training-set-inclusion",
+          timestamp: new Date(trainingSetStatus.createdAt * 1000).toISOString(),
+          label: `Training set ${trainingSet.commitment.slice(0, 16)} (registered earlier)`,
         });
       }
       if (certificate) {
@@ -684,6 +866,56 @@ export default function TrainPage() {
         </div>
 
         <section className="rounded-xl border border-line bg-surface-raised p-4 shadow-sm">
+          <div className="mb-3 flex gap-1 border-b border-line" role="tablist">
+            {(
+              [
+                ["upload", "Upload new datasets"],
+                ["registry", "Use registered datasets"],
+              ] as const
+            ).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={mode === id}
+                disabled={busy}
+                onClick={() => {
+                  setMode(id);
+                  resetPrepared();
+                }}
+                className={`-mb-px border-b-2 px-3 py-2 text-xs font-semibold disabled:opacity-50 ${
+                  mode === id
+                    ? "border-royal text-royal"
+                    : "border-transparent text-ink-subtle hover:text-ink-muted"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {mode === "registry" ? (
+            <div>
+              <p className="mb-3 text-xs text-ink-muted">
+                Pick datasets that are already in the registry, yours or anyone&apos;s. Nothing
+                is re-uploaded: the training set commits to their existing on-chain hashes, so
+                it&apos;s one transaction plus the certificate signature. Paid or restricted
+                datasets need access first.
+              </p>
+              <RegistryDatasetPicker
+                files={registryFiles}
+                loading={registryQuery.isLoading}
+                error={registryQuery.error ? (registryQuery.error as Error).message : null}
+                wallet={wallet}
+                access={accessMap}
+                accessLoading={accessQuery.isLoading && accessIds.length > 0}
+                selected={selectedIds}
+                onChange={setSelectedIds}
+                network={network}
+                disabled={busy}
+              />
+            </div>
+          ) : (
           <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
             <label className="block">
               <span className="text-xs font-medium text-ink-muted">
@@ -713,6 +945,7 @@ export default function TrainPage() {
               Encrypt before Shelby
             </label>
           </div>
+          )}
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <label className="block">
               <span className="text-xs font-medium text-ink-muted">
@@ -738,11 +971,13 @@ export default function TrainPage() {
               />
             </label>
           </div>
+          {mode === "upload" && (
           <div className="mt-3 text-xs text-ink-subtle">
             {files.length > 0
               ? `${files.length} dataset${files.length === 1 ? "" : "s"} selected. Encrypted mode currently supports files up to ${formatBytes(MAX_BROWSER_AES_GCM_BYTES)} each.`
               : "Choose one or more files. Plaintext is never sent to Shelby while encrypted mode is enabled."}
           </div>
+          )}
         </section>
 
         <div className={`rounded-xl border p-3 text-sm ${statusTone(stage)}`}>
@@ -752,6 +987,19 @@ export default function TrainPage() {
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
+          {mode === "registry" ? (
+          <button
+            type="button"
+            onClick={handlePinFromRegistry}
+            disabled={!canPinRegistry}
+            className="rounded-lg bg-royal px-4 py-2.5 text-xs font-semibold text-surface transition hover:bg-royal-deep disabled:cursor-not-allowed disabled:opacity-50 sm:col-span-2"
+          >
+            {selectedIds.size > 0
+              ? `Pin Training Set from ${selectedIds.size} Registered Dataset${selectedIds.size === 1 ? "" : "s"}`
+              : "Pin Training Set from Registered Datasets"}
+          </button>
+          ) : (
+          <>
           <button
             type="button"
             onClick={handlePrepare}
@@ -779,6 +1027,8 @@ export default function TrainPage() {
               ? "2. Pin Training Set (unencrypted · public)"
               : "2. Pin Verifiable Training Set"}
           </button>
+          </>
+          )}
           <button
             type="button"
             onClick={handleExportCertificate}
@@ -1063,6 +1313,18 @@ function KeyBackupPanel({
 }
 
 function TrainingSetStatusBanner({ status }: { status: TrainingSetStatus }) {
+  if (status.state === "existing") {
+    return (
+      <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-900">
+        <div className="font-semibold">Training set already on-chain, registered by you</div>
+        <div className="mt-1">
+          You registered this exact set of datasets on{" "}
+          {new Date(status.createdAt * 1000).toLocaleString()}. Nothing new was sent;
+          the certificate points at that record.
+        </div>
+      </div>
+    );
+  }
   if (status.state === "committed") {
     return (
       <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-900">

@@ -31,6 +31,11 @@ import {
   verifyCertificateFull,
   verifyCertificateOnChain,
 } from "../src/lib/trainingSets.ts";
+import {
+  decideForExistingSet,
+  registryDatasetEntries,
+  selectionEligibility,
+} from "../src/lib/trainingSelection.ts";
 
 let failures = 0;
 
@@ -320,6 +325,67 @@ console.log("\n-- full certificate verification (verifier page) --");
   check("certificate from another registry deployment → incomplete, explains why",
     otherReg.state === "incomplete" && otherReg.checks.some((c) => c.label === "Registry deployment" && /references registry/.test(c.detail ?? "")));
   check("v1 certificate → failed", (await verifyCertificateFull({ ...good, version: 1 }, deps())).state === "failed");
+}
+
+console.log("\n-- training sets from registered datasets (2a) --");
+{
+  const me = legacy.accountAddress.toString();
+  const other = attacker.accountAddress.toString();
+  const pub = { uploader: other, accessType: 0 };
+  const paid = { uploader: other, accessType: 1 };
+  const wl = { uploader: other, accessType: 2 };
+  const mine = { uploader: me, accessType: 1 };
+
+  check("public dataset: selectable even without a wallet", selectionEligibility(pub, undefined, undefined).selectable);
+  check("paid dataset, no wallet → not selectable", selectionEligibility(paid, undefined, undefined).reason === "no-wallet");
+  check("paid dataset not purchased → not selectable", selectionEligibility(paid, me, false).reason === "not-purchased");
+  check("paid dataset, access unknown yet → not selectable", !selectionEligibility(paid, me, undefined).selectable);
+  check("paid dataset purchased → selectable", selectionEligibility(paid, me, true).reason === "purchased");
+  check("restricted dataset, not on list → not selectable", selectionEligibility(wl, me, false).reason === "not-whitelisted");
+  check("restricted dataset, on list → selectable", selectionEligibility(wl, me, true).reason === "whitelisted");
+  check("own paid dataset → selectable without a purchase", selectionEligibility(mine, me, false).reason === "owner");
+  check("owner match ignores address format (short vs long)",
+    selectionEligibility({ uploader: legacy.accountAddress.toStringLong(), accessType: 2 }, me, false).reason === "owner");
+  check("unknown access mode → not selectable", !selectionEligibility({ uploader: other, accessType: 3 }, me, true).selectable);
+
+  // Same datasets must give the same commitment whichever path built them,
+  // otherwise a registry-built set could never match an upload-built one.
+  const registryFiles = [
+    { fileId: "2", contentHash: "a".repeat(64), shelbyCid: "aptbox/a.bin" },
+    { fileId: "1", contentHash: "b".repeat(64), shelbyCid: "aptbox/b.bin" },
+  ];
+  const fromRegistry = await buildTrainingSet(registryDatasetEntries(registryFiles));
+  check("registry-built commitment == upload-built commitment for the same datasets",
+    fromRegistry.commitment === set1.commitment, `${fromRegistry.commitment} vs ${set1.commitment}`);
+
+  const rec = { commitment: set1.commitment, creator: legacy.accountAddress.toStringLong(), fileIds: [], datasetCommitments: [], createdAt: 42 };
+  check("no existing record → register", decideForExistingSet(null, me).action === "register");
+  const reuse = decideForExistingSet(rec, me);
+  check("existing record by me → reuse (no new tx)", reuse.action === "reuse" && reuse.createdAt === 42);
+  const blocked = decideForExistingSet({ ...rec, creator: attacker.accountAddress.toStringLong() }, me);
+  check("existing record by someone else → blocked, names the creator",
+    blocked.action === "blocked" && blocked.creator === attacker.accountAddress.toStringLong());
+
+  // A reused set's certificate has no tx hash; once the chain confirms the
+  // record, the verifier must not claim it "was not committed on-chain".
+  const REG = "0x2251165b1dd4124e02304bd781779070e87af21aa86f69c1f6d452d4d8bd2e5c";
+  process.env.NEXT_PUBLIC_REGISTRY_ADDRESS_SHELBYNET = REG;
+  const reusedCert = await issue(legacy, { trainingSetTxHash: undefined, registryTxHash: undefined });
+  delete process.env.NEXT_PUBLIC_REGISTRY_ADDRESS_SHELBYNET;
+  const r = await verifyCertificateFull(reusedCert, {
+    fetchSet: async () => ({ ...rec, fileIds: ["1", "2"], datasetCommitments: ["b".repeat(64), "a".repeat(64)] }),
+    fetchFile: async (_n: unknown, id: string) => ({
+      fileId: id,
+      contentHash: id === "1" ? "b".repeat(64) : "a".repeat(64),
+      uploader: rec.creator,
+      shelbyCid: id === "1" ? "aptbox/b.bin" : "aptbox/a.bin",
+    }),
+    registryAddressFor: () => REG,
+    aptosConfigFor: () => undefined,
+  });
+  check("reused set (no tx hash) + confirmed on-chain → verified", r.state === "verified", JSON.stringify(r.checks));
+  check("…without the false 'not committed on-chain' warning",
+    !r.warnings.some((w) => /not committed on-chain/.test(w)) && r.warnings.some((w) => /confirmed on-chain/.test(w)), JSON.stringify(r.warnings));
 }
 
 console.log("\n-- verdict states --");

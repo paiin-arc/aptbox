@@ -44,6 +44,11 @@ The on-chain commitment is what makes this meaningful. A hash the uploader hands
 2. **Pin** — one Shelby `register_multiple_blobs` transaction, one registry `register_files_batch`, then `register_training_set`, which writes an immutable record of the member file IDs and their SHA-256s. The outcome of that last step is reported on its own, so a failure can't be hidden by later progress.
 3. **Certify** — the wallet signs a certificate (AIP-62 `signMessage`) binding the signer address to the certificate's integrity digest. The certificate keeps `trainingSetTxHash` and `registryTxHash` separate, so a registry transaction is never presented as the training-set commitment.
 
+**Or build from registered datasets** ("Use registered datasets" tab): pick datasets already in the registry — yours or anyone's — and skip the upload entirely. The training set commits to their existing on-chain hashes, so it's one `register_training_set` transaction plus the certificate signature. The same datasets produce the same commitment either way. Two rules the contract doesn't enforce but the app does:
+
+- Paid or restricted datasets can only be selected if you own them or hold access (`has_access`), since a certificate claims you trained on them.
+- The registry keeps one record per training set, first creator wins. Before sending anything, the app looks the commitment up: if you registered it earlier it reuses that record (no transaction); if someone else did, it stops and says so.
+
 `/verify/certificate` checks a certificate without a wallet: the signature (Ed25519, SingleKey, keyless, and rotated keys via the on-chain authentication key), that it targets this registry, that the training set is on-chain and was created by the signer, that every dataset is still registered with the same hash, and optionally a model file against the pinned model hash.
 
 Verdicts have three states: **verified**, **incomplete** (a check couldn't run — fullnode down, older contract; shown amber, never as tampering), and **failed** (evidence of a problem). A certificate proves *who* claims a model used which datasets; it does not prove training used only those.

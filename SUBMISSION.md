@@ -64,7 +64,8 @@ can verify that certificate without a wallet.
 - `/train` — batch-pin datasets as a training set: one Shelby batch
   registration, one registry batch, an immutable on-chain training-set record,
   and a certificate signed with the wallet. Encryption keys are shown and must
-  be backed up before anything is pinned — Aptbox never stores them
+  be backed up before anything is pinned — Aptbox never stores them. Or reuse
+  registered datasets: no re-upload
 - `/verify/certificate` — paste or drop a certificate: checks the issuer's
   signature, that the training set is on Aptos and was created by the signer,
   that every dataset is still registered with the same SHA-256, and optionally
@@ -174,7 +175,8 @@ https://aptbox.vercel.app/api/badge/0?n=shelbynet
 - Verification enforced on every download; mismatch blocks the bytes
 - Client-side AES-256-GCM encryption, labelled `AES_GCM_V1` on Shelby, with a
   mandatory key backup before pinning
-- Training sets: batch pinning and an immutable on-chain training-set record
+- Training sets: batch pinning and an immutable on-chain training-set record,
+  or built from already-registered datasets with no re-upload
 - Wallet-signed training certificates and a public certificate verifier
 - Embeddable verification badges and dataset citations (BibTeX / plain text)
 - `/verify` — check any file against the registry, no wallet
@@ -184,7 +186,6 @@ https://aptbox.vercel.app/api/badge/0?n=shelbynet
 
 **Next**
 - Key release to buyers, so paid encrypted datasets unlock on purchase
-- Build training sets from datasets already in the registry, without re-upload
 - Drop a model file into `/train` to pin its hash, instead of pasting hex
 - "My training sets" history from on-chain events
 
