@@ -179,15 +179,17 @@ https://aptbox.vercel.app/api/badge/0?n=shelbynet
   or built from already-registered datasets with no re-upload
 - Wallet-signed training certificates and a public certificate verifier,
   pinning the model's SHA-256 by hashing the weights file in the browser
+- "My training sets" — every `register_training_set` tx from your wallet, each
+  shown with its on-chain record and re-issuable as a fresh signed certificate
 - Embeddable verification badges and dataset citations (BibTeX / plain text)
 - `/verify` — check any file against the registry, no wallet
 - Marketplace with wallet-as-publisher-identity and on-chain descriptions
+- Batch pinning from uploads or the existing registry, with immutable on-chain training-set records
 - Move registry live on shelbynet, upgraded in place without breaking records
 - Correctness gates incl. certificate-forgery and outage-vs-tamper tests
 
 **Next**
 - Key release to buyers, so paid encrypted datasets unlock on purchase
-- "My training sets" history from on-chain events
 
 **Later**
 - Verify-before-train CLI / Python helper: refuse to train on bytes that don't
