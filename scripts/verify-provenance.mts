@@ -24,6 +24,7 @@ import {
   encryptionKeyId,
   normalizeShelbyActivities,
   parseKeyBackup,
+  parseModelHashInput,
   shelbyObjectToActivity,
   verifyTrainingCertificate,
 } from "../src/lib/provenance.ts";
@@ -387,6 +388,35 @@ console.log("\n-- training sets from registered datasets (2a) --");
   check("reused set (no tx hash) + confirmed on-chain → verified", r.state === "verified", JSON.stringify(r.checks));
   check("…without the false 'not committed on-chain' warning",
     !r.warnings.some((w) => /not committed on-chain/.test(w)) && r.warnings.some((w) => /confirmed on-chain/.test(w)), JSON.stringify(r.warnings));
+}
+
+console.log("\n-- model hash (2c) --");
+{
+  const H = "ab".repeat(32);
+  check("empty → empty (optional)", parseModelHashInput("   ").state === "empty");
+  const ok = parseModelHashInput(`  0x${H.toUpperCase()}\n`);
+  check("0x prefix, whitespace, upper-case → valid, normalised", ok.state === "valid" && ok.hex === H, JSON.stringify(ok));
+  const short = parseModelHashInput(H.slice(0, 63));
+  check("63 chars → invalid, says how many", short.state === "invalid" && /has 63/.test(short.error));
+  const bad = parseModelHashInput("z".repeat(64));
+  check("non-hex → invalid", bad.state === "invalid" && /hex characters/.test(bad.error));
+  check("SHA-512-length value → invalid", parseModelHashInput("a".repeat(128)).state === "invalid");
+
+  // Round trip: a model file hashed on /train must match what
+  // /verify/certificate computes from the same file. Both use sha256File.
+  const weights = new Blob([new Uint8Array(3 * 1024 * 1024 + 17).map((_, i) => (i * 31) % 251)]);
+  const onTrain = await sha256File(weights);
+  const parsed = parseModelHashInput(onTrain.hex);
+  const modelCert = await issue(legacy, { modelHash: parsed.state === "valid" ? parsed.hex : undefined });
+  const onVerifier = await sha256File(weights);
+  check("certificate pins the hashed model", modelCert.modelHash === onTrain.hex);
+  check("verifier recomputes the same hash from the same file", onVerifier.hex === modelCert.modelHash);
+  check("…and the signed certificate still verifies", (await verifyTrainingCertificate(modelCert)).ok);
+  const tweaked = new Uint8Array(await weights.arrayBuffer());
+  tweaked[tweaked.length - 1] ^= 1;
+  check("a one-byte-different model file does NOT match", (await sha256File(new Blob([tweaked]))).hex !== modelCert.modelHash);
+  check("swapping the model hash in the certificate breaks verification",
+    !(await verifyTrainingCertificate({ ...modelCert, modelHash: "cd".repeat(32) })).ok);
 }
 
 console.log("\n-- encryption badge --");

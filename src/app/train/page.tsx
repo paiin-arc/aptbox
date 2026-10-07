@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -54,6 +54,7 @@ import {
   encryptionKeyId,
   hexToBytes,
   normalizeShelbyActivities,
+  parseModelHashInput,
   shelbyObjectToActivity,
   verifyTrainingCertificate,
   type CertificateCheck,
@@ -190,6 +191,10 @@ export default function TrainPage() {
   const [encryptDatasets, setEncryptDatasets] = useState(true);
   const [modelRunId, setModelRunId] = useState("model-run-v1");
   const [modelHash, setModelHash] = useState("");
+  const [modelHashing, setModelHashing] = useState(false);
+  const modelHashInput = parseModelHashInput(modelHash);
+  /** Pin/sign stay disabled while the hash is malformed or still computing. */
+  const modelHashReady = modelHashInput.state !== "invalid" && !modelHashing;
   const [stage, setStage] = useState<WorkflowStage>("idle");
   const [detail, setDetail] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
@@ -248,11 +253,18 @@ export default function TrainPage() {
 
   const busy = !IDLE_STAGES.includes(stage);
   const hasShelbyConfig = useMemo(() => isShelbyConfigured(network), [network]);
-  const canPinRegistry = Boolean(connected && account && selectedIds.size > 0 && !busy);
+  const canPinRegistry = Boolean(
+    connected && account && selectedIds.size > 0 && !busy && modelHashReady
+  );
   const preparedEncrypted = Boolean(prepared?.some((p) => p.keyHex));
   const canPrepare = connected && account && files.length > 0 && !busy;
   const canPin =
-    connected && account && prepared && !busy && (!preparedEncrypted || keysSaved);
+    connected &&
+    account &&
+    prepared &&
+    !busy &&
+    modelHashReady &&
+    (!preparedEncrypted || keysSaved);
   /** Prepared without encryption: the next click publishes plaintext. */
   const pinsPublicly = Boolean(prepared && !preparedEncrypted);
 
@@ -395,7 +407,7 @@ export default function TrainPage() {
       network,
       signerAddress: account.address.toString(),
       modelRunId,
-      modelHash: modelHash.trim() || undefined,
+      modelHash: modelHashInput.state === "valid" ? modelHashInput.hex : undefined,
       trainingSet: set,
       trainingSetTxHash,
       registryTxHash: refs.registryTxHash,
@@ -976,18 +988,12 @@ export default function TrainPage() {
                 className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm"
               />
             </label>
-            <label className="block">
-              <span className="text-xs font-medium text-ink-muted">
-                Optional model hash
-              </span>
-              <input
-                value={modelHash}
-                onChange={(e) => setModelHash(e.target.value)}
-                disabled={busy}
-                placeholder="64 hex chars"
-                className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2 font-mono text-sm"
-              />
-            </label>
+            <ModelHashField
+              value={modelHash}
+              onChange={setModelHash}
+              onHashingChange={setModelHashing}
+              disabled={busy}
+            />
           </div>
           {mode === "upload" && (
           <div className="mt-3 text-xs text-ink-subtle">
@@ -1050,7 +1056,7 @@ export default function TrainPage() {
           <button
             type="button"
             onClick={handleExportCertificate}
-            disabled={!trainingSet || busy}
+            disabled={!trainingSet || busy || !modelHashReady}
             className="rounded-lg border border-royal px-4 py-2.5 text-xs font-semibold text-royal-deep transition hover:bg-royal/10 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Sign &amp; Export Certificate
@@ -1369,6 +1375,132 @@ function TrainingSetStatusBanner({ status }: { status: TrainingSetStatus }) {
         record tying them together as this training set. The certificate will say so.
         {status.state === "failed" && (
           <span className="mt-1 block font-mono text-2xs">{status.reason}</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Optional model hash: paste one, or drop the model file and hash it here.
+ * The file is streamed through SHA-256 in the browser (any size, constant
+ * memory) and never uploaded. Typed values are validated live so a malformed
+ * hash blocks Pin instead of failing after the transactions.
+ */
+function ModelHashField({
+  value,
+  onChange,
+  onHashingChange,
+  disabled,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  onHashingChange: (hashing: boolean) => void;
+  disabled: boolean;
+}) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  /** Bumped per hash so a slower earlier file can't overwrite a newer one. */
+  const runRef = useRef(0);
+  const [hashing, setHashing] = useState<{ name: string; pct: number } | null>(null);
+  const [source, setSource] = useState<{ name: string; size: number; hex: string } | null>(null);
+  const [hashError, setHashError] = useState<string | null>(null);
+  const parsed = parseModelHashInput(value);
+  // The "from file" note only applies while the field still holds that hash.
+  const fromFile = source && parsed.state === "valid" && parsed.hex === source.hex ? source : null;
+
+  async function hashFile(file: File) {
+    const run = ++runRef.current;
+    setHashError(null);
+    setHashing({ name: file.name, pct: 0 });
+    onHashingChange(true);
+    try {
+      const { hex } = await sha256File(file, (p) => {
+        if (run === runRef.current && p.totalBytes > 0) {
+          setHashing({ name: file.name, pct: Math.round((p.hashedBytes / p.totalBytes) * 100) });
+        }
+      });
+      if (run !== runRef.current) return;
+      setSource({ name: file.name, size: file.size, hex });
+      onChange(hex);
+    } catch (e) {
+      if (run === runRef.current) setHashError(`Couldn't read ${file.name}: ${(e as Error).message}`);
+    } finally {
+      if (run === runRef.current) {
+        setHashing(null);
+        onHashingChange(false);
+      }
+    }
+  }
+
+  return (
+    <div className="block">
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="text-xs font-medium text-ink-muted">Optional model hash</span>
+        {value && !hashing && (
+          <button
+            type="button"
+            onClick={() => {
+              onChange("");
+              setSource(null);
+              setHashError(null);
+            }}
+            disabled={disabled}
+            className="text-2xs font-medium text-ink-subtle hover:text-ink-muted"
+          >
+            Clear
+          </button>
+        )}
+      </div>
+      <div className="mt-1 flex gap-1.5">
+        <input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          disabled={disabled || Boolean(hashing)}
+          placeholder="Paste 64 hex chars, or choose the file →"
+          spellCheck={false}
+          aria-invalid={parsed.state === "invalid"}
+          className={`min-w-0 flex-1 rounded-lg border bg-surface px-3 py-2 font-mono text-sm ${
+            parsed.state === "invalid" ? "border-red-400" : "border-line"
+          }`}
+        />
+        <button
+          type="button"
+          onClick={() => fileRef.current?.click()}
+          disabled={disabled || Boolean(hashing)}
+          className="shrink-0 rounded-lg border border-royal px-3 py-2 text-xs font-semibold text-royal-deep hover:bg-royal/10 disabled:opacity-50"
+        >
+          {hashing ? `${hashing.pct}%` : "Choose model file"}
+        </button>
+        <input
+          ref={fileRef}
+          type="file"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) void hashFile(f);
+            e.target.value = "";
+          }}
+        />
+      </div>
+      <div className="mt-1 min-h-4 text-2xs">
+        {hashing ? (
+          <span className="text-ink-muted">
+            Hashing {hashing.name} in your browser… {hashing.pct}%. It&apos;s never uploaded.
+          </span>
+        ) : hashError ? (
+          <span className="text-red-700">{hashError}</span>
+        ) : parsed.state === "invalid" ? (
+          <span className="text-red-700">{parsed.error}</span>
+        ) : fromFile ? (
+          <span className="text-emerald-700">
+            ✓ SHA-256 of {fromFile.name} ({formatBytes(fromFile.size)}), hashed locally, never uploaded.
+          </span>
+        ) : parsed.state === "valid" ? (
+          <span className="text-emerald-700">✓ Valid SHA-256</span>
+        ) : (
+          <span className="text-ink-subtle">
+            Pins the exact model weights in the certificate, so anyone can check the file later.
+          </span>
         )}
       </div>
     </div>

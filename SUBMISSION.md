@@ -177,7 +177,8 @@ https://aptbox.vercel.app/api/badge/0?n=shelbynet
   mandatory key backup before pinning
 - Training sets: batch pinning and an immutable on-chain training-set record,
   or built from already-registered datasets with no re-upload
-- Wallet-signed training certificates and a public certificate verifier
+- Wallet-signed training certificates and a public certificate verifier,
+  pinning the model's SHA-256 by hashing the weights file in the browser
 - Embeddable verification badges and dataset citations (BibTeX / plain text)
 - `/verify` — check any file against the registry, no wallet
 - Marketplace with wallet-as-publisher-identity and on-chain descriptions
@@ -186,7 +187,6 @@ https://aptbox.vercel.app/api/badge/0?n=shelbynet
 
 **Next**
 - Key release to buyers, so paid encrypted datasets unlock on purchase
-- Drop a model file into `/train` to pin its hash, instead of pasting hex
 - "My training sets" history from on-chain events
 
 **Later**

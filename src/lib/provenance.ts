@@ -194,6 +194,33 @@ export function assertSha256Hex(value: string, label = "SHA-256"): string {
   return normalized;
 }
 
+export type ModelHashInput =
+  | { state: "empty" }
+  | { state: "valid"; hex: string }
+  | { state: "invalid"; error: string };
+
+/**
+ * Validates the optional model hash as the user types, so a malformed value
+ * blocks Pin up front. Previously it was only checked when the certificate was
+ * built — after every upload and transaction had already gone through.
+ * Accepts a 0x prefix, surrounding whitespace, and upper-case hex.
+ */
+export function parseModelHashInput(raw: string): ModelHashInput {
+  const trimmed = raw.trim();
+  if (!trimmed) return { state: "empty" };
+  const hex = normalizeHashHex(trimmed);
+  if (!/^[0-9a-f]*$/.test(hex)) {
+    return { state: "invalid", error: "Only hex characters (0-9, a-f) are allowed." };
+  }
+  if (hex.length !== 64) {
+    return {
+      state: "invalid",
+      error: `A SHA-256 hash is 64 hex characters; this one has ${hex.length}.`,
+    };
+  }
+  return { state: "valid", hex };
+}
+
 export function bytesToHex(bytes: Uint8Array): string {
   return Array.from(bytes)
     .map((b) => b.toString(16).padStart(2, "0"))
