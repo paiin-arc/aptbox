@@ -550,6 +550,7 @@ export default function FilePage({ params }: Props) {
               stage={purchaseStage}
               error={purchaseError}
               expirationMicros={lifecycle?.expirationMicros}
+              encryption={lifecycle?.encryption}
               onPurchase={handlePurchase}
             />
           )}

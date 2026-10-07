@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { AppBackdrop } from "@/components/AppBackdrop";
 import {
@@ -64,33 +64,6 @@ const BTN_PRIMARY =
   "sticky bottom-3 z-10 w-full rounded-xl bg-royal px-5 py-3.5 text-sm font-semibold text-surface shadow-lg transition hover:bg-royal-deep disabled:cursor-not-allowed disabled:opacity-50 sm:static sm:w-auto sm:self-start sm:py-3 sm:shadow-sm";
 
 type AccessMode = "public" | "paid" | "restricted";
-
-type DurationPreset = "1d" | "7d" | "30d" | "90d" | "1y" | "custom";
-
-const PRESET_HOURS: Record<Exclude<DurationPreset, "custom">, number> = {
-  "1d": 24,
-  "7d": 24 * 7,
-  "30d": 24 * 30,
-  "90d": 24 * 90,
-  "1y": 24 * 365,
-};
-
-const PRESET_LABEL: Record<DurationPreset, string> = {
-  "1d": "1 day",
-  "7d": "7 days",
-  "30d": "30 days",
-  "90d": "90 days",
-  "1y": "1 year",
-  custom: "Custom",
-};
-
-function formatDurationHuman(hours: number): string {
-  if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"}`;
-  const days = Math.round((hours / 24) * 10) / 10;
-  if (days < 365) return `${days} day${days === 1 ? "" : "s"}`;
-  const years = Math.round((days / 365) * 100) / 100;
-  return `${years} year${years === 1 ? "" : "s"}`;
-}
 
 const ACCESS_MODES: {
   mode: AccessMode;
@@ -185,8 +158,6 @@ export default function UploadPage() {
   const [accessMode, setAccessMode] = useState<AccessMode>("public");
   const [priceApt, setPriceApt] = useState("");
   const [whitelistText, setWhitelistText] = useState("");
-  const [durationPreset, setDurationPreset] = useState<DurationPreset>("30d");
-  const [customHours, setCustomHours] = useState("48");
 
   const [encryptDataset, setEncryptDataset] = useState(false);
   const [encryptionKeyHex, setEncryptionKeyHex] = useState<string | null>(null);
@@ -267,36 +238,6 @@ export default function UploadPage() {
     setEditingName(false);
     setDraftName("");
   }
-
-  const durationHours = useMemo(() => {
-    if (durationPreset === "custom") {
-      const h = parseFloat(customHours);
-      return Number.isFinite(h) && h > 0 ? h : 24;
-    }
-    return PRESET_HOURS[durationPreset];
-  }, [durationPreset, customHours]);
-
-  const [nowMs, setNowMs] = useState<number | null>(null);
-  useEffect(() => {
-    const frameId = window.requestAnimationFrame(() => setNowMs(Date.now()));
-    return () => window.cancelAnimationFrame(frameId);
-  }, []);
-
-  const expirationMicros = useMemo(
-    () =>
-      nowMs === null
-        ? null
-        : nowMs * 1000 + Math.round(durationHours * 3600 * 1_000_000),
-    [nowMs, durationHours]
-  );
-
-  const expirationDate = useMemo(
-    () =>
-      expirationMicros === null
-        ? null
-        : new Date(Math.round(expirationMicros / 1000)),
-    [expirationMicros]
-  );
 
   async function handleFile(f: File | null) {
     setFile(f);
@@ -874,65 +815,11 @@ export default function UploadPage() {
           </div>
         )}
 
-        {/* Storage duration */}
-        <div className="space-y-2">
-          <div className="flex items-baseline justify-between gap-3">
-            <div className="text-sm font-semibold">Storage duration</div>
-            <div className="text-xs text-ink-subtle">
-              Larger windows cost more ShelbyUSD
-            </div>
-          </div>
-          <div className="grid grid-cols-3 gap-1.5 sm:flex sm:flex-wrap">
-            {(Object.keys(PRESET_LABEL) as DurationPreset[]).map((key) => {
-              const active = durationPreset === key;
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setDurationPreset(key)}
-                  disabled={busy}
-                  className={`rounded-lg border px-3 py-2 text-xs font-medium transition sm:py-1.5 ${
-                    active
-                      ? "border-royal bg-royal/8 text-royal-deep"
-                      : "border-line bg-surface-raised text-ink-muted hover:bg-surface-sunken"
-                  }`}
-                >
-                  {PRESET_LABEL[key]}
-                </button>
-              );
-            })}
-          </div>
-          {durationPreset === "custom" && (
-            <div className="flex items-center gap-2">
-              <input
-                type="number"
-                step="1"
-                min="1"
-                value={customHours}
-                onChange={(e) => setCustomHours(e.target.value)}
-                disabled={busy}
-                className="w-28 rounded-lg border border-line bg-surface-raised px-3 py-1.5 text-sm"
-              />
-              <span className="text-xs text-ink-subtle">hours</span>
-            </div>
-          )}
-          <div className="text-xs text-ink-subtle">
-            Expires{" "}
-            <span className="font-medium text-ink-muted">
-              {expirationDate
-                ? expirationDate.toLocaleString(undefined, {
-                    year: "numeric",
-                    month: "short",
-                    day: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })
-                : "Calculating…"}
-            </span>{" "}
-            <span className="text-ink-subtle">
-              · {formatDurationHuman(durationHours)} from now
-            </span>
-          </div>
+        {/* Storage lease — set by Shelby, not chosen here */}
+        <div className="rounded-lg border border-line bg-surface-sunken px-3 py-2 text-xs text-ink-muted">
+          <span className="font-semibold text-ink">Storage duration</span> is set by
+          Shelby. The current Shelby SDK doesn&apos;t let apps choose it or report when a
+          blob expires, so Aptbox doesn&apos;t show an expiry date.
         </div>
 
         {/* Access mode */}

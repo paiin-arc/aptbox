@@ -15,6 +15,7 @@ export function PurchasePanel({
   stage,
   error,
   expirationMicros,
+  encryption,
   onPurchase,
 }: {
   file: FileMeta;
@@ -22,6 +23,8 @@ export function PurchasePanel({
   stage: "idle" | "signing" | "confirming" | "done" | "error";
   error: string | null;
   expirationMicros?: number;
+  /** Shelby's label for the stored blob, e.g. "AES_GCM_V1" or "Unencrypted". */
+  encryption?: string;
   onPurchase: () => void;
 }) {
   const busy = stage === "signing" || stage === "confirming";
@@ -78,20 +81,36 @@ export function PurchasePanel({
       {/*
         Shelby stores blobs publicly: the gateway serves any blob to anyone who
         knows the account and blob name, and both are public on-chain. access_type
-        lives in our registry and gates this UI, not the bytes. Saying so is the
-        only honest option until client-side encryption ships.
+        lives in our registry and gates this UI, not the bytes.
+
+        Encrypted (AES_GCM_V1) blobs fix privacy but not delivery: Aptbox never
+        stores keys and has no key release to buyers yet, so a buyer must get the
+        key from the publisher. That is the thing they can't discover on their
+        own, so say it before they pay. Unknown encryption state is treated as
+        unencrypted — the conservative claim.
       */}
-      <div className="flex gap-2 rounded-lg border border-sky/45 bg-sky/10 p-3">
-        <WarningTriangleIcon className="mt-0.5 h-4 w-4 shrink-0 text-sky" />
-        <div className="text-sm leading-relaxed text-sky">
-          <strong>These bytes are not private.</strong> Shelby stores blobs
-          openly, so anyone who reads this dataset&apos;s account and blob name
-          from the registry can fetch it from the gateway without paying. Buying
-          records your access on-chain and pays the publisher — it does not
-          restrict anyone else. Encryption is planned; until then, treat paid
-          datasets as public.
+      {encryption === "AES_GCM_V1" ? (
+        <div className="flex gap-2 rounded-lg border border-amber-600/30 bg-amber-500/12 p-3">
+          <WarningTriangleIcon className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
+          <div className="text-sm leading-relaxed text-amber-700">
+            <strong>Encrypted: buying does not include the key.</strong> The stored
+            bytes are unreadable without the publisher&apos;s decryption key, and
+            Aptbox never stores keys, so it can&apos;t hand one over. Agree with the
+            publisher on how you&apos;ll receive the key <em>before</em> you pay.
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="flex gap-2 rounded-lg border border-sky/45 bg-sky/10 p-3">
+          <WarningTriangleIcon className="mt-0.5 h-4 w-4 shrink-0 text-sky" />
+          <div className="text-sm leading-relaxed text-sky">
+            <strong>These bytes are not private.</strong> This dataset is stored
+            unencrypted, so anyone who reads its account and blob name from the
+            registry can fetch it from the gateway without paying. Buying records
+            your access on-chain and pays the publisher. It does not restrict anyone
+            else.
+          </div>
+        </div>
+      )}
 
       <ul className="space-y-1.5 rounded-lg border border-line bg-surface-raised/70 p-3 text-xs leading-relaxed text-ink-muted">
         <li className="flex gap-2">
