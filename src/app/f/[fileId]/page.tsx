@@ -21,7 +21,7 @@ import {
   hasAccess,
   type FileMeta,
 } from "@/lib/files";
-import { formatBytes } from "@/lib/crypto";
+import { DecryptionError, formatBytes, isWellFormedAesKey } from "@/lib/crypto";
 import { normalizeHashHex, verifyDatasetIntegrity } from "@/lib/verify";
 import {
   ACCESS_PAID,
@@ -106,7 +106,7 @@ export default function FilePage({ params }: Props) {
   // Fetch the uploader's full Shelby blob list, then look up THIS file's
   // expiration. Cheap (~1 query) and lets us show countdowns even for files
   // we don't own.
-  const { data: lifecycle } = useQuery({
+  const { data: lifecycle, isLoading: lifecycleLoading } = useQuery({
     queryKey: ["lifecycle", network, file?.uploader, file?.shelbyCid],
     queryFn: async () => {
       if (!file) return null;
@@ -181,6 +181,25 @@ export default function FilePage({ params }: Props) {
       setDownloadStage("error");
       return;
     }
+    // Encrypted blobs: the registry hash is of the PLAINTEXT. Hashing the
+    // ciphertext would "fail" verification and falsely report tampering, so
+    // never verify an encrypted dataset without a usable key.
+    const keyHex = decryptKeyInput.trim();
+    if (lifecycle?.encryption === "AES_GCM_V1") {
+      const problem = !keyHex
+        ? "This dataset is encrypted. Paste its 64-character decryption key above, then load it."
+        : !isWellFormedAesKey(keyHex)
+          ? `That isn't a valid key: AES-256 keys are exactly 64 hex characters (0-9, a-f), and this one has ${keyHex.replace(/^0x/i, "").length}.`
+          : !canMaterialize(file.sizeBytes)
+            ? "This encrypted dataset is too large to decrypt in the browser."
+            : null;
+      if (problem) {
+        setIntegrity({ phase: "idle" });
+        setDownloadError(problem);
+        setDownloadStage("error");
+        return;
+      }
+    }
     if (!opts?.isRetry) {
       setDownloadError(null);
       setDownloadStage("fetching");
@@ -194,7 +213,6 @@ export default function FilePage({ params }: Props) {
       // Too large → stream-verify in constant memory and skip the in-tab copy,
       // so integrity is still provable at any size.
       if (canMaterialize(file.sizeBytes)) {
-        const keyHex = decryptKeyInput.trim();
         const { bytes, blob } = await fetchShelbyBlob(shelby, {
           uploader: file.uploader,
           cid: file.shelbyCid,
@@ -258,13 +276,17 @@ export default function FilePage({ params }: Props) {
         setDownloadStage("missing");
         return;
       }
-      console.error(e);
-      const msg = (e as Error).message ?? String(e);
-      if (/cipher/i.test(msg) || /decrypt/i.test(msg) || /OperationError/i.test(msg)) {
-        setDownloadError("Decryption failed. Please check that your 64-character AES key is correct.");
-      } else {
-        setDownloadError(msg);
+      // A wrong key is an expected user mistake, not a crash: show it inline
+      // and keep it out of console.error (which Next's dev overlay surfaces).
+      if (e instanceof DecryptionError) {
+        console.warn(`[loadBlob] dataset #${file.fileId}: ${e.reason}`);
+        setIntegrity({ phase: "idle" });
+        setDownloadError(e.message);
+        setDownloadStage("error");
+        return;
       }
+      console.error(e);
+      setDownloadError((e as Error).message ?? String(e));
       setDownloadStage("error");
     }
   }
@@ -563,9 +585,12 @@ export default function FilePage({ params }: Props) {
           {downloadStage === "idle" && (
             <button
               onClick={() => loadBlob(file)}
-              className="w-full rounded-xl bg-royal px-5 py-3.5 text-sm font-semibold text-surface hover:bg-royal-deep sm:w-auto sm:py-3"
+              // Wait until we know whether the blob is encrypted; verifying
+              // ciphertext against the plaintext hash would cry "tampered".
+              disabled={lifecycleLoading}
+              className="w-full rounded-xl bg-royal px-5 py-3.5 text-sm font-semibold text-surface hover:bg-royal-deep disabled:cursor-wait disabled:opacity-60 sm:w-auto sm:py-3"
             >
-              Load &amp; verify dataset
+              {lifecycleLoading ? "Checking storage…" : "Load & verify dataset"}
             </button>
           )}
 

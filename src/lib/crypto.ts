@@ -49,9 +49,32 @@ export async function generateAesKey(): Promise<string> {
     .join("");
 }
 
+/**
+ * Expected, user-facing decryption failure — a wrong or mistyped key, or bytes
+ * that no longer match what was encrypted. Callers should show `message` to
+ * the user rather than treating this as a crash.
+ */
+export class DecryptionError extends Error {
+  readonly reason: "malformed-key" | "authentication-failed";
+  constructor(reason: DecryptionError["reason"], message: string, options?: { cause?: unknown }) {
+    super(message, options);
+    this.name = "DecryptionError";
+    this.reason = reason;
+  }
+}
+
+/** True for a well-formed AES-256 key: 64 hex characters (optional 0x). */
+export function isWellFormedAesKey(keyHex: string): boolean {
+  return /^(0x)?[0-9a-f]{64}$/i.test(keyHex.trim());
+}
+
 function aesKeyBytes(keyHex: string): Uint8Array {
+  keyHex = keyHex.trim().replace(/^0x/i, "");
   if (!/^[0-9a-f]{64}$/i.test(keyHex)) {
-    throw new Error("AES-256-GCM key must be exactly 32 bytes encoded as 64 hex characters.");
+    throw new DecryptionError(
+      "malformed-key",
+      `That isn't a valid key: AES-256 keys are exactly 64 hex characters (0-9, a-f), and this one has ${keyHex.length}.`
+    );
   }
   return new Uint8Array(
     keyHex.match(/.{2}/g)?.map((byte) => parseInt(byte, 16)) ?? []
@@ -105,10 +128,21 @@ export async function decryptAesGcm(
   );
   const iv = encryptedData.slice(0, AES_GCM_IV_BYTES);
   const ciphertext = encryptedData.slice(AES_GCM_IV_BYTES);
-  const decrypted = await crypto.subtle.decrypt(
-    { name: "AES-GCM", iv },
-    cryptoKey,
-    ciphertext.slice().buffer
-  );
+  let decrypted: ArrayBuffer;
+  try {
+    decrypted = await crypto.subtle.decrypt(
+      { name: "AES-GCM", iv },
+      cryptoKey,
+      ciphertext.slice().buffer
+    );
+  } catch (e) {
+    // AES-GCM authentication failed. It can't tell a wrong key from altered
+    // ciphertext — both fail the same tag check — so say both, plainly.
+    throw new DecryptionError(
+      "authentication-failed",
+      "Decryption failed: this key doesn't unlock this dataset. Check that you pasted the full key for this exact dataset (compare its keyId in your keys.json). If the key is definitely right, the stored bytes may have been altered.",
+      { cause: e }
+    );
+  }
   return new Uint8Array(decrypted);
 }
