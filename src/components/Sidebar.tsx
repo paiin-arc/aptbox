@@ -10,6 +10,7 @@ import { AptboxIcon } from "./AptboxIcon";
 import {
   CategoryIcon,
   ChevronIcon,
+  ClockIcon,
   CloseIcon,
   DocsIcon,
   MarketplaceIcon,
@@ -56,6 +57,11 @@ const PRIMARY_NAV: PrimaryItem[] = [
     label: "Train with AI",
     href: "/train",
     icon: <TrainIcon />,
+  },
+  {
+    label: "My training sets",
+    href: "/training-sets",
+    icon: <ClockIcon className="h-4 w-4" />,
   },
   { label: "Docs", href: "/docs", icon: <DocsIcon /> },
 ];
@@ -219,7 +225,9 @@ export function Sidebar({
                 ? false
                 : item.href === "/"
                   ? pathname === "/"
-                  : pathname?.startsWith(item.href);
+                  : item.href === "/train"
+                    ? pathname === "/train"
+                    : pathname?.startsWith(item.href);
               return (
                 <Link
                   key={item.href}

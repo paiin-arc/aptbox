@@ -63,6 +63,7 @@ Verdicts have three states: **verified**, **incomplete** (a check couldn't run �
 | `/train` | Pin datasets as an on-chain training set and issue a wallet-signed certificate |
 | `/verify` | Drop a file and check it against the registry — no wallet needed |
 | `/verify/certificate` | Verify a training certificate — no wallet needed |
+| `/training-sets` | Your training sets from on-chain history; re-issue certificates |
 | `/marketplace` | Public catalogue of every published dataset, plus publisher views |
 | `/docs` | How verification works, and what it doesn't cover |
 | `/cleanup` | Recover ShelbyUSD from uploads whose bytes never finalized |

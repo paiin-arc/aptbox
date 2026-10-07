@@ -11,8 +11,9 @@
     "verify:sha256": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-sha256.mts",
     "verify:streaming": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-streaming.mts",
     "verify:provenance": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-provenance.mts",
+    "verify:mytrainingsets": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-my-training-sets.mts",
     "verify:network": "node --experimental-strip-types --env-file=.env.local --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-network.mts",
-    "verify": "npm run typecheck && npm run verify:sha256 && npm run verify:streaming && npm run verify:lookup && npm run verify:provenance && npm run verify:citation",
+    "verify": "npm run typecheck && npm run verify:sha256 && npm run verify:streaming && npm run verify:lookup && npm run verify:provenance && npm run verify:citation && npm run verify:mytrainingsets",
     "verify:citation": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-citation.mts",
     "verify:tamper": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/demo-tamper.mts",
     "verify:lookup": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-lookup.mts"
