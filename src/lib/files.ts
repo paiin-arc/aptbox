@@ -84,12 +84,36 @@ function isFileNotFoundAbort(e: unknown): boolean {
   return /E_FILE_NOT_FOUND/.test(msg);
 }
 
-export async function fetchFileMeta(
+/**
+ * Thrown by `fetchFileMetaStrict` when the registry could not be read at all,
+ * as opposed to answering "no such file".
+ */
+export class RegistryUnavailableError extends Error {
+  constructor(message: string, options?: { cause?: unknown }) {
+    super(message, options);
+    this.name = "RegistryUnavailableError";
+  }
+}
+
+/**
+ * Like `fetchFileMeta`, but distinguishes the two kinds of `null`:
+ * - resolves `null` only when the registry answered and the file doesn't exist
+ *   (E_FILE_NOT_FOUND — deleted or never registered)
+ * - throws `RegistryUnavailableError` when no registry is configured or the
+ *   view call failed for any other reason (fullnode down, rate limit, network)
+ *
+ * Use this anywhere "missing" and "couldn't check" must not be conflated, e.g.
+ * the public badge, which would otherwise tell README readers a dataset is
+ * unregistered during an outage.
+ */
+export async function fetchFileMetaStrict(
   network: SupportedNetwork,
   fileId: string
 ): Promise<FileMeta | null> {
   const addr = getRegistryAddress(network);
-  if (!addr) return null;
+  if (!addr) {
+    throw new RegistryUnavailableError(`No registry address configured for ${network}`);
+  }
   try {
     const aptos = getAptos(network);
     const result = await aptos.view({
@@ -114,8 +138,28 @@ export async function fetchFileMeta(
       createdAt: Number(r.created_at),
     };
   } catch (e) {
-    if (!isFileNotFoundAbort(e)) {
-      console.warn(`[fetchFileMeta] ${network}/${fileId} failed`, e);
+    if (isFileNotFoundAbort(e)) return null;
+    throw new RegistryUnavailableError(
+      `Registry read failed for ${network}/${fileId}`,
+      { cause: e }
+    );
+  }
+}
+
+/**
+ * Lenient lookup: `null` for both "not found" and "couldn't read". Callers that
+ * iterate the registry (marketplace, dashboard) rely on this to skip gaps and
+ * transient failures without aborting the whole list.
+ */
+export async function fetchFileMeta(
+  network: SupportedNetwork,
+  fileId: string
+): Promise<FileMeta | null> {
+  try {
+    return await fetchFileMetaStrict(network, fileId);
+  } catch (e) {
+    if (getRegistryAddress(network)) {
+      console.warn(`[fetchFileMeta] ${network}/${fileId} failed`, (e as Error).cause ?? e);
     }
     return null;
   }

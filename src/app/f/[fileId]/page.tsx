@@ -50,6 +50,7 @@ import {
 } from "@/lib/blobLifecycle";
 import { getShelbyClient } from "@/lib/shelby";
 import { ShareDialog } from "@/components/ShareDialog";
+import { CiteDialog } from "@/components/CiteDialog";
 import { PurchasePanel } from "@/components/PurchasePanel";
 import { DescriptionPanel } from "@/components/DescriptionPanel";
 import {
@@ -73,6 +74,7 @@ export default function FilePage({ params }: Props) {
   const { setNetwork } = useNetworkController();
   const [autoSwitchedFrom, setAutoSwitchedFrom] = useState<string | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
+  const [citeOpen, setCiteOpen] = useState(false);
 
   // Honor `?n=<network>` from share links — auto-switch active network
   // so chain queries hit the right registry. Banner shows once per nav.
@@ -419,6 +421,16 @@ export default function FilePage({ params }: Props) {
               Share
             </span>
           </button>
+          <button
+            onClick={() => setCiteOpen(true)}
+            className="flex-1 rounded-lg border border-line bg-surface-raised px-3 py-2 text-xs font-semibold text-ink-muted hover:bg-surface-sunken active:scale-95 sm:flex-none"
+            title="Embed a verification badge or cite this dataset"
+          >
+            <span className="inline-flex items-center gap-1.5">
+              <CheckIcon className="h-3 w-3" />
+              Cite
+            </span>
+          </button>
           <AccessBadge file={file} />
         </div>
       </div>
@@ -436,6 +448,14 @@ export default function FilePage({ params }: Props) {
           file={file}
           network={network}
           onClose={() => setShareOpen(false)}
+        />
+      )}
+
+      {citeOpen && (
+        <CiteDialog
+          file={file}
+          network={network}
+          onClose={() => setCiteOpen(false)}
         />
       )}
 
