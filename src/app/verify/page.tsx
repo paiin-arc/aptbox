@@ -119,6 +119,12 @@ export default function VerifyPage() {
           <LockIcon className="h-3.5 w-3.5" />
           Nothing is uploaded. No wallet required.
         </p>
+        <p className="mt-1 text-sm text-ink-muted">
+          Got a training certificate instead?{" "}
+          <Link href="/verify/certificate" className="font-semibold text-royal hover:underline">
+            Verify a certificate →
+          </Link>
+        </p>
 
         <ScopePicker
           scope={scope}

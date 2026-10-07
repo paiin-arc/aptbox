@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   AccountAddress,
   Ed25519PublicKey,
@@ -54,7 +55,6 @@ import {
   shelbyObjectToActivity,
   verifyTrainingCertificate,
   type CertificateCheck,
-  type CertificateVerdictState,
   type DatasetProvenance,
   type EncryptionReceipt,
   type KeyBackupEntry,
@@ -62,7 +62,11 @@ import {
   type TrainingCertificate,
   type TrainingSet,
 } from "@/lib/provenance";
-import { verifyCertificateOnChain } from "@/lib/trainingSets";
+import { CERTIFICATE_HANDOFF_KEY, verifyCertificateOnChain } from "@/lib/trainingSets";
+import {
+  CertificateVerdictPanel,
+  type CertificateVerdict,
+} from "@/components/CertificateVerdictPanel";
 
 type WorkflowStage =
   | "idle"
@@ -104,11 +108,6 @@ type ChainRefs = {
   shelbyRegisterTxHash?: string;
 };
 
-type CertificateVerdict = {
-  state: CertificateVerdictState;
-  checks: CertificateCheck[];
-  warnings: string[];
-};
 
 const STAGE_LABEL: Record<WorkflowStage, string> = {
   idle: "Ready",
@@ -163,6 +162,7 @@ function asSignature(sig: unknown): Signature {
 export default function TrainPage() {
   const { connected, account, signAndSubmitTransaction, signMessage } = useWallet();
   const network = useNetwork();
+  const router = useRouter();
 
   const [files, setFiles] = useState<File[]>([]);
   const [encryptDatasets, setEncryptDatasets] = useState(true);
@@ -929,9 +929,20 @@ export default function TrainPage() {
                 >
                   Download
                 </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    // Certificates are too long for a URL; hand off via sessionStorage.
+                    sessionStorage.setItem(CERTIFICATE_HANDOFF_KEY, JSON.stringify(certificate));
+                    router.push("/verify/certificate?from=train");
+                  }}
+                  className="text-2xs font-semibold text-royal hover:underline"
+                >
+                  Open in verifier
+                </button>
               </div>
             </div>
-            {verdict && <VerdictPanel verdict={verdict} />}
+            {verdict && <CertificateVerdictPanel verdict={verdict} />}
             <pre className="mt-3 max-h-72 overflow-auto rounded-lg bg-surface-sunken p-3 text-2xs font-mono text-ink">
               {JSON.stringify(certificate, null, 2)}
             </pre>
@@ -1073,67 +1084,6 @@ function TrainingSetStatusBanner({ status }: { status: TrainingSetStatus }) {
           <span className="mt-1 block font-mono text-2xs">{status.reason}</span>
         )}
       </div>
-    </div>
-  );
-}
-
-const SIGNATURE_CHECKS = new Set([
-  "Structure & training-set commitment",
-  "Integrity digest",
-  "Signed message",
-  "Signature",
-  "Key owns signer address",
-]);
-
-function verdictHeadline(verdict: CertificateVerdict): string {
-  if (verdict.state === "verified") return "Certificate verified";
-  if (verdict.state === "failed") return "Certificate failed verification";
-  const signatureOk = verdict.checks
-    .filter((c) => SIGNATURE_CHECKS.has(c.label))
-    .every((c) => c.status === "pass");
-  return signatureOk
-    ? "Signature valid · on-chain check unavailable"
-    : "Could not fully verify: some checks couldn't run";
-}
-
-function VerdictPanel({ verdict }: { verdict: CertificateVerdict }) {
-  const icon = { pass: "✓", fail: "✗", unavailable: "?", skip: "–" } as const;
-  const tone = {
-    pass: "text-emerald-700",
-    fail: "text-red-700",
-    unavailable: "text-amber-700",
-    skip: "text-ink-subtle",
-  } as const;
-  const palette = {
-    verified: { box: "border-emerald-500/30 bg-emerald-500/10", title: "text-emerald-800" },
-    incomplete: { box: "border-amber-300 bg-amber-50", title: "text-amber-900" },
-    failed: { box: "border-red-300 bg-red-50", title: "text-red-800" },
-  }[verdict.state];
-  return (
-    <div className={`mt-3 rounded-lg border p-3 text-xs ${palette.box}`}>
-      <div className={`font-semibold ${palette.title}`}>{verdictHeadline(verdict)}</div>
-      {verdict.state === "incomplete" && (
-        <div className="mt-1 text-amber-800">
-          Nothing here indicates tampering. Some checks needed the network or a newer
-          contract and couldn&apos;t run. Re-issue the certificate to check again.
-        </div>
-      )}
-      <ul className="mt-2 space-y-1">
-        {verdict.checks.map((c, i) => (
-          <li key={i} className="flex gap-2">
-            <span className={`w-3 shrink-0 font-bold ${tone[c.status]}`}>{icon[c.status]}</span>
-            <span>
-              <span className="font-medium">{c.label}</span>
-              {c.detail && <span className="text-ink-muted"> · {c.detail}</span>}
-            </span>
-          </li>
-        ))}
-      </ul>
-      {verdict.warnings.map((w, i) => (
-        <div key={i} className="mt-2 text-amber-800">
-          ⚠ {w}
-        </div>
-      ))}
     </div>
   );
 }

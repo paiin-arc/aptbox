@@ -26,7 +26,11 @@ import {
   shelbyObjectToActivity,
   verifyTrainingCertificate,
 } from "../src/lib/provenance.ts";
-import { compareTrainingSetToCertificate, verifyCertificateOnChain } from "../src/lib/trainingSets.ts";
+import {
+  compareTrainingSetToCertificate,
+  verifyCertificateFull,
+  verifyCertificateOnChain,
+} from "../src/lib/trainingSets.ts";
 
 let failures = 0;
 
@@ -202,6 +206,16 @@ const garbledSig = { ...cert, signature: { ...cert.signature!, signature: "0x" +
 check("garbage signature bytes reject", !(await verifyTrainingCertificate(garbledSig)).ok);
 
 check("v1 certificate rejects", !(await verifyTrainingCertificate({ ...cert, version: 1 })).ok);
+// Regression: a rejection with zero checks rendered as "verified".
+for (const [label, input] of [
+  ["v1", { ...cert, version: 1 }],
+  ["null", null],
+  ["string", "nope"],
+] as const) {
+  const r = await verifyTrainingCertificate(input);
+  check(`rejected ${label} certificate leaves a failing check (verdict can't read as verified)`,
+    !r.ok && certificateVerdictState(r.checks) === "failed", JSON.stringify(r.checks));
+}
 check("schema version rejects", !(await verifyTrainingCertificate({ ...cert, version: 99 })).ok);
 check("modified dataset commitment rejects", !(await verifyTrainingCertificate({
   ...cert,
@@ -235,6 +249,78 @@ check("extra on-chain dataset fails",
   !allPass(compareTrainingSetToCertificate({ ...onChain, fileIds: [...onChain.fileIds, "3"], datasetCommitments: [...onChain.datasetCommitments, "c".repeat(64)] }, cert)));
 check("swapped hash on-chain fails",
   !allPass(compareTrainingSetToCertificate({ ...onChain, datasetCommitments: ["a".repeat(64), "b".repeat(64)] }, cert)));
+
+console.log("\n-- full certificate verification (verifier page) --");
+{
+  const REG = "0x2251165b1dd4124e02304bd781779070e87af21aa86f69c1f6d452d4d8bd2e5c";
+  process.env.NEXT_PUBLIC_REGISTRY_ADDRESS_SHELBYNET = REG;
+  const good = await issue(legacy);
+  delete process.env.NEXT_PUBLIC_REGISTRY_ADDRESS_SHELBYNET;
+
+  const setRecord = {
+    commitment: set1.commitment,
+    creator: legacy.accountAddress.toStringLong(),
+    fileIds: ["1", "2"],
+    datasetCommitments: ["b".repeat(64), "a".repeat(64)],
+    createdAt: 1,
+  };
+  const files: Record<string, { fileId: string; contentHash: string; uploader: string; shelbyCid: string } | null> = {
+    "1": { fileId: "1", contentHash: "b".repeat(64), uploader: setRecord.creator, shelbyCid: "aptbox/b.bin" },
+    "2": { fileId: "2", contentHash: "a".repeat(64), uploader: setRecord.creator, shelbyCid: "aptbox/a.bin" },
+  };
+  const deps = (o: Record<string, unknown> = {}) => ({
+    fetchSet: async () => setRecord,
+    fetchFile: async (_n: unknown, id: string) => files[id],
+    registryAddressFor: () => REG,
+    aptosConfigFor: () => undefined,
+    ...o,
+  });
+  const down = async () => { throw new Error("fullnode unreachable"); };
+
+  const ok = await verifyCertificateFull(good, deps());
+  check("valid cert + matching chain → verified", ok.state === "verified", JSON.stringify(ok.checks));
+  check("…every dataset row passes", ok.datasets.length === 2 && ok.datasets.every((d) => d.status === "pass"));
+  check("…includes registry + on-chain + dataset checks",
+    ["Registry deployment", "Training set on-chain", "Datasets in registry"].every((l) => ok.checks.some((c) => c.label === l && c.status === "pass")));
+  check("accepts the pasted JSON string", (await verifyCertificateFull(JSON.stringify(good), deps())).state === "verified");
+
+  const bad = await verifyCertificateFull("{ not json", deps());
+  check("invalid JSON → failed with a format message", bad.state === "failed" && /valid JSON/.test(bad.checks[0].detail ?? ""));
+  check("empty input → failed, asks for a certificate", /Paste or drop/.test((await verifyCertificateFull("  ", deps())).checks[0].detail ?? ""));
+  check("JSON array → failed", (await verifyCertificateFull("[]", deps())).state === "failed");
+
+  check("edited certificate → failed",
+    (await verifyCertificateFull({ ...good, modelRunId: "other" }, deps())).state === "failed");
+  check("edited network → failed (covered by signature)",
+    (await verifyCertificateFull({ ...good, network: "mainnet" }, deps())).state === "failed");
+
+  check("training-set lookup outage → incomplete, not failed",
+    (await verifyCertificateFull(good, deps({ fetchSet: down }))).state === "incomplete");
+  check("dataset lookup outage → incomplete, not failed",
+    (await verifyCertificateFull(good, deps({ fetchFile: down }))).state === "incomplete");
+  check("training set confirmed absent → failed",
+    (await verifyCertificateFull(good, deps({ fetchSet: async () => null }))).state === "failed");
+
+  const deletedRun = await verifyCertificateFull(good, deps({ fetchFile: async (_n: unknown, id: string) => (id === "1" ? null : files[id]) }));
+  check("dataset later deleted → still verified, with a warning",
+    deletedRun.state === "verified" && deletedRun.warnings.some((w) => /deleted by their uploader/.test(w)), JSON.stringify(deletedRun));
+  check("…and that row is marked skip, not pass",
+    deletedRun.datasets.find((d) => d.fileId === "1")?.status === "skip");
+
+  const swapped = await verifyCertificateFull(good, deps({
+    fetchFile: async (_n: unknown, id: string) => (id === "1" ? { ...files["1"]!, contentHash: "f".repeat(64) } : files[id]),
+  }));
+  check("registry hash differs from certificate → failed", swapped.state === "failed");
+  check("…and names the offending row", swapped.datasets.find((d) => d.fileId === "1")?.status === "fail");
+  check("registry blob name differs → failed", (await verifyCertificateFull(good, deps({
+    fetchFile: async (_n: unknown, id: string) => ({ ...files[id]!, shelbyCid: "aptbox/other.bin" }),
+  }))).state === "failed");
+
+  const otherReg = await verifyCertificateFull(good, deps({ registryAddressFor: () => "0x1" }));
+  check("certificate from another registry deployment → incomplete, explains why",
+    otherReg.state === "incomplete" && otherReg.checks.some((c) => c.label === "Registry deployment" && /references registry/.test(c.detail ?? "")));
+  check("v1 certificate → failed", (await verifyCertificateFull({ ...good, version: 1 }, deps())).state === "failed");
+}
 
 console.log("\n-- verdict states --");
 const P = { label: "a", status: "pass" } as const;

@@ -544,15 +544,20 @@ export async function verifyTrainingCertificate(
   const errors: string[] = [];
   const warnings: string[] = [];
   const checks: CertificateCheck[] = [];
+  // Every rejection must leave a failing check behind: callers derive the
+  // verdict from `checks`, and an empty list would read as "nothing failed".
   if (!cert || typeof cert !== "object") {
-    return { ok: false, errors: ["Certificate is not an object."], checks, warnings };
+    const detail = "Certificate is not an object.";
+    checks.push({ label: "Certificate format", status: "fail", detail });
+    return { ok: false, errors: [detail], checks, warnings };
   }
 
   const c = cert as TrainingCertificate;
   if ((c.version as number) === 1) {
-    errors.push(
-      "Version 1 certificates are unsigned and cannot prove who issued them. Re-export it from /train."
-    );
+    const detail =
+      "Version 1 certificates are unsigned and cannot prove who issued them. Re-export it from /train.";
+    errors.push(detail);
+    checks.push({ label: "Certificate version", status: "fail", detail });
     return { ok: false, errors, checks, warnings };
   }
   if (c.version !== TRAINING_CERTIFICATE_VERSION) {
