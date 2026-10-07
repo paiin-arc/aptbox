@@ -1,9 +1,9 @@
 import { getAptos } from "./registry";
 import type { SupportedNetwork } from "./networks";
+import { SHELBYUSD_FA_METADATA_ADDRESS } from "@shelby-protocol/sdk/browser";
 
-/** ShelbyUSD Fungible Asset metadata address (same on testnet + shelbynet). */
-const SUSD_METADATA =
-  "0x1b18363a9f1fe5e6ebf247daba5cc1c18052bb232efdc4c50f556053922d98e1";
+/** ShelbyUSD Fungible Asset metadata address, for the SDK's network. */
+const SUSD_METADATA = SHELBYUSD_FA_METADATA_ADDRESS;
 
 export const APT_DECIMALS = 8;
 export const SUSD_DECIMALS = 8;
