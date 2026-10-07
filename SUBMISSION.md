@@ -25,131 +25,145 @@ https://github.com/paiin-arc/aptbox
 
 ## Aptos address (optional)
 
-0x6e5c78b1b9fd0c729cc525529f012227bf3e0b4aff7f8af93539dd186668ec25
+0x2251165b1dd4124e02304bd781779070e87af21aa86f69c1f6d452d4d8bd2e5c
 
-*(the registry Move module on Aptos testnet; shelbynet is
-`0x2251165b1dd4124e02304bd781779070e87af21aa86f69c1f6d452d4d8bd2e5c`)*
+*(the registry Move module on shelbynet — the network the app runs on. An
+earlier deployment on Aptos testnet,
+`0x6e5c78b1b9fd0c729cc525529f012227bf3e0b4aff7f8af93539dd186668ec25`, is no
+longer used by the app.)*
 
 ---
 
 ## Describe your final application (max 5000)
 
-**AI Dataset Locker — verifiable storage for AI training datasets.**
+**AI Dataset Locker — verifiable storage and training provenance for AI datasets.**
 
 **The problem.** Training data moves through Drive links, S3 buckets and zip
 files. All of them answer "where do I download it". None answer "is this the
-same data the paper used". A folder gets re-uploaded with 300 rows removed, a
-bucket is regenerated with different preprocessing, an archive picks up a
-corrupted file in transit — the link still works, the filename is unchanged, and
-the model trains on something other than what everyone believes it trained on.
+same data the paper used", or "which data was this model trained on". A folder
+gets re-uploaded with 300 rows removed, an archive picks up a corrupted file,
+and a model card's dataset list is just text anyone could have written.
 
 **What it does.** Upload a dataset. The browser streams it through SHA-256,
-stores the bytes on Shelby, and commits the hash to an Aptos Move registry
-through the uploader's own signed transaction — before the data is retrievable
-by anyone. Every download then re-hashes the bytes actually received and
-compares them against that commitment. A mismatch blocks preview and download
-behind an explicit warning, showing both digests side by side so the reader can
-confirm the mismatch rather than trusting a badge.
+optionally encrypts it with AES-256-GCM, stores it on Shelby, and commits the
+hash of the original bytes to an Aptos Move registry through the uploader's own
+signed transaction — before anyone can retrieve it. Every download re-hashes
+the bytes received and compares them to that commitment; a mismatch blocks
+preview and download, showing both digests side by side.
 
-The ordering is what makes it meaningful. A checksum published next to a file
-proves nothing, because whoever serves the bytes can serve a matching checksum.
-Ours lives in an immutable Move resource written before distribution, by a key
-the storage layer doesn't hold — so there is no point at which altered bytes and
-a matching commitment can both exist.
+Then go one level up: group datasets into a training set, commit it on-chain,
+and issue a **wallet-signed training certificate** naming the model run. Anyone
+can verify that certificate without a wallet.
 
 **What's built — all live:**
 
-- `/upload` — stream-hash, erasure-code, store on Shelby, commit on Aptos
-- `/f/[id]` — share page; verifies integrity before exposing any bytes
-- `/verify` — drop any file and check it against the registry, no wallet
-  required. Beyond an exact match it flags a dataset published under the *same
-  filename with different bytes* — the case a single hash comparison can't catch
-- `/marketplace` — public catalogue with filters, search, and publisher views
-  keyed by wallet address
-- `/docs` — how verification works, and honestly what it does not cover
-- `/cleanup` — reclaim ShelbyUSD from uploads that registered on-chain but whose
-  bytes never finalised
+- `/upload` — stream-hash, optionally encrypt, erasure-code, store on Shelby,
+  commit on Aptos
+- `/f/[id]` — share page; verifies integrity before exposing any bytes, and
+  decrypts encrypted datasets with the owner's key, in the browser
+- `/train` — batch-pin datasets as a training set: one Shelby batch
+  registration, one registry batch, an immutable on-chain training-set record,
+  and a certificate signed with the wallet. Encryption keys are shown and must
+  be backed up before anything is pinned — Aptbox never stores them
+- `/verify/certificate` — paste or drop a certificate: checks the issuer's
+  signature, that the training set is on Aptos and was created by the signer,
+  that every dataset is still registered with the same SHA-256, and optionally
+  the model file's hash. It shows ✓/✗ per check, and says plainly what a valid
+  certificate does and doesn't prove
+- `/verify` — drop any file and check it against the registry. It also flags a
+  dataset published under the *same filename with different bytes*
+- `/marketplace` — public catalogue with filters, search, publisher views and
+  paid listings
+- Embeddable badges and citations — a live SVG badge per dataset for READMEs
+  and model cards, plus BibTeX and plain-text citations that pin the exact hash
+- `/docs` and `/cleanup` (reclaim ShelbyUSD from uploads that never finalised)
 
-A Move registry is deployed on both Aptos testnet and shelbynet. It was upgraded
-in place to add publisher descriptions via a new resource rather than a new field,
-so every previously registered dataset kept working.
+**Certificates you can't forge.** A certificate's integrity hash alone proves
+nothing — anyone can edit the body and recompute it. So the issuer's wallet
+signs a message binding its address to that hash, and verification checks the
+signature, that the key controls the signer address (with support for rotated
+keys and keyless accounts), and the on-chain training-set record. The test suite
+attacks it directly: edit-and-recompute, an attacker's key claiming a victim's
+address, signatures reused across certificates. All are rejected.
 
-**No size limit.** Nothing is buffered. Hashing, erasure coding and upload each
-take a fresh stream, so peak memory is a flat ~26 MB whether the dataset is one
-kilobyte or one terabyte. This needed a streaming SHA-256 implementation, because
-WebCrypto's `subtle.digest` has no streaming API and would have capped uploads
-around 2 GiB on its own.
+**Honest about what it can't check.** Verdicts have three states. A check that
+couldn't run — fullnode down, older contract — shows amber "couldn't verify",
+never red; red is reserved for evidence of tampering. A dataset its uploader
+later deleted is a warning, not a forgery.
 
-**Ownership.** Buying a dataset grants access, never authorship. The contract has
-no ownership-transfer function at all, and `delete_file` asserts the original
-uploader. Verified against the strongest attacker available: setting a
-description on someone else's dataset *from the account that deployed the
-contract* aborts with `E_NOT_OWNER`.
+**The registry evolves by addition only.** Descriptions, training sets and
+training-set views were each added as new resources or functions rather than
+by changing stored structs. The views were upgraded into the live shelbynet
+registry in place, with every existing dataset and training set intact.
 
-**Correctness gates** (`npm run verify`):
+**Correctness gates** (`npm run verify`): streaming SHA-256 against FIPS 180-4
+vectors and 300 randomised comparisons with WebCrypto; streamed erasure
+commitments byte-identical to buffered; verifier verdict logic; badge and
+citation escaping; 83 provenance checks covering encryption, key backup, the
+certificate forgery cases, and the outage-vs-tamper verdicts; plus Move unit
+tests for the training-set views.
 
-- streaming SHA-256 vs FIPS 180-4 known-answer vectors, padding boundaries, and
-  300 randomised differential comparisons against WebCrypto
-- streamed erasure commitments proven byte-identical to buffered ones, including
-  at chunkset boundaries
-- verifier verdict logic, including precedence when several conditions hold
-- a live tamper test that fetches a real dataset from Shelby, flips one byte, and
-  confirms detection
+**Verified end to end on shelbynet** with a real wallet: an encrypted training
+upload whose public Shelby bytes are ciphertext (no PNG header, hash differs),
+which decrypts with the backed-up key, and whose certificate verifies on-chain.
 
-**Current state:** 19 datasets, 49.8 MB, 4 publisher wallets on testnet.
+**Current state (shelbynet):** 8 datasets, 8.8 MB, 4 on-chain training sets.
 
-**Honest limits.** Shelby stores blobs publicly, so paid and restricted datasets
-are gated in this UI but their bytes stay retrievable by anyone who reads the
-account and blob name from the registry. The app says exactly that at the point
-of purchase rather than implying an exclusivity it cannot deliver. Client-side
-encryption is the fix, is designed, and is not shipped. Storage is also a lease —
-blobs expire, and the app warns before selling access to data that expires soon.
+**Honest limits.** Encryption protects bytes from Shelby readers, but there is
+no key release to buyers yet: a paid *encrypted* dataset can only be shared by
+the owner handing over the key, and a paid dataset uploaded *unencrypted* is
+still publicly retrievable — the app says so at purchase. A certificate proves
+*who* claims a model used which datasets, not that training actually used only
+those. And storage is a lease: blobs expire, and Shelby's current object
+listing doesn't report expiry, so the app can't yet warn a buyer before
+selling access to data that is about to expire.
 
 ---
 
 ## Describe how your app uses Shelby storage (max 2000)
 
-Shelby is the storage layer, used through `@shelby-protocol/sdk` directly rather
-than the S3 gateway.
+Shelby is the storage layer, used through `@shelby-protocol/sdk` (0.9.x)
+directly rather than the S3 gateway.
 
-**Upload.** `generateCommitments` erasure-codes the dataset into 10 MiB chunksets
-(ClayCode 16/10 — any 10 of 16 shards rebuild one). `createRegisterBlobPayload`
-builds the `register_blob` transaction the user's wallet signs. `putBlob` then
-uploads the bytes as 5 MiB multipart chunks.
+**Upload.** Commitments are generated from a stream, so plaintext uploads are
+never buffered whole. The user's wallet signs the blob registration — for
+training sets, one `register_multiple_blobs` transaction for the whole batch —
+and `putBlobChunksets` sends chunksets to storage providers, which
+`commitObject` then finalises. Encrypted uploads are registered with the
+`AES_GCM_V1` label, so the encryption state is recorded on-chain rather than
+inferred.
 
-Both `generateCommitments` and `putBlob` are handed a `ReadableStream` from
-`Blob.stream()` rather than a `Uint8Array`, so the dataset is never materialised
-in memory — that is what removes the size ceiling. Verified against the SDK
-rather than assumed: neither has a chunkset or part-count cap.
+**Read.** `getBlob` for verification, decryption and preview; the public
+gateway URL for public datasets too large to hold in the tab, which the
+browser streams to disk.
 
-**Read.** `getBlob` for verification and preview; the public gateway URL for
-datasets too large for the browser to hold, which it streams to disk.
+**Indexer.** The object listing supplies encryption, size and commit time:
+it drives the encrypted-dataset key prompt (and stops an encrypted blob being
+hashed as if it were plaintext), and `/cleanup` for blobs that registered but
+never finalised. When the activity indexer returns no events,
+the training audit trail falls back to the object listing — marked as derived
+— rather than showing an empty history.
 
-**Lifecycle.** The blob indexer supplies `expiration` and `is_written`, driving
-expiry countdowns, a "storage providers finalising" state while a fresh upload
-propagates, and `/cleanup` for blobs that registered on-chain but never finalised.
-
-**What we add.** Reading the SDK closely turned up the thing this project rests
-on: `getBlob`'s client-side check compares `bytesReceived` against the
-content-length header and nothing else. That catches a truncated transfer, not an
-alteration that preserves length. Shelby's guarantees are durability and
-retrievability; end-to-end verification is left to the caller. Our SHA-256
-commitment fills exactly that gap — demonstrated by flipping one byte of a
-196,882-byte dataset: identical length, completely different digest, caught.
-
-**Version.** Pinned to sdk 0.3.1 deliberately. 0.4.1 removes the v1 upload
-endpoint, and its v2 chunkset flow has no wallet-adapter path yet — react 3.0.1
-throws on a wallet signer, and `putBlobChunksets` signs its auth challenge
-synchronously from a private key a browser wallet never exposes.
+**What we add.** `getBlob`'s client-side check compares bytes received against
+the content-length header. That catches truncation, not an alteration that
+preserves length. Shelby guarantees durability and retrievability; end-to-end
+verification is left to the caller. Our SHA-256 commitment fills that gap —
+reproducible with `npm run verify:tamper`, which fetches a live 65,131-byte
+dataset from shelbynet and flips one byte: same length, different digest,
+caught. For encrypted datasets the commitment is over the
+plaintext, so verification proves you decrypted the original bytes, not just
+retrieved some ciphertext.
 
 ---
 
 ## Links (one per line)
 
-https://aptbox.vercel.app/docs
+https://aptbox.vercel.app/train
+https://aptbox.vercel.app/verify/certificate
 https://aptbox.vercel.app/verify
 https://aptbox.vercel.app/marketplace
-https://explorer.aptoslabs.com/account/0x6e5c78b1b9fd0c729cc525529f012227bf3e0b4aff7f8af93539dd186668ec25/modules?network=testnet
+https://aptbox.vercel.app/docs
+https://aptbox.vercel.app/api/badge/0?n=shelbynet
 
 ---
 
@@ -158,36 +172,44 @@ https://explorer.aptoslabs.com/account/0x6e5c78b1b9fd0c729cc525529f012227bf3e0b4
 **Shipped**
 - Streaming SHA-256 committed on-chain before distribution
 - Verification enforced on every download; mismatch blocks the bytes
-- No upload size limit — flat ~26 MB peak memory at any size
+- Client-side AES-256-GCM encryption, labelled `AES_GCM_V1` on Shelby, with a
+  mandatory key backup before pinning
+- Training sets: batch pinning and an immutable on-chain training-set record
+- Wallet-signed training certificates and a public certificate verifier
+- Embeddable verification badges and dataset citations (BibTeX / plain text)
 - `/verify` — check any file against the registry, no wallet
 - Marketplace with wallet-as-publisher-identity and on-chain descriptions
-- Move registry live on Aptos testnet and shelbynet
-- Four correctness gates, including a live tamper test
+- Move registry live on shelbynet, upgraded in place without breaking records
+- Correctness gates incl. certificate-forgery and outage-vs-tamper tests
 
 **Next**
-- Client-side AES-GCM encryption so paid and restricted actually withhold bytes
-- Key release to receipt holders — the real problem, and the reason encryption
-  isn't shipped yet
-- Migrate to Shelby SDK 0.4.x once wallet-adapter uploads return, then declare
-  encrypted blobs on-chain with the new `AES_GCM_V1` label
+- Key release to buyers, so paid encrypted datasets unlock on purchase
+- Build training sets from datasets already in the registry, without re-upload
+- Drop a model file into `/train` to pin its hash, instead of pasting hex
+- "My training sets" history from on-chain events
 
 **Later**
-- Registry-wide audit: re-fetch every dataset and re-verify against its
-  commitment, reporting verified / tampered / bytes missing / expired
-- Hash index in Move (`Table<hash, file_id>`) so lookup stops being O(n) view
-  calls beyond a few hundred datasets
-- Renewal flow before expiry, so a purchased dataset can't quietly vanish
-- Multi-location writes, once Shelby's named locations are usable
+- Verify-before-train CLI / Python helper: refuse to train on bytes that don't
+  match a training set's commitments
+- Hugging Face model-card generator with live badges
+- Registry-wide audit: re-fetch every dataset and report verified / tampered /
+  missing / expired
+- Hash index in Move (`Table<hash, file_id>`) so lookup isn't O(n) view calls
+- Restore expiry warnings (the SDK 0.9 object listing has no expiry field),
+  then a renewal flow, so a purchased dataset can't quietly vanish
 
 ---
 
 ## Demo video
 
-Not recorded yet. Suggested 90 seconds:
+Not recorded yet. Suggested 2 minutes:
 
-1. `/upload` a dataset — hash, two signatures, stored
-2. `/f/[id]` — green "Integrity verified", both hashes shown
-3. `/verify` — drop the same file → authentic; rename an edited copy to the
-   original's filename → red conflict
-4. `/marketplace` — publisher view, paid listing with description and no preview
-5. Terminal: `npm run verify:tamper` — one byte flipped, detected
+1. `/train` — tick encryption, Prepare, download `keys.json` (Pin stays locked
+   until you do), Pin, approve the wallet prompts → "Certificate verified"
+2. Open the dataset → paste the key → decrypts, "Integrity verified"; change
+   one character → friendly "this key doesn't unlock this dataset"
+3. "Open in verifier" → all ✓; edit `modelRunId` in the JSON → ✗ integrity
+4. `/verify` — drop the original file → authentic; rename an edited copy to
+   the original's filename → red conflict
+5. Cite → copy the badge into a README; show it rendering live
+6. Terminal: `npm run verify:tamper` — one byte flipped, detected

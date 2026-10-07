@@ -8,13 +8,17 @@
  */
 import { verifyDatasetIntegrity } from "../src/lib/verify.ts";
 
-const APTOS = "https://api.testnet.aptoslabs.com/v1/view";
+// Shelbynet: the only network the app supports since Shelby retired testnet.
+const APTOS = "https://api.shelbynet.shelby.xyz/v1/view";
 const REGISTRY =
-  "0x6e5c78b1b9fd0c729cc525529f012227bf3e0b4aff7f8af93539dd186668ec25";
-const GATEWAY = "https://api.testnet.shelby.xyz/shelby/v1/blobs";
+  process.env.NEXT_PUBLIC_REGISTRY_ADDRESS_SHELBYNET ||
+  "0x2251165b1dd4124e02304bd781779070e87af21aa86f69c1f6d452d4d8bd2e5c";
+const GATEWAY = "https://api.shelbynet.shelby.xyz/shelby/v1/blobs";
+/** AES-GCM framing the app adds: 12-byte IV prefix + 16-byte auth tag. */
+const AES_GCM_OVERHEAD = 28;
 
-// Default must be a dataset whose bytes are still stored; blobs expire.
-const fileId = process.argv[2] ?? "22";
+// Default must be a public, unencrypted dataset whose bytes are still stored.
+const fileId = process.argv[2] ?? "0";
 
 const meta = await (
   await fetch(APTOS, {
@@ -51,8 +55,17 @@ if (!res.ok) {
 }
 const bytes = new Uint8Array(await res.arrayBuffer());
 
-// Guard against a short read masquerading as tampering.
+// Guard against a short read, or ciphertext, masquerading as tampering.
 const expected = Number(rec.size_bytes);
+if (bytes.length === expected + AES_GCM_OVERHEAD) {
+  console.log(
+    `\nENCRYPTED DATASET — Shelby holds ${bytes.length} bytes of AES-GCM ciphertext` +
+      ` for a ${expected}-byte original. The commitment is over the plaintext, so` +
+      ` hashing ciphertext would falsely report TAMPERED. Pick an unencrypted dataset:\n` +
+      `  npm run verify:tamper <fileId>\n`
+  );
+  process.exit(2);
+}
 if (bytes.length !== expected) {
   console.log(
     `\nSHORT READ — got ${bytes.length} bytes, chain says ${expected}. ` +
